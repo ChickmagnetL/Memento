@@ -1,0 +1,59 @@
+"""
+Memento backend application entry point.
+
+Creates the FastAPI app, configures CORS and logging, initializes database
+clients on startup (lifespan), and mounts the health router.
+
+Author: Memento Team
+Last Updated: 2026-06-07
+"""
+
+import logging
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from config.settings import get_settings
+from storage.sqlite_client import SQLiteClient
+from storage.qdrant_client import QdrantStore
+from api.health import router as health_router
+
+settings = get_settings()
+
+logging.basicConfig(level=settings.log_level)
+logger = logging.getLogger("memento")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Initialize and tear down database clients with the app lifecycle."""
+    data_dir = settings.storage.data_dir.expanduser()
+
+    sqlite = SQLiteClient(data_dir / "metadata.db")
+    await sqlite.connect()
+    app.state.sqlite = sqlite
+
+    qdrant = QdrantStore(data_dir / "qdrant")
+    qdrant.connect()
+    app.state.qdrant = qdrant
+
+    logger.info("Databases initialized at %s", data_dir)
+    yield
+
+    await sqlite.close()
+    qdrant.close()
+    logger.info("Databases closed")
+
+
+app = FastAPI(title="Memento API", version="0.1.0", lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(health_router)
