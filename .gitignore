@@ -1,0 +1,15 @@
+# Local tooling
+.ace-tool/
+
+# OS
+.DS_Store
+
+# Early-stage reference (local only, not tracked)
+archive/
+
+# Design specs & plans (local dev reference only)
+docs/
+
+#AI Engineer
+.claude
+.codex
