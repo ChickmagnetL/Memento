@@ -13,3 +13,43 @@ docs/
 #AI Engineer
 .claude
 .codex
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+*.egg-info/
+dist/
+build/
+
+# Node
+node_modules/
+.next/
+out/
+*.log
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Data
+data/
+*.db
+*.db-journal
+
+# Secrets
+.env
+.env.local
+config.local.yaml
+private/
+
+# Models
+services/funasr/models/
+services/funasr/.venv/
