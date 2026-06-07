@@ -1,0 +1,12 @@
+# Example configuration file for Memento
+# Copy this to config.yaml and edit as needed
+
+storage:
+  data_dir: "~/memento_data"
+  keep_videos: false
+
+models:
+  chat:
+    provider: "cloud"  # or "ollama" for local
+    api_key: "sk-your-api-key-here"
+    model: "deepseek-chat"
