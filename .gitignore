@@ -33,6 +33,9 @@ node_modules/
 out/
 *.log
 
+# Frontend
+frontend/.env*.local
+
 # IDEs
 .vscode/
 .idea/
