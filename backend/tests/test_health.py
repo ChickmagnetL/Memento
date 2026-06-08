@@ -17,3 +17,10 @@ def test_health_returns_ok():
     data = resp.json()
     assert data["status"] == "ok"
     assert data["service"] == "memento-backend"
+
+
+def test_api_docs_are_available():
+    """Swagger UI should be available for Phase 1 API inspection."""
+    resp = client.get("/docs")
+    assert resp.status_code == 200
+    assert "swagger-ui" in resp.text

@@ -4,8 +4,24 @@
 
 - Python 3.10+ installed
 - Node.js 18+ installed
-- Backend dependencies installed (`cd backend && pip install -r requirements.txt`)
+- Backend dependencies installed (`cd backend && pip install -r requirements-dev.txt`)
 - Frontend dependencies installed (`cd frontend && npm install`)
+
+## Automated Checks
+
+From the project root:
+
+```bash
+cd backend
+source venv/bin/activate
+pytest
+
+cd ../frontend
+npm run lint
+
+cd ..
+./scripts/smoke-test.sh
+```
 
 ## Test Procedure
 
@@ -55,4 +71,4 @@ Expected:
 - [x] Configuration loads from YAML
 - [x] Databases initialize without errors
 
-All criteria verified ✓
+All criteria should be verified with the automated checks above plus the manual browser checks.
