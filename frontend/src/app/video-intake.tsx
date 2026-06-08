@@ -55,7 +55,7 @@ export function VideoIntake({ initialHealth, initialVideos }: VideoIntakeProps) 
 
       <form className="flex flex-col gap-3 sm:flex-row" onSubmit={handleSubmit}>
         <input
-          className="h-10 flex-1 rounded-md border border-input bg-background px-3 text-sm"
+          className="h-10 flex-1 rounded-md border border-input bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground"
           onChange={(event) => setUrl(event.target.value)}
           placeholder="Paste a Bilibili or Douyin URL"
           value={url}
@@ -78,7 +78,7 @@ export function VideoIntake({ initialHealth, initialVideos }: VideoIntakeProps) 
               <li className="rounded-md border p-4" key={video.id}>
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="font-medium">{video.title}</p>
-                  <span className="rounded-md bg-secondary px-2 py-1 text-xs">
+                  <span className="rounded-md bg-secondary px-2 py-1 text-xs text-secondary-foreground">
                     {video.status}
                   </span>
                 </div>
