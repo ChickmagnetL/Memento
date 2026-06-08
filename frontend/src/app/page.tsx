@@ -1,22 +1,18 @@
-import { getHealth } from "@/lib/api";
+import { getHealth, listVideos, type VideoRecord } from "@/lib/api";
+import { VideoIntake } from "./video-intake";
 
-// Server component: fetches backend health on each request (dev). Errors are
-// caught so the page still renders if the backend is down.
 export default async function Home() {
-  let status = "unreachable";
+  let health = "unreachable";
+  let videos: VideoRecord[] = [];
+
   try {
-    const health = await getHealth();
-    status = health.status;
+    const data = await getHealth();
+    health = data.status;
+    videos = await listVideos();
   } catch {
-    status = "unreachable";
+    health = "unreachable";
+    videos = [];
   }
 
-  return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-4">
-      <h1 className="text-2xl font-bold">Memento</h1>
-      <p className="text-muted-foreground">
-        Backend health: <span className="font-mono">{status}</span>
-      </p>
-    </main>
-  );
+  return <VideoIntake initialHealth={health} initialVideos={videos} />;
 }

@@ -18,6 +18,7 @@ from config.settings import get_settings
 from storage.sqlite_client import SQLiteClient
 from storage.qdrant_client import QdrantStore
 from api.health import router as health_router
+from api.videos import router as videos_router
 
 settings = get_settings()
 
@@ -57,3 +58,4 @@ app.add_middleware(
 )
 
 app.include_router(health_router)
+app.include_router(videos_router)

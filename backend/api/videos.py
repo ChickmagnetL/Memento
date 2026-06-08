@@ -1,0 +1,76 @@
+"""Video record API endpoints."""
+
+from urllib.parse import urlparse
+from uuid import uuid4
+
+from fastapi import APIRouter, HTTPException, Request, status
+
+from schemas.video import VideoCreateRequest, VideoRecord, VideoStatusUpdateRequest
+from storage.sqlite_client import SQLiteClient
+
+router = APIRouter(prefix="/api/videos", tags=["videos"])
+
+
+def detect_platform(url: str) -> str:
+    """Detect supported video platform from URL host."""
+    host = urlparse(url).netloc.lower()
+    if "bilibili.com" in host or host == "b23.tv":
+        return "bilibili"
+    if "douyin.com" in host or "iesdouyin.com" in host:
+        return "douyin"
+    raise HTTPException(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        detail="Only Bilibili and Douyin URLs are supported",
+    )
+
+
+def get_sqlite(request: Request) -> SQLiteClient:
+    """Return the app-scoped SQLite client."""
+    sqlite = getattr(request.app.state, "sqlite", None)
+    if sqlite is None:
+        raise HTTPException(status_code=500, detail="SQLite client is not initialized")
+    return sqlite
+
+
+@router.post("", response_model=VideoRecord, status_code=status.HTTP_201_CREATED)
+async def create_video(payload: VideoCreateRequest, request: Request) -> dict:
+    """Create a pending video record."""
+    platform = detect_platform(payload.url)
+    sqlite = get_sqlite(request)
+    return await sqlite.create_video(
+        video_id=uuid4().hex,
+        platform=platform,
+        title=payload.title or payload.url,
+        url=payload.url,
+    )
+
+
+@router.get("", response_model=list[VideoRecord])
+async def list_videos(request: Request) -> list[dict]:
+    """List video records."""
+    sqlite = get_sqlite(request)
+    return await sqlite.list_videos()
+
+
+@router.get("/{video_id}", response_model=VideoRecord)
+async def get_video(video_id: str, request: Request) -> dict:
+    """Return one video record."""
+    sqlite = get_sqlite(request)
+    video = await sqlite.get_video(video_id)
+    if video is None:
+        raise HTTPException(status_code=404, detail="Video not found")
+    return video
+
+
+@router.patch("/{video_id}/status", response_model=VideoRecord)
+async def update_video_status(
+    video_id: str,
+    payload: VideoStatusUpdateRequest,
+    request: Request,
+) -> dict:
+    """Update a video processing status."""
+    sqlite = get_sqlite(request)
+    video = await sqlite.update_video_status(video_id, payload.status)
+    if video is None:
+        raise HTTPException(status_code=404, detail="Video not found")
+    return video

@@ -13,6 +13,26 @@ export interface HealthResponse {
   service: string;
 }
 
+export type VideoStatus = "pending" | "processing" | "completed" | "failed";
+export type VideoPlatform = "bilibili" | "douyin";
+
+export interface VideoRecord {
+  id: string;
+  platform: VideoPlatform;
+  title: string;
+  author: string | null;
+  duration: number | null;
+  url: string;
+  status: VideoStatus;
+  created_at: string;
+  processed_at: string | null;
+}
+
+export interface CreateVideoRequest {
+  url: string;
+  title?: string;
+}
+
 /**
  * Fetch backend health status.
  *
@@ -22,6 +42,28 @@ export async function getHealth(): Promise<HealthResponse> {
   const res = await fetch(`${API_BASE_URL}/api/health`, { cache: "no-store" });
   if (!res.ok) {
     throw new Error(`Health check failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function listVideos(): Promise<VideoRecord[]> {
+  const res = await fetch(`${API_BASE_URL}/api/videos`, { cache: "no-store" });
+  if (!res.ok) {
+    throw new Error(`List videos failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function createVideo(
+  payload: CreateVideoRequest
+): Promise<VideoRecord> {
+  const res = await fetch(`${API_BASE_URL}/api/videos`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    throw new Error(`Create video failed: ${res.status}`);
   }
   return res.json();
 }

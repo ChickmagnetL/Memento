@@ -43,6 +43,12 @@ Run the Phase 1 smoke test from the project root:
 ./scripts/smoke-test.sh
 ```
 
+## Phase 2A: Video Intake
+
+With backend and frontend running, open http://localhost:3000 and submit a
+Bilibili or Douyin URL. The app creates a pending SQLite video record and
+displays it in the video list.
+
 ## Project Structure
 
 - `backend/` - FastAPI backend server

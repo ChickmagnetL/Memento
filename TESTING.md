@@ -72,3 +72,13 @@ Expected:
 - [x] Databases initialize without errors
 
 All criteria should be verified with the automated checks above plus the manual browser checks.
+
+## Phase 2A Checks
+
+1. Start backend: `cd backend && source venv/bin/activate && uvicorn main:app --port 8000`
+2. Start frontend: `cd frontend && npm run dev`
+3. Open http://localhost:3000
+4. Submit `https://www.bilibili.com/video/BV1234567890`
+5. Expected: a pending Bilibili record appears and remains after refresh.
+6. Submit `https://example.com/video/1`
+7. Expected: unsupported URL error appears.
