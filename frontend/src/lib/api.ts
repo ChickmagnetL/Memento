@@ -67,3 +67,13 @@ export async function createVideo(
   }
   return res.json();
 }
+
+export async function processVideo(videoId: string): Promise<VideoRecord> {
+  const res = await fetch(`${API_BASE_URL}/api/videos/${videoId}/process`, {
+    method: "POST",
+  });
+  if (!res.ok) {
+    throw new Error(`Process video failed: ${res.status}`);
+  }
+  return res.json();
+}

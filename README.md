@@ -49,6 +49,14 @@ With backend and frontend running, open http://localhost:3000 and submit a
 Bilibili or Douyin URL. The app creates a pending SQLite video record and
 displays it in the video list.
 
+## Phase 2B: Video Processing Workflow
+
+After submitting a Bilibili or Douyin URL, use the processing action on the
+saved video record. Phase 2B updates the record status to `completed`.
+
+Real subtitle extraction, video download, ASR, and OCR are outside the Phase 2B
+scope.
+
 ## Project Structure
 
 - `backend/` - FastAPI backend server

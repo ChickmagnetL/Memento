@@ -5,6 +5,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException, Request, status
 
+from core.video.pipeline import VideoPipeline
 from schemas.video import VideoCreateRequest, VideoRecord, VideoStatusUpdateRequest
 from storage.sqlite_client import SQLiteClient
 
@@ -60,6 +61,32 @@ async def get_video(video_id: str, request: Request) -> dict:
     if video is None:
         raise HTTPException(status_code=404, detail="Video not found")
     return video
+
+
+@router.post("/{video_id}/process", response_model=VideoRecord)
+async def process_video(video_id: str, request: Request) -> dict:
+    """Trigger skeleton processing for a video record."""
+    sqlite = get_sqlite(request)
+    video = await sqlite.get_video(video_id)
+    if video is None:
+        raise HTTPException(status_code=404, detail="Video not found")
+    if video["status"] == "processing":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Video is already processing",
+        )
+    if video["status"] == "completed":
+        return video
+
+    processing_video = await sqlite.update_video_status(video_id, "processing")
+    if processing_video is None:
+        raise HTTPException(status_code=404, detail="Video not found")
+
+    result = VideoPipeline().process(processing_video)
+    final_video = await sqlite.update_video_status(video_id, result.status)
+    if final_video is None:
+        raise HTTPException(status_code=404, detail="Video not found")
+    return final_video
 
 
 @router.patch("/{video_id}/status", response_model=VideoRecord)

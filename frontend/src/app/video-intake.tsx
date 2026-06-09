@@ -1,10 +1,15 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { Plus } from "lucide-react";
+import { Play, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { createVideo, listVideos, type VideoRecord } from "@/lib/api";
+import {
+  createVideo,
+  listVideos,
+  processVideo,
+  type VideoRecord,
+} from "@/lib/api";
 
 interface VideoIntakeProps {
   initialHealth: string;
@@ -16,6 +21,9 @@ export function VideoIntake({ initialHealth, initialVideos }: VideoIntakeProps) 
   const [videos, setVideos] = useState<VideoRecord[]>(initialVideos);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [processingVideoId, setProcessingVideoId] = useState<string | null>(
+    null
+  );
 
   async function refreshVideos() {
     const items = await listVideos();
@@ -41,6 +49,20 @@ export function VideoIntake({ initialHealth, initialVideos }: VideoIntakeProps) 
       setError("Only Bilibili and Douyin URLs are supported.");
     } finally {
       setIsSubmitting(false);
+    }
+  }
+
+  async function handleProcess(videoId: string) {
+    setError("");
+    setProcessingVideoId(videoId);
+
+    try {
+      await processVideo(videoId);
+      await refreshVideos();
+    } catch {
+      setError("Processing failed. Try again.");
+    } finally {
+      setProcessingVideoId(null);
     }
   }
 
@@ -78,9 +100,27 @@ export function VideoIntake({ initialHealth, initialVideos }: VideoIntakeProps) 
               <li className="rounded-md border p-4" key={video.id}>
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="font-medium">{video.title}</p>
-                  <span className="rounded-md bg-secondary px-2 py-1 text-xs text-secondary-foreground">
-                    {video.status}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="rounded-md bg-secondary px-2 py-1 text-xs text-secondary-foreground">
+                      {video.status}
+                    </span>
+                    <Button
+                      className="min-w-28"
+                      disabled={
+                        video.status === "processing" ||
+                        processingVideoId !== null
+                      }
+                      onClick={() => handleProcess(video.id)}
+                      size="sm"
+                      type="button"
+                      variant="outline"
+                    >
+                      <Play />
+                      {processingVideoId === video.id
+                        ? "Processing..."
+                        : "Process"}
+                    </Button>
+                  </div>
                 </div>
                 <p className="mt-2 break-all text-sm text-muted-foreground">
                   {video.url}
