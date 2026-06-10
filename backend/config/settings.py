@@ -15,11 +15,31 @@ Last Updated: 2026-06-07
 """
 
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 import yaml
 from pydantic import BaseModel, Field
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, PydanticBaseSettingsSource
+
+
+def _load_yaml_data(config_path: Path | str) -> dict[str, Any]:
+    config_path = Path(config_path)
+
+    if not config_path.exists():
+        return {}
+
+    with open(config_path) as f:
+        return yaml.safe_load(f) or {}
+
+
+def _merge_dicts(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
+    merged = dict(base)
+    for key, value in override.items():
+        if isinstance(value, dict) and isinstance(merged.get(key), dict):
+            merged[key] = _merge_dicts(merged[key], value)
+        else:
+            merged[key] = value
+    return merged
 
 
 # ============================================================
@@ -63,6 +83,7 @@ class VideoProcessingConfig(BaseModel):
 
     auto_clean: bool = True
     preserve_timestamp: bool = True
+    bilibili_cookie: str = ""
     ocr_region: list[float] = [0.74, 0.94, 0.08, 0.92]  # y_min, y_max, x_min, x_max
 
 
@@ -112,6 +133,17 @@ class Settings(BaseSettings):
         env_nested_delimiter = "__"
 
     @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        return env_settings, dotenv_settings, init_settings, file_secret_settings
+
+    @classmethod
     def load_from_yaml(cls, config_path: Path | str) -> "Settings":
         """
         Load settings from YAML file.
@@ -122,15 +154,7 @@ class Settings(BaseSettings):
         Returns:
             Settings instance with loaded configuration
         """
-        config_path = Path(config_path)
-
-        if not config_path.exists():
-            return cls()
-
-        with open(config_path) as f:
-            config_data = yaml.safe_load(f) or {}
-
-        return cls(**config_data)
+        return cls(**_load_yaml_data(config_path))
 
 
 # ============================================================
@@ -153,24 +177,14 @@ def get_settings() -> Settings:
     backend_dir = Path(__file__).parent.parent
     project_root = backend_dir.parent
 
-    # Start with defaults
     default_config = backend_dir / "config" / "default.yaml"
-    settings = Settings.load_from_yaml(default_config)
-
-    # Load user config if exists
     user_config = project_root / "config.yaml"
-    if user_config.exists():
-        settings = Settings.load_from_yaml(user_config)
-
-    # Load local overrides if exists
     local_config = project_root / "config.local.yaml"
-    if local_config.exists():
-        user_settings = Settings.load_from_yaml(user_config) if user_config.exists() else Settings()
-        local_settings = Settings.load_from_yaml(local_config)
-        # Merge: local overrides user
-        settings = Settings.model_validate({
-            **user_settings.model_dump(),
-            **local_settings.model_dump()
-        })
+    config_data = _merge_dicts(_load_yaml_data(default_config), _load_yaml_data(user_config))
+    config_data = _merge_dicts(config_data, _load_yaml_data(local_config))
 
-    return settings
+    data_dir = config_data.get("storage", {}).get("data_dir")
+    if data_dir and not Path(data_dir).is_absolute():
+        config_data.setdefault("storage", {})["data_dir"] = str(project_root / data_dir)
+
+    return Settings(**config_data)

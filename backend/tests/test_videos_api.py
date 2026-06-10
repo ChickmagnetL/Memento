@@ -1,10 +1,12 @@
 """Tests for video record API endpoints."""
 
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from fastapi.testclient import TestClient
 
+from api import videos
 from core.video.pipeline import VideoPipeline, VideoProcessingResult
 from main import app
 from storage.sqlite_client import SQLiteClient
@@ -111,7 +113,7 @@ def test_process_pending_video_completes_record(client: TestClient, monkeypatch)
     created = _create_video(client)
     seen_statuses = []
 
-    def process_spy(self, video: dict) -> VideoProcessingResult:
+    async def process_spy(self, video: dict) -> VideoProcessingResult:
         seen_statuses.append(video["status"])
         return VideoProcessingResult(video_id=video["id"], status="completed")
 
@@ -124,6 +126,36 @@ def test_process_pending_video_completes_record(client: TestClient, monkeypatch)
     assert data["id"] == created["id"]
     assert data["status"] == "completed"
     assert seen_statuses == ["processing"]
+
+
+def test_process_video_passes_configured_bilibili_cookie_to_pipeline(
+    client: TestClient,
+    monkeypatch,
+    tmp_path: Path,
+):
+    created = _create_video(client)
+    seen_cookies = []
+
+    def get_settings_spy():
+        return SimpleNamespace(
+            storage=SimpleNamespace(data_dir=tmp_path),
+            video_processing=SimpleNamespace(bilibili_cookie="SESSDATA=explicit"),
+        )
+
+    def pipeline_init_spy(self, *, sqlite, data_dir, bilibili_cookie="", **kwargs):
+        seen_cookies.append(bilibili_cookie)
+
+    async def process_spy(self, video: dict) -> VideoProcessingResult:
+        return VideoProcessingResult(video_id=video["id"], status="completed")
+
+    monkeypatch.setattr(videos, "get_settings", get_settings_spy)
+    monkeypatch.setattr(VideoPipeline, "__init__", pipeline_init_spy)
+    monkeypatch.setattr(VideoPipeline, "process", process_spy)
+
+    resp = client.post(f"/api/videos/{created['id']}/process")
+
+    assert resp.status_code == 200
+    assert seen_cookies == ["SESSDATA=explicit"]
 
 
 def test_process_missing_video_returns_404(client: TestClient):
@@ -142,12 +174,39 @@ def test_process_processing_video_returns_409(client: TestClient):
     assert "processing" in resp.json()["detail"]
 
 
+def test_process_video_does_not_run_pipeline_when_claim_fails(
+    client: TestClient,
+    sqlite: SQLiteClient,
+    monkeypatch,
+):
+    created = _create_video(client)
+    process_called = False
+
+    async def claim_spy(video_id: str) -> None:
+        await sqlite.update_video_status(video_id, "processing")
+        return None
+
+    async def process_spy(self, video: dict) -> VideoProcessingResult:
+        nonlocal process_called
+        process_called = True
+        return VideoProcessingResult(video_id=video["id"], status="completed")
+
+    monkeypatch.setattr(sqlite, "claim_video_for_processing", claim_spy, raising=False)
+    monkeypatch.setattr(VideoPipeline, "process", process_spy)
+
+    resp = client.post(f"/api/videos/{created['id']}/process")
+
+    assert resp.status_code == 409
+    assert "processing" in resp.json()["detail"]
+    assert process_called is False
+
+
 def test_process_completed_video_keeps_completed_status(client: TestClient, monkeypatch):
     created = _create_video(client)
     completed = _set_video_status(client, created["id"], "completed")
     process_called = False
 
-    def process_spy(self, video: dict) -> VideoProcessingResult:
+    async def process_spy(self, video: dict) -> VideoProcessingResult:
         nonlocal process_called
         process_called = True
         return VideoProcessingResult(video_id=video["id"], status="completed")
@@ -161,9 +220,14 @@ def test_process_completed_video_keeps_completed_status(client: TestClient, monk
     assert process_called is False
 
 
-def test_process_failed_video_completes_record(client: TestClient):
+def test_process_failed_video_completes_record(client: TestClient, monkeypatch):
     created = _create_video(client)
     _set_video_status(client, created["id"], "failed")
+
+    async def process_spy(self, video: dict) -> VideoProcessingResult:
+        return VideoProcessingResult(video_id=video["id"], status="completed")
+
+    monkeypatch.setattr(VideoPipeline, "process", process_spy)
 
     resp = client.post(f"/api/videos/{created['id']}/process")
 
@@ -171,3 +235,43 @@ def test_process_failed_video_completes_record(client: TestClient):
     data = resp.json()
     assert data["id"] == created["id"]
     assert data["status"] == "completed"
+
+
+def test_process_pipeline_failure_marks_video_failed(client: TestClient, monkeypatch):
+    created = _create_video(client)
+
+    async def process_spy(self, video: dict) -> VideoProcessingResult:
+        return VideoProcessingResult(
+            video_id=video["id"],
+            status="failed",
+            error="No soft subtitles found",
+        )
+
+    monkeypatch.setattr(VideoPipeline, "process", process_spy)
+
+    resp = client.post(f"/api/videos/{created['id']}/process")
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["id"] == created["id"]
+    assert data["status"] == "failed"
+
+
+def test_process_pipeline_exception_marks_video_failed(client: TestClient, monkeypatch):
+    created = _create_video(client)
+
+    async def process_spy(self, video: dict) -> VideoProcessingResult:
+        raise KeyError("boom")
+
+    monkeypatch.setattr(VideoPipeline, "process", process_spy)
+
+    resp = client.post(f"/api/videos/{created['id']}/process")
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["id"] == created["id"]
+    assert data["status"] == "failed"
+
+    stored = client.get(f"/api/videos/{created['id']}")
+    assert stored.status_code == 200
+    assert stored.json()["status"] == "failed"

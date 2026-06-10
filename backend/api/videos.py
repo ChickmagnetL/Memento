@@ -1,15 +1,18 @@
 """Video record API endpoints."""
 
+import logging
 from urllib.parse import urlparse
 from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException, Request, status
 
+from config.settings import get_settings
 from core.video.pipeline import VideoPipeline
 from schemas.video import VideoCreateRequest, VideoRecord, VideoStatusUpdateRequest
 from storage.sqlite_client import SQLiteClient
 
 router = APIRouter(prefix="/api/videos", tags=["videos"])
+logger = logging.getLogger(__name__)
 
 
 def detect_platform(url: str) -> str:
@@ -67,23 +70,36 @@ async def get_video(video_id: str, request: Request) -> dict:
 async def process_video(video_id: str, request: Request) -> dict:
     """Trigger skeleton processing for a video record."""
     sqlite = get_sqlite(request)
-    video = await sqlite.get_video(video_id)
-    if video is None:
-        raise HTTPException(status_code=404, detail="Video not found")
-    if video["status"] == "processing":
+    processing_video = await sqlite.claim_video_for_processing(video_id)
+    if processing_video is None:
+        current_video = await sqlite.get_video(video_id)
+        if current_video is None:
+            raise HTTPException(status_code=404, detail="Video not found")
+        if current_video["status"] == "completed":
+            return current_video
+        if current_video["status"] == "processing":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Video is already processing",
+            )
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Video is already processing",
+            detail="Video could not be claimed for processing",
         )
-    if video["status"] == "completed":
-        return video
 
-    processing_video = await sqlite.update_video_status(video_id, "processing")
-    if processing_video is None:
-        raise HTTPException(status_code=404, detail="Video not found")
-
-    result = VideoPipeline().process(processing_video)
-    final_video = await sqlite.update_video_status(video_id, result.status)
+    settings = get_settings()
+    pipeline = VideoPipeline(
+        sqlite=sqlite,
+        data_dir=settings.storage.data_dir.expanduser(),
+        bilibili_cookie=settings.video_processing.bilibili_cookie,
+    )
+    try:
+        result = await pipeline.process(processing_video)
+        final_status = "completed" if result.status == "completed" else "failed"
+    except Exception:
+        logger.exception("Unexpected video pipeline exception for video %s", video_id)
+        final_status = "failed"
+    final_video = await sqlite.update_video_status(video_id, final_status)
     if final_video is None:
         raise HTTPException(status_code=404, detail="Video not found")
     return final_video

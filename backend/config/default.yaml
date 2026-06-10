@@ -30,6 +30,7 @@ models:
 video_processing:
   auto_clean: true
   preserve_timestamp: true
+  bilibili_cookie: ""
   ocr_region: [0.74, 0.94, 0.08, 0.92]
 
 rag:

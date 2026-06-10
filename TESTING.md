@@ -85,6 +85,10 @@ All criteria should be verified with the automated checks above plus the manual 
 
 ## Phase 2B Checks
 
+These manual checks document the historical pre-Phase-2C behavior, when
+processing used a placeholder workflow. Use the Phase 2C section below for
+current manual validation.
+
 Run automated checks from the project root:
 
 ```bash
@@ -101,5 +105,33 @@ npm run lint
 3. Open http://localhost:3000
 4. Submit `https://www.bilibili.com/video/BV1234567890`
 5. Use the processing action on the saved record.
-6. Expected: the record status changes to `completed`.
+6. Historical expected result: the record status changes to `completed`.
 7. Expected: real subtitle extraction, video download, ASR, and OCR are not required for Phase 2B.
+
+## Manual E2E Testing - Phase 2C
+
+Manual success requires live Bilibili network/API access and a Bilibili video
+with available soft subtitles. Old or public subtitles may work without a
+cookie, but Bilibili AI subtitles often require an explicit local cookie. A
+correct app can mark records as `failed` when subtitles, required cookies, or
+network access are unavailable.
+
+For local AI subtitle testing, prefer an environment variable and restart the
+backend after setting it:
+
+```bash
+export VIDEO_PROCESSING__BILIBILI_COOKIE='SESSDATA=your-cookie; bili_jct=...'
+```
+
+Do not commit real cookie values. If you use `config.local.yaml` instead, keep
+it local and out of version control.
+
+1. Start backend: `cd backend; source venv/bin/activate; uvicorn main:app --port 8000`
+2. Start frontend: `cd frontend; npm run dev`
+3. Open http://localhost:3000.
+4. Submit a Bilibili URL that has soft subtitles.
+5. Click `Process`.
+6. Confirm record becomes `completed`.
+7. Confirm Markdown draft exists under `~/memento_data/knowledge/bilibili/`.
+8. Submit or process a Douyin record.
+9. Confirm it becomes `failed` in Phase 2C.

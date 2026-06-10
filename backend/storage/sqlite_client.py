@@ -47,6 +47,7 @@ class SQLiteClient:
         # Open connection
         self._conn = await aiosqlite.connect(self.db_path)
         self._conn.row_factory = aiosqlite.Row
+        await self._conn.execute("PRAGMA foreign_keys = ON")
 
         # Load and execute schema
         schema_path = Path(__file__).parent / "schema.sql"
@@ -136,6 +137,89 @@ class SQLiteClient:
         )
         await conn.commit()
         return await self.get_video(video_id)
+
+    async def claim_video_for_processing(self, video_id: str) -> dict | None:
+        """Atomically claim a pending or failed video for processing."""
+        conn = self._require_conn()
+        cursor = await conn.execute(
+            """
+            UPDATE videos
+            SET status = 'processing'
+            WHERE id = ? AND status IN ('pending', 'failed')
+            """,
+            (video_id,),
+        )
+        await conn.commit()
+        if cursor.rowcount != 1:
+            return None
+        return await self.get_video(video_id)
+
+    async def create_document(
+        self,
+        *,
+        document_id: str,
+        video_id: str,
+        file_path: str,
+        chunk_count: int = 0,
+        is_indexed: bool = False,
+    ) -> dict:
+        """Create a document record and return it."""
+        conn = self._require_conn()
+        await conn.execute(
+            """
+            INSERT INTO documents (id, video_id, file_path, chunk_count, is_indexed)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (document_id, video_id, file_path, chunk_count, int(is_indexed)),
+        )
+        await conn.commit()
+
+        document = await self.get_document(document_id)
+        if document is None:
+            raise RuntimeError("Created document could not be loaded")
+        return document
+
+    async def get_document(self, document_id: str) -> dict | None:
+        """Return a document record by ID, or None when missing."""
+        conn = self._require_conn()
+        cursor = await conn.execute(
+            """
+            SELECT id, video_id, file_path, chunk_count, is_indexed, indexed_at
+            FROM documents
+            WHERE id = ?
+            """,
+            (document_id,),
+        )
+        row = await cursor.fetchone()
+        return self._row_to_dict(row) if row else None
+
+    async def list_documents(self) -> list[dict]:
+        """List document records with newest records first."""
+        conn = self._require_conn()
+        cursor = await conn.execute(
+            """
+            SELECT id, video_id, file_path, chunk_count, is_indexed, indexed_at
+            FROM documents
+            ORDER BY rowid DESC
+            """
+        )
+        rows = await cursor.fetchall()
+        return [self._row_to_dict(row) for row in rows]
+
+    async def list_documents_for_video(self, video_id: str) -> list[dict]:
+        """List document records for a video with newest records first."""
+        conn = self._require_conn()
+        cursor = await conn.execute(
+            """
+            SELECT id, video_id, file_path, chunk_count, is_indexed, indexed_at
+            FROM documents
+            WHERE video_id = ?
+            ORDER BY rowid DESC
+            """,
+            (video_id,),
+        )
+        rows = await cursor.fetchall()
+        return [self._row_to_dict(row) for row in rows]
 
     async def close(self) -> None:
         """Close database connection."""

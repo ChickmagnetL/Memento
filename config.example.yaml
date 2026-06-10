@@ -10,3 +10,10 @@ models:
     provider: "cloud"  # or "ollama" for local
     api_key: "sk-your-api-key-here"
     model: "deepseek-chat"
+
+video_processing:
+  # Optional Bilibili cookie for AI subtitles. Prefer the environment variable
+  # VIDEO_PROCESSING__BILIBILI_COOKIE for local testing because cookies are sensitive.
+  # Example value: "SESSDATA=your-cookie; bili_jct=..."
+  # Do not commit real cookie values.
+  bilibili_cookie: ""
