@@ -19,6 +19,7 @@ from storage.sqlite_client import SQLiteClient
 from storage.qdrant_client import QdrantStore
 from api.health import router as health_router
 from api.videos import router as videos_router
+from api.documents import router as documents_router
 
 settings = get_settings()
 
@@ -36,7 +37,7 @@ async def lifespan(app: FastAPI):
     app.state.sqlite = sqlite
 
     qdrant = QdrantStore(data_dir / "qdrant")
-    qdrant.connect()
+    qdrant.connect(vector_size=settings.rag.vector_size)
     app.state.qdrant = qdrant
 
     logger.info("Databases initialized at %s", data_dir)
@@ -59,3 +60,4 @@ app.add_middleware(
 
 app.include_router(health_router)
 app.include_router(videos_router)
+app.include_router(documents_router)

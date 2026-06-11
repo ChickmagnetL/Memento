@@ -98,6 +98,8 @@ class RAGConfig(BaseModel):
     overlap: int = 80
     top_k: int = 5
     hybrid_weights: dict[str, float] = {"bm25": 0.3, "vector": 0.7}
+    # Must match the embedding model's output dimension.
+    vector_size: int = 768
 
 
 # ============================================================

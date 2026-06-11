@@ -221,6 +221,22 @@ class SQLiteClient:
         rows = await cursor.fetchall()
         return [self._row_to_dict(row) for row in rows]
 
+    async def mark_document_indexed(
+        self, document_id: str, *, chunk_count: int
+    ) -> dict | None:
+        """Mark a document as indexed and return the updated record."""
+        conn = self._require_conn()
+        await conn.execute(
+            """
+            UPDATE documents
+            SET chunk_count = ?, is_indexed = 1, indexed_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            """,
+            (chunk_count, document_id),
+        )
+        await conn.commit()
+        return await self.get_document(document_id)
+
     async def close(self) -> None:
         """Close database connection."""
         if self._conn:

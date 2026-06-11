@@ -10,6 +10,12 @@ models:
     provider: "cloud"  # or "ollama" for local
     api_key: "sk-your-api-key-here"
     model: "deepseek-chat"
+  embedding:
+    provider: "cloud"
+    # OpenAI-compatible base URL, e.g. https://api.siliconflow.cn/v1
+    endpoint: "https://api.example.com/v1"
+    api_key: "sk-your-api-key-here"
+    model: "your-embedding-model"
 
 video_processing:
   # Optional Bilibili cookie for AI subtitles. Prefer the environment variable
@@ -17,3 +23,7 @@ video_processing:
   # Example value: "SESSDATA=your-cookie; bili_jct=..."
   # Do not commit real cookie values.
   bilibili_cookie: ""
+
+rag:
+  # vector_size MUST match the embedding model's output dimension.
+  vector_size: 768

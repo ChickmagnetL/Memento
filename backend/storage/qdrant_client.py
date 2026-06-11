@@ -15,7 +15,14 @@ Last Updated: 2026-06-07
 from pathlib import Path
 
 from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, VectorParams
+from qdrant_client.models import (
+    Distance,
+    FieldCondition,
+    Filter,
+    MatchValue,
+    PointStruct,
+    VectorParams,
+)
 
 
 class QdrantStore:
@@ -72,3 +79,58 @@ class QdrantStore:
         if self._client:
             self._client.close()
             self._client = None
+
+    def _require_client(self) -> QdrantClient:
+        """Return the connected client or raise a clear error."""
+        if self._client is None:
+            raise RuntimeError("QdrantStore is not connected")
+        return self._client
+
+    @staticmethod
+    def _document_filter(document_id: str) -> Filter:
+        return Filter(
+            must=[
+                FieldCondition(
+                    key="document_id", match=MatchValue(value=document_id)
+                )
+            ]
+        )
+
+    def upsert_points(
+        self,
+        *,
+        ids: list[str],
+        vectors: list[list[float]],
+        payloads: list[dict],
+    ) -> None:
+        """Upsert chunk points with metadata payloads."""
+        client = self._require_client()
+        if not ids:
+            return
+        if len(ids) != len(vectors) or len(ids) != len(payloads):
+            raise ValueError("ids, vectors, and payloads must have the same length")
+        client.upsert(
+            collection_name=self.collection_name,
+            points=[
+                PointStruct(id=point_id, vector=vector, payload=payload)
+                for point_id, vector, payload in zip(ids, vectors, payloads)
+            ],
+        )
+
+    def delete_for_document(self, document_id: str) -> None:
+        """Delete all points belonging to a document."""
+        client = self._require_client()
+        client.delete(
+            collection_name=self.collection_name,
+            points_selector=self._document_filter(document_id),
+        )
+
+    def count_for_document(self, document_id: str) -> int:
+        """Count points belonging to a document."""
+        client = self._require_client()
+        result = client.count(
+            collection_name=self.collection_name,
+            count_filter=self._document_filter(document_id),
+            exact=True,
+        )
+        return result.count
