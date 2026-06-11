@@ -89,3 +89,10 @@ def test_search_custom_top_k(client: TestClient, monkeypatch):
     response = client.post("/api/search", json={"query": "q", "top_k": 1})
     assert response.status_code == 200
     assert len(response.json()) == 1
+
+def test_search_finds_keyword_only_match(client: TestClient):
+    # Seeded fixture has no vector affinity for this keyword; BM25 must find it.
+    response = client.post("/api/search", json={"query": "chunk"})
+
+    assert response.status_code == 200
+    assert len(response.json()) >= 1

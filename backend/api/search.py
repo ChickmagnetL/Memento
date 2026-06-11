@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, Request, status
 
 from config.settings import get_settings
 from core.rag.embedding import CloudEmbeddingClient, EmbeddingError
-from core.rag.retrieval import SearchResult, VectorRetriever
+from core.rag.retrieval import HybridRetriever, SearchResult
 from schemas.search import SearchRequest
 
 router = APIRouter(prefix="/api/search", tags=["search"])
@@ -34,8 +34,13 @@ async def search(payload: SearchRequest, request: Request) -> list[SearchResult]
             status_code=status.HTTP_409_CONFLICT, detail=str(exc)
         ) from exc
 
-    retriever = VectorRetriever(embedding_client=embedding_client, qdrant=qdrant)
-    top_k = payload.top_k or get_settings().rag.top_k
+    settings = get_settings()
+    retriever = HybridRetriever(
+        embedding_client=embedding_client,
+        qdrant=qdrant,
+        weights=settings.rag.hybrid_weights,
+    )
+    top_k = payload.top_k or settings.rag.top_k
     try:
         return await retriever.search(payload.query, top_k=top_k)
     except ValueError as exc:

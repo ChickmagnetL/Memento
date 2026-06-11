@@ -2,7 +2,7 @@
 
 import pytest
 
-from core.rag.retrieval import SearchResult, VectorRetriever
+from core.rag.retrieval import HybridRetriever, SearchResult, VectorRetriever
 
 
 class FakeEmbeddingClient:
@@ -69,3 +69,61 @@ async def test_search_blank_query_raises_value_error():
     )
     with pytest.raises(ValueError):
         await retriever.search("   ", top_k=5)
+
+
+def _chunk_payload(index: int, text: str) -> dict:
+    return {
+        "video_id": "v1",
+        "document_id": "d1",
+        "chunk_index": index,
+        "title_path": "标题 > Transcript",
+        "text": text,
+        "start_timestamp": "00:01",
+    }
+
+
+class FakeHybridQdrant:
+    """Vector search returns chunk 0 first; corpus contains keyword in chunk 1."""
+
+    def __init__(self):
+        self.payloads = [
+            _chunk_payload(0, "向量召回的内容"),
+            _chunk_payload(1, "唯一关键词青蒿素出现在这里"),
+        ]
+
+    def search_points(self, *, vector: list[float], top_k: int) -> list[dict]:
+        return [
+            {"score": 0.9, "payload": self.payloads[0]},
+            {"score": 0.1, "payload": self.payloads[1]},
+        ][:top_k]
+
+    def scroll_all_points(self, *, batch_size: int = 256) -> list[dict]:
+        return self.payloads
+
+
+@pytest.mark.asyncio
+async def test_hybrid_search_boosts_keyword_match():
+    retriever = HybridRetriever(
+        embedding_client=FakeEmbeddingClient(),
+        qdrant=FakeHybridQdrant(),
+        weights={"bm25": 1.0, "vector": 0.0},  # isolate the BM25 path
+    )
+
+    results = await retriever.search("青蒿素", top_k=2)
+
+    # BM25 must rank the keyword-bearing chunk first when vector weight is 0.
+    assert results[0].chunk_index == 1
+
+
+@pytest.mark.asyncio
+async def test_hybrid_search_returns_top_k_with_scores():
+    retriever = HybridRetriever(
+        embedding_client=FakeEmbeddingClient(),
+        qdrant=FakeHybridQdrant(),
+        weights={"bm25": 0.3, "vector": 0.7},
+    )
+
+    results = await retriever.search("向量", top_k=1)
+
+    assert len(results) == 1
+    assert results[0].score > 0

@@ -150,3 +150,21 @@ class QdrantStore:
             {"score": point.score, "payload": dict(point.payload or {})}
             for point in response.points
         ]
+
+    def scroll_all_points(self, *, batch_size: int = 256) -> list[dict]:
+        """Return payloads of all points (used to build the BM25 corpus)."""
+        client = self._require_client()
+        payloads: list[dict] = []
+        offset = None
+        while True:
+            points, offset = client.scroll(
+                collection_name=self.collection_name,
+                limit=batch_size,
+                offset=offset,
+                with_payload=True,
+                with_vectors=False,
+            )
+            payloads.extend(dict(point.payload or {}) for point in points)
+            if offset is None:
+                break
+        return payloads

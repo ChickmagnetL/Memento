@@ -98,3 +98,23 @@ def test_search_points_respects_top_k(store: QdrantStore):
     )
 
     assert len(store.search_points(vector=[1.0, 0.0, 0.0, 0.0], top_k=1)) == 1
+
+
+def test_scroll_all_points_returns_all_payloads(store: QdrantStore):
+    store.upsert_points(
+        ids=[
+            "11111111-1111-1111-1111-111111111111",
+            "22222222-2222-2222-2222-222222222222",
+        ],
+        vectors=[[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0]],
+        payloads=[_payload("d1", 0), _payload("d1", 1)],
+    )
+
+    payloads = store.scroll_all_points()
+
+    assert len(payloads) == 2
+    assert {p["chunk_index"] for p in payloads} == {0, 1}
+
+
+def test_scroll_all_points_empty_collection(store: QdrantStore):
+    assert store.scroll_all_points() == []
