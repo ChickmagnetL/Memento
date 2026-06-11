@@ -134,3 +134,19 @@ class QdrantStore:
             exact=True,
         )
         return result.count
+
+    def search_points(
+        self, *, vector: list[float], top_k: int
+    ) -> list[dict]:
+        """Vector similarity search returning payloads with scores."""
+        client = self._require_client()
+        response = client.query_points(
+            collection_name=self.collection_name,
+            query=vector,
+            limit=top_k,
+            with_payload=True,
+        )
+        return [
+            {"score": point.score, "payload": dict(point.payload or {})}
+            for point in response.points
+        ]

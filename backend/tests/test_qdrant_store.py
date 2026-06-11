@@ -66,3 +66,35 @@ def test_upsert_mismatched_lengths_raises_value_error(store: QdrantStore):
             vectors=[[0.1, 0.2, 0.3, 0.4]],
             payloads=[_payload("d1", 0)],
         )
+
+
+def test_search_points_returns_payload_and_score_ordered(store: QdrantStore):
+    store.upsert_points(
+        ids=[
+            "11111111-1111-1111-1111-111111111111",
+            "22222222-2222-2222-2222-222222222222",
+        ],
+        vectors=[[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0]],
+        payloads=[_payload("d1", 0), _payload("d1", 1)],
+    )
+
+    results = store.search_points(vector=[1.0, 0.0, 0.0, 0.0], top_k=2)
+
+    assert len(results) == 2
+    # Closest vector first.
+    assert results[0]["payload"]["chunk_index"] == 0
+    assert results[0]["score"] >= results[1]["score"]
+    assert results[0]["payload"]["text"] == "chunk 0"
+
+
+def test_search_points_respects_top_k(store: QdrantStore):
+    store.upsert_points(
+        ids=[
+            "11111111-1111-1111-1111-111111111111",
+            "22222222-2222-2222-2222-222222222222",
+        ],
+        vectors=[[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0]],
+        payloads=[_payload("d1", 0), _payload("d1", 1)],
+    )
+
+    assert len(store.search_points(vector=[1.0, 0.0, 0.0, 0.0], top_k=1)) == 1
