@@ -20,6 +20,7 @@ from storage.qdrant_client import QdrantStore
 from api.health import router as health_router
 from api.videos import router as videos_router
 from api.documents import router as documents_router
+from api.search import router as search_router
 
 settings = get_settings()
 
@@ -61,3 +62,4 @@ app.add_middleware(
 app.include_router(health_router)
 app.include_router(videos_router)
 app.include_router(documents_router)
+app.include_router(search_router)
