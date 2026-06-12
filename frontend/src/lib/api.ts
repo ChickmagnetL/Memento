@@ -77,3 +77,64 @@ export async function processVideo(videoId: string): Promise<VideoRecord> {
   }
   return res.json();
 }
+
+export interface DocumentRecord {
+  id: string;
+  video_id: string;
+  file_path: string;
+  chunk_count: number;
+  is_indexed: boolean;
+  indexed_at: string | null;
+}
+
+export interface ChunkPreview {
+  chunk_index: number;
+  title_path: string;
+  text: string;
+  start_timestamp: string | null;
+}
+
+export async function listDocuments(): Promise<DocumentRecord[]> {
+  const res = await fetch(`${API_BASE_URL}/api/documents`, {
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`List documents failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function indexDocument(
+  documentId: string
+): Promise<DocumentRecord> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/documents/${documentId}/index`,
+    { method: "POST" }
+  );
+  if (!res.ok) {
+    throw new Error(`Index document failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function previewChunks(
+  documentId: string
+): Promise<ChunkPreview[]> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/documents/${documentId}/chunks`,
+    { cache: "no-store" }
+  );
+  if (!res.ok) {
+    throw new Error(`Preview chunks failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function deleteDocument(documentId: string): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}/api/documents/${documentId}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) {
+    throw new Error(`Delete document failed: ${res.status}`);
+  }
+}
