@@ -75,6 +75,10 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
         <p className="text-sm text-muted-foreground">
           <Link className="underline" href="/">
             ← Videos
+          </Link>{" "}
+          ·{" "}
+          <Link className="underline" href="/chat">
+            Chat →
           </Link>
         </p>
       </header>

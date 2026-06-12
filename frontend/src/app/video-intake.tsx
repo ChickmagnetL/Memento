@@ -77,6 +77,10 @@ export function VideoIntake({ initialHealth, initialVideos }: VideoIntakeProps) 
         <p className="text-sm text-muted-foreground">
           <Link className="underline" href="/knowledge">
             Knowledge Base →
+          </Link>{" "}
+          ·{" "}
+          <Link className="underline" href="/chat">
+            Chat →
           </Link>
         </p>
       </header>
