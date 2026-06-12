@@ -21,6 +21,7 @@ from api.health import router as health_router
 from api.videos import router as videos_router
 from api.documents import router as documents_router
 from api.search import router as search_router
+from api.chat import router as chat_router
 
 settings = get_settings()
 
@@ -40,6 +41,8 @@ async def lifespan(app: FastAPI):
     qdrant = QdrantStore(data_dir / "qdrant")
     qdrant.connect(vector_size=settings.rag.vector_size)
     app.state.qdrant = qdrant
+
+    app.state.chat_sessions = {}
 
     logger.info("Databases initialized at %s", data_dir)
     yield
@@ -63,3 +66,4 @@ app.include_router(health_router)
 app.include_router(videos_router)
 app.include_router(documents_router)
 app.include_router(search_router)
+app.include_router(chat_router)
