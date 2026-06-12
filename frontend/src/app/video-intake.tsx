@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { Play, Plus } from "lucide-react";
+import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -72,6 +73,11 @@ export function VideoIntake({ initialHealth, initialVideos }: VideoIntakeProps) 
         <h1 className="text-2xl font-bold">Memento</h1>
         <p className="text-sm text-muted-foreground">
           Backend health: <span className="font-mono">{initialHealth}</span>
+        </p>
+        <p className="text-sm text-muted-foreground">
+          <Link className="underline" href="/knowledge">
+            Knowledge Base →
+          </Link>
         </p>
       </header>
 
