@@ -138,3 +138,72 @@ export async function deleteDocument(documentId: string): Promise<void> {
     throw new Error(`Delete document failed: ${res.status}`);
   }
 }
+
+export interface ChatStreamHandlers {
+  onDelta: (delta: string) => void;
+  onDone: (sessionId: string) => void;
+  onError: (message: string) => void;
+}
+
+/**
+ * Send one chat turn and consume the SSE stream.
+ *
+ * The backend emits `data: {...}` lines with events:
+ * {type:"text",delta} / {type:"done",session_id} / {type:"error",message}.
+ */
+export async function sendChatMessage(
+  message: string,
+  sessionId: string | null,
+  handlers: ChatStreamHandlers
+): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}/api/chat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(
+      sessionId ? { message, session_id: sessionId } : { message }
+    ),
+  });
+  if (!res.ok || !res.body) {
+    handlers.onError(`Chat request failed: ${res.status}`);
+    return;
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
+      }
+      buffer += decoder.decode(value, { stream: true });
+
+      const events = buffer.split("\n\n");
+      buffer = events.pop() ?? "";
+      for (const rawEvent of events) {
+        const dataLine = rawEvent
+          .split("\n")
+          .find((line) => line.startsWith("data: "));
+        if (!dataLine) {
+          continue;
+        }
+        try {
+          const event = JSON.parse(dataLine.slice("data: ".length));
+          if (event.type === "text") {
+            handlers.onDelta(event.delta);
+          } else if (event.type === "done") {
+            handlers.onDone(event.session_id);
+          } else if (event.type === "error") {
+            handlers.onError(event.message);
+          }
+        } catch {
+          handlers.onError("Chat request failed: invalid event");
+        }
+      }
+    }
+  } catch {
+    handlers.onError("Chat request failed: connection lost");
+  }
+}
