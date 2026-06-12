@@ -78,12 +78,11 @@ async def chat(payload: ChatRequest, request: Request) -> StreamingResponse:
 
     async def event_stream():
         try:
-            async with agent.run_stream(
+            result = await agent.run(
                 payload.message, deps=deps, message_history=history
-            ) as result:
-                async for delta in result.stream_text(delta=True):
-                    yield _sse({"type": "text", "delta": delta})
-                sessions[session_id] = history + result.new_messages()
+            )
+            yield _sse({"type": "text", "delta": result.output})
+            sessions[session_id] = history + result.new_messages()
             yield _sse({"type": "done", "session_id": session_id})
         except Exception:  # noqa: BLE001 - stream errors must reach the client
             logger.exception("Chat stream failed for session %s", session_id)
