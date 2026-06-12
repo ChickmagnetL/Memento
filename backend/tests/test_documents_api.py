@@ -90,3 +90,49 @@ async def test_index_missing_document_returns_404(client):
     test_client, _sqlite = client
     response = test_client.post("/api/documents/missing/index")
     assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_preview_chunks_returns_chunks_without_indexing(client, tmp_path: Path):
+    test_client, sqlite = client
+    await _seed_document(sqlite, tmp_path)
+
+    response = test_client.get("/api/documents/d1/chunks")
+
+    assert response.status_code == 200
+    chunks = response.json()
+    assert len(chunks) == 1
+    assert chunks[0]["title_path"] == "示例视频 > Transcript"
+    assert chunks[0]["chunk_index"] == 0
+    assert "[00:01] 第一行内容" in chunks[0]["text"]
+    # Preview must not mark the document as indexed.
+    document = await sqlite.get_document("d1")
+    assert document["is_indexed"] == 0
+
+
+@pytest.mark.asyncio
+async def test_preview_chunks_missing_document_returns_404(client):
+    test_client, _sqlite = client
+    response = test_client.get("/api/documents/missing/chunks")
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_delete_document_removes_record_and_points(client, tmp_path: Path):
+    test_client, sqlite = client
+    await _seed_document(sqlite, tmp_path)
+    # Index first so Qdrant has points for this document.
+    assert test_client.post("/api/documents/d1/index").status_code == 200
+
+    response = test_client.delete("/api/documents/d1")
+
+    assert response.status_code == 204
+    assert await sqlite.get_document("d1") is None
+    # The markdown file is intentionally preserved (user data).
+    assert Path(tmp_path / "v1.md").exists()
+
+
+@pytest.mark.asyncio
+async def test_delete_missing_document_returns_404(client):
+    test_client, _sqlite = client
+    assert test_client.delete("/api/documents/missing").status_code == 404

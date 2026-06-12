@@ -1,16 +1,29 @@
 """Document API endpoints (listing and RAG indexing)."""
 
+import asyncio
 import logging
+from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Request, status
+from pydantic import BaseModel
 
 from config.settings import get_settings
+from core.rag.chunking import chunk_markdown
 from core.rag.embedding import CloudEmbeddingClient, EmbeddingError
 from core.rag.indexer import DocumentIndexer
 from schemas.document import DocumentRecord
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
 logger = logging.getLogger(__name__)
+
+
+class ChunkPreview(BaseModel):
+    """A chunk preview entry (no persistence side effects)."""
+
+    chunk_index: int
+    title_path: str
+    text: str
+    start_timestamp: str | None
 
 
 def build_embedding_client() -> CloudEmbeddingClient:
@@ -71,4 +84,58 @@ async def index_document(document_id: str, request: Request) -> dict:
         ) from exc
     except (OSError, ValueError, RuntimeError) as exc:
         logger.exception("Indexing failed for document %s", document_id)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.get("/{document_id}/chunks", response_model=list[ChunkPreview])
+async def preview_chunks(document_id: str, request: Request) -> list[ChunkPreview]:
+    """Preview how a document would be chunked. Read-only."""
+    sqlite, _qdrant = get_state(request)
+    document = await sqlite.get_document(document_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    settings = get_settings()
+    try:
+        content = await asyncio.to_thread(
+            Path(document["file_path"]).read_text, encoding="utf-8"
+        )
+        chunks = chunk_markdown(
+            content,
+            video_id=document["video_id"],
+            document_id=document_id,
+            chunk_size=settings.rag.chunk_size,
+            overlap=settings.rag.overlap,
+        )
+    except (OSError, ValueError) as exc:
+        logger.exception("Chunk preview failed for document %s", document_id)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    return [
+        ChunkPreview(
+            chunk_index=chunk.chunk_index,
+            title_path=chunk.title_path,
+            text=chunk.text,
+            start_timestamp=chunk.start_timestamp,
+        )
+        for chunk in chunks
+    ]
+
+
+@router.delete("/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_document(document_id: str, request: Request) -> None:
+    """Delete a document record and its Qdrant points.
+
+    The markdown file on disk is preserved (user data).
+    """
+    sqlite, qdrant = get_state(request)
+    document = await sqlite.get_document(document_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    try:
+        qdrant.delete_for_document(document_id)
+        await sqlite.delete_document(document_id)
+    except (OSError, RuntimeError) as exc:
+        logger.exception("Delete failed for document %s", document_id)
         raise HTTPException(status_code=500, detail=str(exc)) from exc
