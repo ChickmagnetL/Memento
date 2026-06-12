@@ -564,12 +564,18 @@ def test_fetch_passes_bilibili_cookie_to_player_v2():
                     }
                 },
             }
+        if "/x/web-interface/view" in url:
+            return {"data": {"aid": 123}}
         if "subtitle.example.com" in url:
             return {"body": [{"from": 1.0, "content": "test"}]}
         raise AssertionError(f"Unexpected URL: {url}")
 
+    def fake_fetch_bytes(url: str, referer: str | None = None, cookie: str | None = None) -> bytes:
+        return b""  # empty protobuf → no AI subtitle URL found
+
     client = BilibiliSubtitleClient(
         fetch_json=fake_fetch_json,
+        fetch_bytes=fake_fetch_bytes,
         bilibili_cookie="test_cookie_value",
     )
     entries = client.fetch({"url": "https://www.bilibili.com/video/BV1abcDEF234"})

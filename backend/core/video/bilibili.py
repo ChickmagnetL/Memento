@@ -222,22 +222,33 @@ class BilibiliSubtitleClient:
         subtitles = subtitle.get("subtitles", [])
         if not isinstance(subtitles, list):
             raise BilibiliSubtitleError("Malformed Bilibili player response")
-        if not subtitles:
-            return self._fetch_ai_subtitles(bvid, cid, source_url)
 
-        first_subtitle = subtitles[0]
-        if not isinstance(first_subtitle, dict):
-            raise BilibiliSubtitleError("Malformed Bilibili player response")
-        subtitle_url = first_subtitle.get("subtitle_url")
-        if subtitle_url is None or subtitle_url == "":
-            return []
-        if not isinstance(subtitle_url, str):
-            raise BilibiliSubtitleError("Malformed Bilibili player response")
-        subtitle_url = _normalize_subtitle_url(
-            subtitle_url,
-            "Malformed Bilibili player response",
-        )
-        return self._fetch_subtitle_body(subtitle_url, source_url)
+        # When cookie is present, player/v2 already returns AI subtitles on
+        # aisubtitle.hdslb.com (the _fetch_ai_subtitles path uses the now-dead
+        # subtitle.bilibili.com domain, so we only use it as a last-resort
+        # fallback when player/v2 returns no subtitles at all).
+        if subtitles:
+            first_subtitle = subtitles[0]
+            if not isinstance(first_subtitle, dict):
+                raise BilibiliSubtitleError("Malformed Bilibili player response")
+            subtitle_url = first_subtitle.get("subtitle_url")
+            if subtitle_url is None or subtitle_url == "":
+                return []
+            if not isinstance(subtitle_url, str):
+                raise BilibiliSubtitleError("Malformed Bilibili player response")
+            subtitle_url = _normalize_subtitle_url(
+                subtitle_url,
+                "Malformed Bilibili player response",
+            )
+            return self._fetch_subtitle_body(subtitle_url, source_url)
+
+        # Fall back to the separate AI subtitle API (requires cookie).
+        if self.bilibili_cookie:
+            ai_entries = self._fetch_ai_subtitles(bvid, cid, source_url)
+            if ai_entries:
+                return ai_entries
+
+        return []
 
     def _fetch_ai_subtitles(
         self,
@@ -248,51 +259,54 @@ class BilibiliSubtitleClient:
         if not self.bilibili_cookie:
             return []
 
-        view_url = (
-            "https://api.bilibili.com/x/web-interface/view"
-            f"?bvid={quote(bvid)}"
-        )
-        view_response = self.fetch_json(view_url)
-        view_data = (
-            view_response.get("data")
-            if isinstance(view_response, dict)
-            else None
-        )
-        if not isinstance(view_data, dict):
-            return []
-        aid = view_data.get("aid")
-        if isinstance(aid, bool):
-            return []
-        if isinstance(aid, int):
-            if aid < 0:
-                return []
-            aid = str(aid)
-        elif not isinstance(aid, str) or not aid.isdigit():
-            return []
-
-        ai_query = urlencode(
-            {
-                "oid": cid,
-                "pid": aid,
-                "context_ext": '{"video_type":1}',
-                "type": "1",
-                "cur_production_type": "0",
-                "preferred_language": "ai-zh",
-            }
-        )
-        ai_url = f"https://api.bilibili.com/x/v2/subtitle/web/view?{ai_query}"
-        payload = self.fetch_bytes(ai_url, source_url, self.bilibili_cookie)
-        subtitle_url = _extract_subtitle_url_from_protobuf(payload)
-        if subtitle_url is None:
-            return []
         try:
-            subtitle_url = _normalize_subtitle_url(
-                subtitle_url,
-                "Malformed Bilibili AI subtitle response",
+            view_url = (
+                "https://api.bilibili.com/x/web-interface/view"
+                f"?bvid={quote(bvid)}"
             )
-        except BilibiliSubtitleError:
+            view_response = self.fetch_json(view_url)
+            view_data = (
+                view_response.get("data")
+                if isinstance(view_response, dict)
+                else None
+            )
+            if not isinstance(view_data, dict):
+                return []
+            aid = view_data.get("aid")
+            if isinstance(aid, bool):
+                return []
+            if isinstance(aid, int):
+                if aid < 0:
+                    return []
+                aid = str(aid)
+            elif not isinstance(aid, str) or not aid.isdigit():
+                return []
+
+            ai_query = urlencode(
+                {
+                    "oid": cid,
+                    "pid": aid,
+                    "context_ext": '{"video_type":1}',
+                    "type": "1",
+                    "cur_production_type": "0",
+                    "preferred_language": "ai-zh",
+                }
+            )
+            ai_url = f"https://api.bilibili.com/x/v2/subtitle/web/view?{ai_query}"
+            payload = self.fetch_bytes(ai_url, source_url, self.bilibili_cookie)
+            subtitle_url = _extract_subtitle_url_from_protobuf(payload)
+            if subtitle_url is None:
+                return []
+            try:
+                subtitle_url = _normalize_subtitle_url(
+                    subtitle_url,
+                    "Malformed Bilibili AI subtitle response",
+                )
+            except BilibiliSubtitleError:
+                return []
+            return self._fetch_subtitle_body(subtitle_url, source_url)
+        except OSError:
             return []
-        return self._fetch_subtitle_body(subtitle_url, source_url)
 
     def _fetch_subtitle_body(
         self,
