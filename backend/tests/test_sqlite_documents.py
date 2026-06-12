@@ -37,3 +37,23 @@ async def test_mark_document_indexed_updates_metadata(sqlite: SQLiteClient):
 @pytest.mark.asyncio
 async def test_mark_document_indexed_returns_none_for_missing(sqlite: SQLiteClient):
     assert await sqlite.mark_document_indexed("missing", chunk_count=1) is None
+
+
+@pytest.mark.asyncio
+async def test_delete_document_removes_record(sqlite: SQLiteClient):
+    await sqlite.create_video(
+        video_id="v1", platform="bilibili", title="t", url="https://example.com"
+    )
+    await sqlite.create_document(
+        document_id="d1", video_id="v1", file_path="/tmp/d1.md"
+    )
+
+    deleted = await sqlite.delete_document("d1")
+
+    assert deleted is True
+    assert await sqlite.get_document("d1") is None
+
+
+@pytest.mark.asyncio
+async def test_delete_missing_document_returns_false(sqlite: SQLiteClient):
+    assert await sqlite.delete_document("missing") is False

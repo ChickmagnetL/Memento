@@ -221,6 +221,15 @@ class SQLiteClient:
         rows = await cursor.fetchall()
         return [self._row_to_dict(row) for row in rows]
 
+    async def delete_document(self, document_id: str) -> bool:
+        """Delete a document record. Return True when a row was removed."""
+        conn = self._require_conn()
+        cursor = await conn.execute(
+            "DELETE FROM documents WHERE id = ?", (document_id,)
+        )
+        await conn.commit()
+        return cursor.rowcount == 1
+
     async def mark_document_indexed(
         self, document_id: str, *, chunk_count: int
     ) -> dict | None:
