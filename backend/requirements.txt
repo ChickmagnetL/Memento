@@ -4,7 +4,7 @@ uvicorn[standard]==0.30.0
 python-multipart==0.0.9
 
 # Data Validation
-pydantic==2.9.0
+pydantic==2.13.4
 pydantic-settings==2.5.0
 
 # Database
@@ -20,3 +20,6 @@ rank-bm25==0.2.2
 
 # Utilities
 python-dotenv==1.0.1
+
+# Agent
+pydantic-ai-slim[openai]==1.107.0
