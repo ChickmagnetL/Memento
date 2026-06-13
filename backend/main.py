@@ -22,6 +22,7 @@ from api.videos import router as videos_router
 from api.documents import router as documents_router
 from api.search import router as search_router
 from api.chat import router as chat_router
+from api.settings import router as settings_router
 
 settings = get_settings()
 
@@ -67,3 +68,4 @@ app.include_router(videos_router)
 app.include_router(documents_router)
 app.include_router(search_router)
 app.include_router(chat_router)
+app.include_router(settings_router)
