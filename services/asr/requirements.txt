@@ -1,0 +1,7 @@
+fastapi
+uvicorn[standard]
+soundfile
+numpy
+funasr
+modelscope
+torch

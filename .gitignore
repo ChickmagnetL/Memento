@@ -56,3 +56,7 @@ private/
 # Models
 services/funasr/models/
 services/funasr/.venv/
+services/asr/.venv
+services/asr/.venv/
+services/asr/model_cache
+services/asr/model_cache/

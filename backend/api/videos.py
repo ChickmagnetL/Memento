@@ -7,6 +7,8 @@ from uuid import uuid4
 from fastapi import APIRouter, HTTPException, Request, status
 
 from config.settings import get_settings
+from core.video.asr_client import AsrServiceClient
+from core.video.audio import AudioDownloader
 from core.video.pipeline import VideoPipeline
 from schemas.video import VideoCreateRequest, VideoRecord, VideoStatusUpdateRequest
 from storage.sqlite_client import SQLiteClient
@@ -88,10 +90,17 @@ async def process_video(video_id: str, request: Request) -> dict:
         )
 
     settings = get_settings()
+    data_dir = settings.storage.data_dir.expanduser()
+    asr_endpoint = settings.models.asr.endpoint or "http://localhost:8001"
     pipeline = VideoPipeline(
         sqlite=sqlite,
-        data_dir=settings.storage.data_dir.expanduser(),
+        data_dir=data_dir,
         bilibili_cookie=settings.video_processing.bilibili_cookie,
+        audio_downloader=AudioDownloader(
+            data_dir=data_dir, keep_videos=settings.storage.keep_videos
+        ),
+        asr_client=AsrServiceClient(endpoint=asr_endpoint),
+        asr_language=settings.video_processing.asr_language,
     )
     try:
         result = await pipeline.process(processing_video)

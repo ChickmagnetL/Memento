@@ -138,8 +138,11 @@ def test_process_video_passes_configured_bilibili_cookie_to_pipeline(
 
     def get_settings_spy():
         return SimpleNamespace(
-            storage=SimpleNamespace(data_dir=tmp_path),
-            video_processing=SimpleNamespace(bilibili_cookie="SESSDATA=explicit"),
+            storage=SimpleNamespace(data_dir=tmp_path, keep_videos=False),
+            video_processing=SimpleNamespace(
+                bilibili_cookie="SESSDATA=explicit", asr_language="auto"
+            ),
+            models=SimpleNamespace(asr=SimpleNamespace(endpoint=None)),
         )
 
     def pipeline_init_spy(self, *, sqlite, data_dir, bilibili_cookie="", **kwargs):

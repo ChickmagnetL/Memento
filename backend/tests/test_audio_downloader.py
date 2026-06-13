@@ -1,6 +1,7 @@
 """Tests for bilibili audio downloading."""
 
 from pathlib import Path
+import sys
 
 import pytest
 
@@ -35,7 +36,7 @@ def test_download_invokes_ytdlp_and_returns_wav_path(tmp_path: Path):
     assert wav_path == tmp_path / "videos" / "temp" / "v1.wav"
     assert wav_path.exists()
     args = commands[0]
-    assert args[0] == "yt-dlp"
+    assert args[0] == "yt-dlp" or args[0:3] == [sys.executable, "-m", "yt_dlp"]
     assert "https://www.bilibili.com/video/BV1abc" in args
     assert "-x" in args
     assert args[args.index("--audio-format") + 1] == "wav"

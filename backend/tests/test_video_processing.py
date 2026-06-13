@@ -213,3 +213,93 @@ async def test_process_document_writer_runtime_error_returns_failed(
     assert result.document_id is None
     assert result.document_path is None
     assert result.error == "document writer unavailable"
+
+
+class FakeAudioDownloader:
+    def __init__(self, tmp_path: Path):
+        self.wav_path = tmp_path / "v1.wav"
+        self.cleaned_up: list[Path] = []
+
+    def download(self, video: dict) -> Path:
+        self.wav_path.write_bytes(b"RIFF")
+        return self.wav_path
+
+    def cleanup(self, wav_path: Path) -> None:
+        self.cleaned_up.append(wav_path)
+
+
+class FakeAsrClient:
+    def __init__(self, entries, error: Exception | None = None):
+        self.entries = entries
+        self.error = error
+        self.calls: list[tuple[str, str]] = []
+
+    def transcribe(self, audio_path: str, *, language: str):
+        self.calls.append((audio_path, language))
+        if self.error:
+            raise self.error
+        return self.entries
+
+
+@pytest.mark.asyncio
+async def test_no_subtitles_falls_back_to_asr(sqlite: SQLiteClient, tmp_path: Path):
+    video = make_video("video-1", "bilibili")
+    await sqlite.create_video(
+        video_id=video["id"], platform=video["platform"],
+        title=video["title"], url=video["url"],
+    )
+    downloader = FakeAudioDownloader(tmp_path)
+    asr = FakeAsrClient([SubtitleEntry(start_seconds=0.0, text="ASR 第一段")])
+    pipeline = VideoPipeline(
+        sqlite=sqlite,
+        data_dir=tmp_path,
+        subtitle_client=FakeSubtitleClient([]),  # no soft subtitles
+        audio_downloader=downloader,
+        asr_client=asr,
+        asr_language="auto",
+    )
+
+    result = await pipeline.process(video)
+
+    assert result.status == "completed"
+    assert asr.calls == [(str(downloader.wav_path), "en")]  # "Example video" -> en
+    assert downloader.cleaned_up == [downloader.wav_path]
+    assert "ASR 第一段" in Path(result.document_path).read_text(encoding="utf-8")
+
+
+@pytest.mark.asyncio
+async def test_asr_failure_cleans_up_and_fails(sqlite: SQLiteClient, tmp_path: Path):
+    from core.video.asr_client import AsrError
+
+    video = make_video("video-1", "bilibili")
+    downloader = FakeAudioDownloader(tmp_path)
+    asr = FakeAsrClient([], error=AsrError("ASR service unreachable"))
+    pipeline = VideoPipeline(
+        sqlite=sqlite,
+        data_dir=tmp_path,
+        subtitle_client=FakeSubtitleClient([]),
+        audio_downloader=downloader,
+        asr_client=asr,
+        asr_language="auto",
+    )
+
+    result = await pipeline.process(video)
+
+    assert result.status == "failed"
+    assert "ASR service unreachable" in result.error
+    assert downloader.cleaned_up == [downloader.wav_path]
+
+
+@pytest.mark.asyncio
+async def test_no_subtitles_without_asr_configured_fails_as_before(
+    sqlite: SQLiteClient, tmp_path: Path
+):
+    pipeline = VideoPipeline(
+        sqlite=sqlite, data_dir=tmp_path, subtitle_client=FakeSubtitleClient([])
+    )
+    video = make_video("video-1", "bilibili")
+
+    result = await pipeline.process(video)
+
+    assert result.status == "failed"
+    assert result.error == "No soft subtitles found"

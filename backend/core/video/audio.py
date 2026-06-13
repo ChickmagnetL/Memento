@@ -6,6 +6,7 @@ injectable so tests never spawn real processes.
 
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 from typing import Callable
 
@@ -49,7 +50,7 @@ class AudioDownloader:
         wav_path = self.temp_dir / f"{video['id']}.wav"
 
         args = [
-            "yt-dlp",
+            sys.executable, "-m", "yt_dlp",
             "--playlist-items", "1",
             "-x",
             "--audio-format", "wav",
