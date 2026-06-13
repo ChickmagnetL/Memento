@@ -16,8 +16,10 @@ import {
 const MODEL_NAMES = ["chat", "embedding", "asr"] as const;
 type ModelName = (typeof MODEL_NAMES)[number];
 
+// provider is intentionally omitted: it is not yet wired to any behavior
+// (clients are built from endpoint/api_key/model). Editing it as free text
+// could persist an invalid value and break get_settings(). Defer to 5B.
 const FIELDS: { key: keyof ModelConfig; label: string }[] = [
-  { key: "provider", label: "Provider" },
   { key: "endpoint", label: "Endpoint" },
   { key: "api_key", label: "API Key" },
   { key: "model", label: "Model" },
