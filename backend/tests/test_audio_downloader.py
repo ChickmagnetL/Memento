@@ -61,3 +61,38 @@ def test_download_raises_when_no_output_produced(tmp_path: Path):
 
     with pytest.raises(AudioDownloadError):
         downloader.download(make_video())
+
+
+def test_cleanup_deletes_temp_file_when_not_keeping(tmp_path: Path):
+    downloader = AudioDownloader(
+        data_dir=tmp_path, keep_videos=False, run_command=lambda args: None
+    )
+    downloader.temp_dir.mkdir(parents=True)
+    wav_path = downloader.temp_dir / "v1.wav"
+    wav_path.write_bytes(b"RIFF")
+
+    downloader.cleanup(wav_path)
+
+    assert not wav_path.exists()
+
+
+def test_cleanup_moves_file_to_videos_dir_when_keeping(tmp_path: Path):
+    downloader = AudioDownloader(
+        data_dir=tmp_path, keep_videos=True, run_command=lambda args: None
+    )
+    downloader.temp_dir.mkdir(parents=True)
+    wav_path = downloader.temp_dir / "v1.wav"
+    wav_path.write_bytes(b"RIFF")
+
+    downloader.cleanup(wav_path)
+
+    assert not wav_path.exists()
+    assert (tmp_path / "videos" / "v1.wav").exists()
+
+
+def test_cleanup_tolerates_missing_file(tmp_path: Path):
+    downloader = AudioDownloader(
+        data_dir=tmp_path, keep_videos=False, run_command=lambda args: None
+    )
+
+    downloader.cleanup(downloader.temp_dir / "missing.wav")  # no raise
