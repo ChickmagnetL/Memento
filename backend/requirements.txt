@@ -21,5 +21,8 @@ rank-bm25==0.2.2
 # Utilities
 python-dotenv==1.0.1
 
+# Video processing
+yt-dlp==2026.6.9
+
 # Agent
 pydantic-ai-slim[openai]==1.107.0

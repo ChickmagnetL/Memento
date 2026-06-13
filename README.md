@@ -14,6 +14,8 @@ pip install -r requirements.txt
 uvicorn main:app --reload
 ```
 
+Audio extraction requires [ffmpeg](https://ffmpeg.org) (`brew install ffmpeg` on macOS).
+
 Run backend tests:
 
 ```bash
