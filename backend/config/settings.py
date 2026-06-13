@@ -84,6 +84,8 @@ class VideoProcessingConfig(BaseModel):
     auto_clean: bool = True
     preserve_timestamp: bool = True
     bilibili_cookie: str = ""
+    douyin_cookie: str = ""
+    douyin_fetcher_endpoint: str = "http://localhost:8002"
     asr_language: str = "auto"  # auto / zh / en
     ocr_region: list[float] = [0.74, 0.94, 0.08, 0.92]  # y_min, y_max, x_min, x_max
 

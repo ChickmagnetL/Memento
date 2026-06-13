@@ -19,6 +19,7 @@ def test_writer_writes_exact_bilibili_draft_content_and_path(tmp_path):
     writer = MarkdownDraftWriter(tmp_path)
     video = {
         "id": "BV1abcDEF234",
+        "platform": "bilibili",
         "title": "Example Video",
         "url": "https://www.bilibili.com/video/BV1abcDEF234",
     }
@@ -52,8 +53,25 @@ def test_writer_rejects_empty_entries(tmp_path):
         writer.write(
             {
                 "id": "BV1abcDEF234",
+                "platform": "bilibili",
                 "title": "Example Video",
                 "url": "https://www.bilibili.com/video/BV1abcDEF234",
             },
             [],
         )
+
+
+def test_writer_uses_platform_directory_and_label(tmp_path):
+    writer = MarkdownDraftWriter(tmp_path)
+    video = {
+        "id": "7640347491958803748",
+        "platform": "douyin",
+        "title": "抖音示例",
+        "url": "https://www.douyin.com/video/7640347491958803748",
+    }
+
+    path = writer.write(video, [SubtitleEntry(start_seconds=1.0, text="第一行")])
+
+    assert path == tmp_path / "knowledge" / "douyin" / "7640347491958803748.md"
+    content = path.read_text(encoding="utf-8")
+    assert "- Platform: douyin" in content

@@ -23,8 +23,10 @@ async def sqlite(tmp_path: Path):
 class FakeSubtitleClient:
     def __init__(self, entries: list[SubtitleEntry]) -> None:
         self.entries = entries
+        self.calls = 0
 
     def fetch(self, video: dict) -> list[SubtitleEntry]:
+        self.calls += 1
         return self.entries
 
 
@@ -169,7 +171,7 @@ async def test_process_douyin_video_returns_failed(
     assert result.document_id is None
     assert result.document_path is None
     assert result.error is not None
-    assert "unsupported platform" in result.error
+    assert "douyin" in result.error.lower()
 
 
 @pytest.mark.asyncio
@@ -303,3 +305,50 @@ async def test_no_subtitles_without_asr_configured_fails_as_before(
 
     assert result.status == "failed"
     assert result.error == "No soft subtitles found"
+
+
+@pytest.mark.asyncio
+async def test_douyin_video_goes_straight_to_asr(
+    sqlite: SQLiteClient, tmp_path: Path
+):
+    video = make_video("douyin-1", "douyin")
+    await sqlite.create_video(
+        video_id=video["id"], platform=video["platform"],
+        title=video["title"], url=video["url"],
+    )
+    downloader = FakeAudioDownloader(tmp_path)
+    asr = FakeAsrClient([SubtitleEntry(start_seconds=0.0, text="抖音内容")])
+    subtitle_client = FakeSubtitleClient(
+        [SubtitleEntry(start_seconds=0.0, text="不应被调用")]
+    )
+    pipeline = VideoPipeline(
+        sqlite=sqlite,
+        data_dir=tmp_path,
+        subtitle_client=subtitle_client,
+        douyin_downloader=downloader,
+        asr_client=asr,
+        asr_language="zh",
+    )
+
+    result = await pipeline.process(video)
+
+    assert result.status == "completed"
+    assert asr.calls == [(str(downloader.wav_path), "zh")]
+    # Bilibili subtitle client must not be touched for douyin.
+    assert subtitle_client.calls == 0
+    assert "抖音内容" in Path(result.document_path).read_text(encoding="utf-8")
+
+
+@pytest.mark.asyncio
+async def test_douyin_without_downloader_fails_with_clear_error(
+    sqlite: SQLiteClient, tmp_path: Path
+):
+    pipeline = VideoPipeline(
+        sqlite=sqlite, data_dir=tmp_path, subtitle_client=FakeSubtitleClient([])
+    )
+    video = make_video("douyin-1", "douyin")
+
+    result = await pipeline.process(video)
+
+    assert result.status == "failed"
+    assert "douyin" in result.error.lower()

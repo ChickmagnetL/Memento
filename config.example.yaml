@@ -25,6 +25,13 @@ video_processing:
   # Example value: "SESSDATA=your-cookie; bili_jct=..."
   # Do not commit real cookie values.
   bilibili_cookie: ""
+  # Optional Douyin login cookie for higher API rate limits.
+  # Anonymous ttwid is auto-generated for single public videos.
+  # Only needed for batch import (v0.3+). Prefer env var
+  # VIDEO_PROCESSING__DOUYIN_COOKIE; do not commit real values.
+  douyin_cookie: ""
+  # Douyin fetcher thin service (f2 in isolated venv)
+  douyin_fetcher_endpoint: "http://localhost:8002"
 
 rag:
   # vector_size MUST match the embedding model's output dimension.

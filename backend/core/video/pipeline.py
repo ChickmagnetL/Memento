@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from core.video.asr_client import AsrError
 from core.video.audio import AudioDownloadError
 from core.video.bilibili import BilibiliSubtitleClient, BilibiliSubtitleError
+from core.video.douyin import DouyinError
 from core.video.language import detect_asr_language
 from core.video.markdown import MarkdownDraftWriter
 from schemas.video import VideoStatus
@@ -31,6 +32,7 @@ class VideoPipeline:
         draft_writer=None,
         bilibili_cookie: str = "",
         audio_downloader=None,
+        douyin_downloader=None,
         asr_client=None,
         asr_language: str = "auto",
     ) -> None:
@@ -40,19 +42,27 @@ class VideoPipeline:
         )
         self.draft_writer = draft_writer or MarkdownDraftWriter(data_dir)
         self.audio_downloader = audio_downloader
+        self.douyin_downloader = douyin_downloader
         self.asr_client = asr_client
         self.asr_language = asr_language
 
     async def process(self, video: dict) -> VideoProcessingResult:
         try:
-            if video["platform"] != "bilibili":
+            if video["platform"] == "bilibili":
+                entries = await asyncio.to_thread(self.subtitle_client.fetch, video)
+                if not entries:
+                    entries = await self._transcribe_fallback(video, self.audio_downloader)
+                if not entries:
+                    raise ValueError("No soft subtitles found")
+            elif video["platform"] == "douyin":
+                entries = await self._transcribe_fallback(video, self.douyin_downloader)
+                if not entries:
+                    raise ValueError(
+                        "Douyin processing requires the ASR service and "
+                        "douyin downloader to be configured"
+                    )
+            else:
                 raise ValueError(f"unsupported platform: {video['platform']}")
-
-            entries = await asyncio.to_thread(self.subtitle_client.fetch, video)
-            if not entries:
-                entries = await self._transcribe_fallback(video)
-            if not entries:
-                raise ValueError("No soft subtitles found")
 
             document_path = await asyncio.to_thread(
                 self.draft_writer.write,
@@ -72,21 +82,21 @@ class VideoPipeline:
                 document_id=document_id,
                 document_path=str(document_path),
             )
-        except (AsrError, AudioDownloadError, BilibiliSubtitleError, OSError, RuntimeError, ValueError) as exc:
+        except (AsrError, AudioDownloadError, BilibiliSubtitleError, DouyinError, OSError, RuntimeError, ValueError) as exc:
             return VideoProcessingResult(
                 video_id=video["id"],
                 status="failed",
                 error=str(exc),
             )
 
-    async def _transcribe_fallback(self, video: dict) -> list:
-        """Download audio and transcribe when no subtitles exist."""
-        if self.audio_downloader is None or self.asr_client is None:
+    async def _transcribe_fallback(self, video: dict, downloader) -> list:
+        """Download audio with the given downloader and transcribe."""
+        if downloader is None or self.asr_client is None:
             return []
 
         wav_path = None
         try:
-            wav_path = await asyncio.to_thread(self.audio_downloader.download, video)
+            wav_path = await asyncio.to_thread(downloader.download, video)
             language = detect_asr_language(
                 video["title"], override=self.asr_language
             )
@@ -95,4 +105,4 @@ class VideoPipeline:
             )
         finally:
             if wav_path is not None:
-                await asyncio.to_thread(self.audio_downloader.cleanup, wav_path)
+                await asyncio.to_thread(downloader.cleanup, wav_path)

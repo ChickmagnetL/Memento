@@ -140,7 +140,8 @@ def test_process_video_passes_configured_bilibili_cookie_to_pipeline(
         return SimpleNamespace(
             storage=SimpleNamespace(data_dir=tmp_path, keep_videos=False),
             video_processing=SimpleNamespace(
-                bilibili_cookie="SESSDATA=explicit", asr_language="auto"
+                bilibili_cookie="SESSDATA=explicit", asr_language="auto",
+                douyin_cookie="", douyin_fetcher_endpoint="http://localhost:8002"
             ),
             models=SimpleNamespace(asr=SimpleNamespace(endpoint=None)),
         )

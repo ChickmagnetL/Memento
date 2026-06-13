@@ -24,7 +24,7 @@ class MarkdownDraftWriter:
         if not entries:
             raise ValueError("empty transcript")
 
-        path = self.data_dir / "knowledge" / "bilibili" / f"{video['id']}.md"
+        path = self.data_dir / "knowledge" / video["platform"] / f"{video['id']}.md"
         path.parent.mkdir(parents=True, exist_ok=True)
 
         transcript_lines = [
@@ -35,7 +35,7 @@ class MarkdownDraftWriter:
             [
                 f"# {video['title']}",
                 "",
-                "- Platform: bilibili",
+                f"- Platform: {video['platform']}",
                 f"- Video ID: {video['id']}",
                 f"- Source URL: {video['url']}",
                 "",

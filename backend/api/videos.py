@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException, Request, status
 from config.settings import get_settings
 from core.video.asr_client import AsrServiceClient
 from core.video.audio import AudioDownloader
+from core.video.douyin import DouyinAudioDownloader
 from core.video.pipeline import VideoPipeline
 from schemas.video import VideoCreateRequest, VideoRecord, VideoStatusUpdateRequest
 from storage.sqlite_client import SQLiteClient
@@ -98,6 +99,12 @@ async def process_video(video_id: str, request: Request) -> dict:
         bilibili_cookie=settings.video_processing.bilibili_cookie,
         audio_downloader=AudioDownloader(
             data_dir=data_dir, keep_videos=settings.storage.keep_videos
+        ),
+        douyin_downloader=DouyinAudioDownloader(
+            data_dir=data_dir,
+            keep_videos=settings.storage.keep_videos,
+            cookie=settings.video_processing.douyin_cookie,
+            fetcher_endpoint=settings.video_processing.douyin_fetcher_endpoint,
         ),
         asr_client=AsrServiceClient(endpoint=asr_endpoint),
         asr_language=settings.video_processing.asr_language,
