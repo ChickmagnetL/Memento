@@ -62,6 +62,7 @@ class AudioDownloader:
             cookie_file = tempfile.NamedTemporaryFile(
                 mode="w", suffix=".txt", delete=False, dir=self.temp_dir
             )
+            cookie_file.write("# Netscape HTTP Cookie File\n")
             for pair in self.cookie_str.split(";"):
                 pair = pair.strip()
                 if not pair:
