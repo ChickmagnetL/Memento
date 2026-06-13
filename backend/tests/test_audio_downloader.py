@@ -27,7 +27,7 @@ def test_download_invokes_ytdlp_and_returns_wav_path(tmp_path: Path):
         Path(output_template.replace("%(ext)s", "wav")).write_bytes(b"RIFF")
 
     downloader = AudioDownloader(
-        data_dir=tmp_path, keep_videos=False, run_command=fake_run
+        data_dir=tmp_path, run_command=fake_run
     )
 
     wav_path = downloader.download(make_video())
@@ -47,7 +47,7 @@ def test_download_raises_when_command_fails(tmp_path: Path):
         raise AudioDownloadError("yt-dlp exited with code 1")
 
     downloader = AudioDownloader(
-        data_dir=tmp_path, keep_videos=False, run_command=failing_run
+        data_dir=tmp_path, run_command=failing_run
     )
 
     with pytest.raises(AudioDownloadError):
@@ -56,7 +56,7 @@ def test_download_raises_when_command_fails(tmp_path: Path):
 
 def test_download_raises_when_no_output_produced(tmp_path: Path):
     downloader = AudioDownloader(
-        data_dir=tmp_path, keep_videos=False, run_command=lambda args: None
+        data_dir=tmp_path, run_command=lambda args: None
     )
 
     with pytest.raises(AudioDownloadError):

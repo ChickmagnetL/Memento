@@ -15,7 +15,7 @@ class AudioDownloadError(Exception):
 
 def run_command(args: list[str]) -> None:
     """Run a CLI command, raising AudioDownloadError on failure."""
-    result = subprocess.run(args, capture_output=True, text=True)
+    result = subprocess.run(args, capture_output=True, text=True, timeout=300)
     if result.returncode != 0:
         raise AudioDownloadError(
             f"{args[0]} exited with code {result.returncode}: "
@@ -28,11 +28,9 @@ class AudioDownloader:
         self,
         *,
         data_dir,
-        keep_videos: bool,
         run_command: Callable[[list[str]], None] = run_command,
     ) -> None:
         self.data_dir = Path(data_dir).expanduser()
-        self.keep_videos = keep_videos
         self.run_command = run_command
 
     @property
@@ -40,7 +38,7 @@ class AudioDownloader:
         return self.data_dir / "videos" / "temp"
 
     def download(self, video: dict) -> Path:
-        """Download the first page's audio as WAV and return its path."""
+        """Download audio of the first playlist item as WAV and return its path."""
         self.temp_dir.mkdir(parents=True, exist_ok=True)
         output_template = str(self.temp_dir / f"{video['id']}.%(ext)s")
         wav_path = self.temp_dir / f"{video['id']}.wav"
