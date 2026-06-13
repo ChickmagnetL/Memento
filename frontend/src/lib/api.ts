@@ -220,3 +220,57 @@ export async function sendChatMessage(
     handlers.onError("Chat request failed: connection lost");
   }
 }
+
+export interface ModelConfig {
+  provider: string | null;
+  endpoint: string | null;
+  api_key: string | null;
+  model: string | null;
+}
+
+export interface ModelsSettings {
+  chat: ModelConfig;
+  embedding: ModelConfig;
+  asr: ModelConfig;
+}
+
+export interface ServiceStatus {
+  status: string;
+  endpoint?: string;
+}
+
+export async function getModelSettings(): Promise<ModelsSettings> {
+  const res = await fetch(`${API_BASE_URL}/api/settings/models`, {
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`Get settings failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function updateModelSettings(
+  payload: Partial<Record<keyof ModelsSettings, Partial<ModelConfig>>>
+): Promise<ModelsSettings> {
+  const res = await fetch(`${API_BASE_URL}/api/settings/models`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    throw new Error(`Update settings failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function getServiceStatus(): Promise<
+  Record<string, ServiceStatus>
+> {
+  const res = await fetch(`${API_BASE_URL}/api/settings/status`, {
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`Get status failed: ${res.status}`);
+  }
+  return res.json();
+}

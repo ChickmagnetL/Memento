@@ -82,6 +82,10 @@ export function VideoIntake({ initialHealth, initialVideos }: VideoIntakeProps) 
           <Link className="underline" href="/chat">
             Chat →
           </Link>
+          {" "}·{" "}
+          <Link className="underline" href="/settings">
+            Settings
+          </Link>
         </p>
       </header>
 

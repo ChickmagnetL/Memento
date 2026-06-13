@@ -80,6 +80,10 @@ export function ChatPanel() {
           <Link className="underline" href="/knowledge">
             Knowledge Base
           </Link>
+          {" "}·{" "}
+          <Link className="underline" href="/settings">
+            Settings
+          </Link>
         </p>
       </header>
 

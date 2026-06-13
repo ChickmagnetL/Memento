@@ -88,6 +88,10 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
           <Link className="underline" href="/chat">
             Chat →
           </Link>
+          {" "}·{" "}
+          <Link className="underline" href="/settings">
+            Settings
+          </Link>
         </p>
       </header>
 
