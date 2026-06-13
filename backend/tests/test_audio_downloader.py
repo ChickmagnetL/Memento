@@ -96,3 +96,45 @@ def test_cleanup_tolerates_missing_file(tmp_path: Path):
     )
 
     downloader.cleanup(downloader.temp_dir / "missing.wav")  # no raise
+
+
+def test_download_passes_cookies_to_ytdlp_when_cookie_str_set(tmp_path: Path):
+    commands: list[list[str]] = []
+
+    def fake_run(args: list[str]) -> None:
+        commands.append(args)
+        output_template = args[args.index("-o") + 1]
+        Path(output_template.replace("%(ext)s", "wav")).write_bytes(b"RIFF")
+
+    downloader = AudioDownloader(
+        data_dir=tmp_path,
+        keep_videos=False,
+        cookie_str="buvid3=abc; SESSDATA=xyz",
+        run_command=fake_run,
+    )
+
+    downloader.download(make_video())
+
+    args = commands[0]
+    assert "--cookies" in args
+    cookie_idx = args.index("--cookies")
+    cookie_path = args[cookie_idx + 1]
+    assert not Path(cookie_path).exists()  # cleaned up after download
+
+
+def test_download_cleans_up_cookie_file_on_error(tmp_path: Path):
+    def failing_run(args: list[str]) -> None:
+        raise AudioDownloadError("yt-dlp failed")
+
+    downloader = AudioDownloader(
+        data_dir=tmp_path,
+        keep_videos=False,
+        cookie_str="buvid3=abc",
+        run_command=failing_run,
+    )
+
+    with pytest.raises(AudioDownloadError):
+        downloader.download(make_video())
+
+    temp_files = list(downloader.temp_dir.glob("*.txt"))
+    assert temp_files == []

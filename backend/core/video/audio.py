@@ -6,6 +6,7 @@ injectable so tests never spawn real processes.
 
 from pathlib import Path
 import subprocess
+import tempfile
 from typing import Callable
 
 
@@ -29,10 +30,12 @@ class AudioDownloader:
         *,
         data_dir,
         keep_videos: bool = False,
+        cookie_str: str | None = None,
         run_command: Callable[[list[str]], None] = run_command,
     ) -> None:
         self.data_dir = Path(data_dir).expanduser()
         self.keep_videos = keep_videos
+        self.cookie_str = cookie_str
         self.run_command = run_command
 
     @property
@@ -45,17 +48,38 @@ class AudioDownloader:
         output_template = str(self.temp_dir / f"{video['id']}.%(ext)s")
         wav_path = self.temp_dir / f"{video['id']}.wav"
 
-        self.run_command(
-            [
-                "yt-dlp",
-                "--playlist-items", "1",
-                "-x",
-                "--audio-format", "wav",
-                "--audio-quality", "0",
-                "-o", output_template,
-                video["url"],
-            ]
-        )
+        args = [
+            "yt-dlp",
+            "--playlist-items", "1",
+            "-x",
+            "--audio-format", "wav",
+            "--audio-quality", "0",
+            "-o", output_template,
+        ]
+
+        cookie_file = None
+        if self.cookie_str:
+            cookie_file = tempfile.NamedTemporaryFile(
+                mode="w", suffix=".txt", delete=False, dir=self.temp_dir
+            )
+            for pair in self.cookie_str.split(";"):
+                pair = pair.strip()
+                if not pair:
+                    continue
+                name, value = pair.split("=", 1)
+                cookie_file.write(
+                    f".bilibili.com\tTRUE\t/\tTRUE\t0\t{name.strip()}\t{value.strip()}\n"
+                )
+            cookie_file.close()
+            args.extend(["--cookies", cookie_file.name])
+
+        args.append(video["url"])
+
+        try:
+            self.run_command(args)
+        finally:
+            if cookie_file is not None:
+                Path(cookie_file.name).unlink(missing_ok=True)
 
         if not wav_path.exists():
             raise AudioDownloadError(
