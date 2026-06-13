@@ -3,14 +3,20 @@
 import asyncio
 import logging
 from pathlib import Path
+from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel
 
 from config.settings import get_settings
+from core.models.chat_completion import (
+    ChatCompletionError,
+    CloudChatCompletionClient,
+)
 from core.rag.chunking import chunk_markdown
-from core.rag.embedding import CloudEmbeddingClient, EmbeddingError
+from core.rag.embedding import CloudEmbeddingClient, EmbeddingError, post_json
 from core.rag.indexer import DocumentIndexer
+from core.video.cleaner import CleaningError, TranscriptCleaner
 from schemas.document import DocumentRecord
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
@@ -33,6 +39,19 @@ def build_embedding_client() -> CloudEmbeddingClient:
         endpoint=embedding.endpoint,
         api_key=embedding.api_key,
         model=embedding.model,
+    )
+
+
+def build_chat_completion_client() -> CloudChatCompletionClient:
+    """Build the chat completion client from settings (overridable in tests)."""
+    chat = get_settings().models.chat
+    return CloudChatCompletionClient(
+        endpoint=chat.endpoint,
+        api_key=chat.api_key,
+        model=chat.model,
+        post_json=lambda url, payload, headers: post_json(
+            url, payload, headers, timeout=300
+        ),
     )
 
 
@@ -85,6 +104,50 @@ async def index_document(document_id: str, request: Request) -> dict:
     except (OSError, ValueError, RuntimeError) as exc:
         logger.exception("Indexing failed for document %s", document_id)
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.post(
+    "/{document_id}/clean",
+    response_model=DocumentRecord,
+    status_code=status.HTTP_201_CREATED,
+)
+async def clean_document(document_id: str, request: Request) -> dict:
+    """AI-clean a draft document into a new sibling document."""
+    sqlite, _qdrant = get_state(request)
+    document = await sqlite.get_document(document_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    try:
+        chat_client = build_chat_completion_client()
+    except ChatCompletionError as exc:
+        raise HTTPException(
+            status_code=500, detail=str(exc)
+        ) from exc
+
+    source_path = Path(document["file_path"])
+    cleaner = TranscriptCleaner(chat_client=chat_client)
+    try:
+        draft = await asyncio.to_thread(source_path.read_text, encoding="utf-8")
+        cleaned = await asyncio.to_thread(cleaner.clean, draft)
+    except ChatCompletionError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Chat API failed: {exc}",
+        ) from exc
+    except (CleaningError, OSError, ValueError) as exc:
+        logger.exception("Cleaning failed for document %s", document_id)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    cleaned_path = source_path.parent / f"{source_path.stem}.clean.md"
+    await asyncio.to_thread(
+        cleaned_path.write_text, cleaned, encoding="utf-8"
+    )
+    return await sqlite.create_document(
+        document_id=uuid4().hex,
+        video_id=document["video_id"],
+        file_path=str(cleaned_path),
+    )
 
 
 @router.get("/{document_id}/chunks", response_model=list[ChunkPreview])

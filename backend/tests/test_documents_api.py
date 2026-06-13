@@ -136,3 +136,60 @@ async def test_delete_document_removes_record_and_points(client, tmp_path: Path)
 async def test_delete_missing_document_returns_404(client):
     test_client, _sqlite = client
     assert test_client.delete("/api/documents/missing").status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_clean_document_creates_cleaned_document(
+    client, tmp_path: Path, monkeypatch
+):
+    test_client, sqlite = client
+    await _seed_document(sqlite, tmp_path)
+
+    class FakeChatClient:
+        def complete(self, messages: list[dict]) -> str:
+            return "## 主题\n\n[00:01] 清洗后的第一行内容。\n"
+
+    monkeypatch.setattr(
+        documents, "build_chat_completion_client", lambda: FakeChatClient()
+    )
+
+    response = test_client.post("/api/documents/d1/clean")
+
+    assert response.status_code == 201
+    record = response.json()
+    assert record["id"] != "d1"
+    assert record["video_id"] == "v1"
+    assert record["file_path"].endswith("v1.clean.md")
+    assert record["is_indexed"] is False
+    cleaned_text = Path(record["file_path"]).read_text(encoding="utf-8")
+    assert "## 主题" in cleaned_text
+    assert cleaned_text.startswith("# 示例视频")
+    # Raw draft is untouched.
+    raw = Path((await sqlite.get_document("d1"))["file_path"])
+    assert "[00:01] 第一行内容" in raw.read_text(encoding="utf-8")
+
+
+@pytest.mark.asyncio
+async def test_clean_missing_document_returns_404(client):
+    test_client, _sqlite = client
+    assert test_client.post("/api/documents/missing/clean").status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_clean_document_file_missing_returns_500(
+    client, tmp_path: Path, monkeypatch
+):
+    test_client, sqlite = client
+    await _seed_document(sqlite, tmp_path)
+
+    class FakeChatClient:
+        def complete(self, messages: list[dict]) -> str:
+            return "## 主题\n\n[00:01] 内容。\n"
+
+    monkeypatch.setattr(
+        documents, "build_chat_completion_client", lambda: FakeChatClient()
+    )
+
+    (tmp_path / "v1.md").unlink()
+    response = test_client.post("/api/documents/d1/clean")
+    assert response.status_code == 500

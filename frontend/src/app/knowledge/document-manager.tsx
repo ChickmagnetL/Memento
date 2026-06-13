@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Database, Eye, Trash2 } from "lucide-react";
+import { Database, Eye, Sparkles, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
+  cleanDocument,
   deleteDocument,
   indexDocument,
   listDocuments,
@@ -68,6 +69,13 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
     });
   }
 
+  async function handleClean(documentId: string) {
+    await withBusy(documentId, async () => {
+      await cleanDocument(documentId);
+      await refresh();
+    });
+  }
+
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col gap-6 px-6 py-10">
       <header className="space-y-1">
@@ -112,6 +120,14 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
                   onClick={() => handlePreview(doc.id)}
                 >
                   <Eye className="mr-1 h-4 w-4" /> Preview
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={busyId === doc.id}
+                  onClick={() => handleClean(doc.id)}
+                >
+                  <Sparkles className="mr-1 h-4 w-4" /> Clean
                 </Button>
                 <Button
                   size="sm"

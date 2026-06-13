@@ -13,11 +13,11 @@ class EmbeddingError(Exception):
     pass
 
 
-def post_json(url: str, payload: dict, headers: dict) -> dict:
+def post_json(url: str, payload: dict, headers: dict, *, timeout: int = 30) -> dict:
     """POST a JSON payload and return the decoded JSON response."""
     body = json.dumps(payload).encode("utf-8")
     request = Request(url, data=body, headers=headers, method="POST")
-    with urlopen(request, timeout=30) as response:
+    with urlopen(request, timeout=timeout) as response:
         return json.loads(response.read().decode("utf-8"))
 
 

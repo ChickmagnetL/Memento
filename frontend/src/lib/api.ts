@@ -139,6 +139,19 @@ export async function deleteDocument(documentId: string): Promise<void> {
   }
 }
 
+export async function cleanDocument(
+  documentId: string
+): Promise<DocumentRecord> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/documents/${documentId}/clean`,
+    { method: "POST" }
+  );
+  if (!res.ok) {
+    throw new Error(`Clean document failed: ${res.status}`);
+  }
+  return res.json();
+}
+
 export interface ChatStreamHandlers {
   onDelta: (delta: string) => void;
   onDone: (sessionId: string) => void;
