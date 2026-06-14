@@ -87,15 +87,35 @@ def _check_asr_health(endpoint: str) -> str:
         return "unreachable"
 
 
+def _check_ollama_health(endpoint: str) -> str:
+    try:
+        with urlopen(f"{endpoint.rstrip('/')}/api/tags", timeout=3) as response:
+            response.read()
+        return "ok"
+    except OSError:
+        return "unreachable"
+
+
 @router.get("/status")
 async def get_service_status() -> dict:
     """Report per-service status without spending tokens."""
     models = get_settings().models
     asr_endpoint = models.asr.endpoint or "http://localhost:8001"
 
+    async def model_status(config) -> dict:
+        if config.provider == "ollama":
+            endpoint = config.endpoint or "http://localhost:11434"
+            health = await asyncio.to_thread(_check_ollama_health, endpoint)
+            return {"status": health, "endpoint": endpoint}
+        return {
+            "status": "configured"
+            if config.api_key and config.model
+            else "not_configured"
+        }
+
     asr_status = await asyncio.to_thread(_check_asr_health, asr_endpoint)
     return {
-        "chat": {"status": _configured(models.chat)},
-        "embedding": {"status": _configured(models.embedding)},
+        "chat": await model_status(models.chat),
+        "embedding": await model_status(models.embedding),
         "asr": {"status": asr_status, "endpoint": asr_endpoint},
     }

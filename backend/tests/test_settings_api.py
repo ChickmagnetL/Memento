@@ -106,6 +106,21 @@ class _FakeResponse:
         return self._body
 
 
+def test_status_ollama_provider_probes_endpoint(client, monkeypatch):
+    test_client, _config_path = client
+    test_client.put(
+        "/api/settings/models",
+        json={"embedding": {"provider": "ollama", "model": "qwen3-embedding:0.6b"}},
+    )
+    monkeypatch.setattr(
+        settings_api, "_check_ollama_health", lambda endpoint: "ok"
+    )
+
+    response = test_client.get("/api/settings/status")
+
+    assert response.json()["embedding"]["status"] == "ok"
+
+
 def test_asr_health_non_json_is_unreachable(monkeypatch):
     # A 200 /health response with a non-JSON body must not crash /status.
     monkeypatch.setattr(
