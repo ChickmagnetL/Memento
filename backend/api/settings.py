@@ -29,6 +29,17 @@ def _is_masked(api_key: str | None) -> bool:
     return bool(api_key) and api_key.endswith("***")
 
 
+def _configured(config) -> str:
+    """Configuration completeness for a model service. All providers need a
+    model; cloud/openai additionally need an api_key, while local/ollama need
+    an endpoint instead (they require no key)."""
+    if not config.model:
+        return "not_configured"
+    if config.provider in ("cloud", "openai"):
+        return "configured" if config.api_key else "not_configured"
+    return "configured" if config.endpoint else "not_configured"
+
+
 @router.get("/models")
 async def get_model_settings() -> dict:
     """Return model configs with masked API keys."""
@@ -71,7 +82,8 @@ def _check_asr_health(endpoint: str) -> str:
         with urlopen(f"{endpoint.rstrip('/')}/health", timeout=3) as response:
             body = json.loads(response.read().decode("utf-8"))
         return "ok" if body.get("status") == "ok" else "unreachable"
-    except OSError:
+    except (OSError, ValueError):
+        # OSError: connection failed. ValueError: non-JSON body (JSONDecodeError).
         return "unreachable"
 
 
@@ -81,16 +93,9 @@ async def get_service_status() -> dict:
     models = get_settings().models
     asr_endpoint = models.asr.endpoint or "http://localhost:8001"
 
-    def configured(config) -> str:
-        return (
-            "configured"
-            if config.api_key and config.model
-            else "not_configured"
-        )
-
     asr_status = await asyncio.to_thread(_check_asr_health, asr_endpoint)
     return {
-        "chat": {"status": configured(models.chat)},
-        "embedding": {"status": configured(models.embedding)},
+        "chat": {"status": _configured(models.chat)},
+        "embedding": {"status": _configured(models.embedding)},
         "asr": {"status": asr_status, "endpoint": asr_endpoint},
     }

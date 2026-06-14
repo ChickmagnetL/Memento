@@ -7,6 +7,7 @@ import yaml
 from fastapi.testclient import TestClient
 
 from api import settings as settings_api
+from config.settings import ModelConfig
 from main import app
 
 
@@ -69,3 +70,47 @@ def test_status_reports_configuration_state(client):
     assert set(status_map) == {"chat", "embedding", "asr"}
     assert status_map["asr"]["status"] in {"ok", "unreachable"}
     assert status_map["chat"]["status"] in {"configured", "not_configured"}
+
+
+def test_local_provider_configured_without_api_key():
+    # Local/ollama models need no api_key; endpoint + model is enough.
+    config = ModelConfig(
+        provider="ollama",
+        endpoint="http://localhost:11434",
+        model="qwen3-embedding:0.6b",
+    )
+    assert settings_api._configured(config) == "configured"
+
+
+def test_cloud_provider_not_configured_without_api_key():
+    config = ModelConfig(provider="cloud", model="deepseek-chat")
+    assert settings_api._configured(config) == "not_configured"
+
+
+def test_cloud_provider_configured_with_api_key():
+    config = ModelConfig(provider="cloud", api_key="sk-x", model="deepseek-chat")
+    assert settings_api._configured(config) == "configured"
+
+
+class _FakeResponse:
+    def __init__(self, body: bytes) -> None:
+        self._body = body
+
+    def __enter__(self) -> "_FakeResponse":
+        return self
+
+    def __exit__(self, *exc: object) -> bool:
+        return False
+
+    def read(self) -> bytes:
+        return self._body
+
+
+def test_asr_health_non_json_is_unreachable(monkeypatch):
+    # A 200 /health response with a non-JSON body must not crash /status.
+    monkeypatch.setattr(
+        settings_api,
+        "urlopen",
+        lambda *args, **kwargs: _FakeResponse(b"<html>not json</html>"),
+    )
+    assert settings_api._check_asr_health("http://localhost:8001") == "unreachable"
