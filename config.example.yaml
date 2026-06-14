@@ -12,12 +12,22 @@ models:
     endpoint: "https://api.deepseek.com/v1"
     api_key: "sk-your-api-key-here"
     model: "deepseek-chat"
+    # Local alternative:
+    # chat:
+    #   endpoint: "http://localhost:11434/v1"
+    #   api_key: "ollama"
+    #   model: "qwen3"
   embedding:
     provider: "cloud"
     # OpenAI-compatible base URL, e.g. https://api.siliconflow.cn/v1
     endpoint: "https://api.example.com/v1"
     api_key: "sk-your-api-key-here"
     model: "your-embedding-model"
+    # Local alternative:
+    # embedding:
+    #   provider: "ollama"
+    #   endpoint: "http://localhost:11434"
+    #   model: "qwen3-embedding:0.6b"   # 1024-dim -> set rag.vector_size: 1024
 
 video_processing:
   # Optional Bilibili cookie for AI subtitles. Prefer the environment variable

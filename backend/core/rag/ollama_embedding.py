@@ -13,7 +13,7 @@ class OllamaEmbeddingClient:
         *,
         endpoint: str | None,
         model: str | None,
-        post_json: Callable[..., dict] = default_post_json,
+        post_json: Callable[[str, dict, dict], dict] = default_post_json,
     ) -> None:
         if not model:
             raise EmbeddingError(

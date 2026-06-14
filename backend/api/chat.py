@@ -9,7 +9,11 @@ from fastapi.responses import StreamingResponse
 
 from config.settings import get_settings
 from core.agent.chat_agent import ChatDeps, build_agent
-from core.rag.embedding import CloudEmbeddingClient, EmbeddingError
+from core.models.factory import (
+    build_chat_model as factory_build_chat_model,
+    build_embedding_client,  # noqa: F401 - re-export for test monkeypatching
+)
+from core.rag.embedding import EmbeddingError
 from core.rag.retrieval import HybridRetriever
 from schemas.chat import ChatRequest
 
@@ -17,32 +21,14 @@ router = APIRouter(prefix="/api/chat", tags=["chat"])
 logger = logging.getLogger(__name__)
 
 
-def build_embedding_client() -> CloudEmbeddingClient:
-    """Build the embedding client from settings (overridable in tests)."""
-    embedding = get_settings().models.embedding
-    return CloudEmbeddingClient(
-        endpoint=embedding.endpoint,
-        api_key=embedding.api_key,
-        model=embedding.model,
-    )
-
-
 def build_chat_model():
-    """Build the chat model from settings (overridable in tests)."""
-    chat = get_settings().models.chat
-    if not chat.api_key or not chat.model:
+    """Build the chat model; raises HTTP 409 when unconfigured."""
+    try:
+        return factory_build_chat_model()
+    except ValueError as exc:
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Chat model is not configured (models.chat api_key/model)",
-        )
-    # OpenAI-compatible cloud endpoint (DeepSeek, SiliconFlow, ...).
-    from pydantic_ai.models.openai import OpenAIModel
-    from pydantic_ai.providers.openai import OpenAIProvider
-
-    return OpenAIModel(
-        chat.model,
-        provider=OpenAIProvider(base_url=chat.endpoint, api_key=chat.api_key),
-    )
+            status_code=status.HTTP_409_CONFLICT, detail=str(exc)
+        ) from exc
 
 
 def _sse(event: dict) -> str:

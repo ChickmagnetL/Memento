@@ -90,3 +90,34 @@ indexing are not part of Phase 2C.
 - `frontend/` - Next.js frontend application
 - `services/` - Independent model services (ASR, Ollama)
 - `data/` - User data storage (knowledge base, databases)
+
+## Ollama (Local Models)
+
+Set `provider: "ollama"` in `config.local.yaml` under `models.chat` and/or
+`models.embedding` to use local Ollama models instead of cloud APIs.
+
+Example `config.local.yaml`:
+
+```yaml
+models:
+  chat:
+    endpoint: "http://localhost:11434/v1"
+    api_key: "ollama"
+    model: "qwen3"
+  embedding:
+    provider: "ollama"
+    model: "qwen3-embedding:0.6b"
+```
+
+Pull the models first:
+
+```bash
+ollama pull qwen3
+ollama pull qwen3-embedding:0.6b
+```
+
+**Switching embedding models:** Different embedding models output different
+vector dimensions. When switching models, you MUST update `rag.vector_size` in
+`config.local.yaml` to match (e.g. `qwen3-embedding:0.6b` outputs 1024-dim
+vectors), then delete `data/qdrant/` and re-index all documents. Restart the
+backend after making these changes.

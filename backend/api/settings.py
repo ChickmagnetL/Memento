@@ -107,11 +107,7 @@ async def get_service_status() -> dict:
             endpoint = config.endpoint or "http://localhost:11434"
             health = await asyncio.to_thread(_check_ollama_health, endpoint)
             return {"status": health, "endpoint": endpoint}
-        return {
-            "status": "configured"
-            if config.api_key and config.model
-            else "not_configured"
-        }
+        return {"status": _configured(config)}
 
     asr_status = await asyncio.to_thread(_check_asr_health, asr_endpoint)
     return {

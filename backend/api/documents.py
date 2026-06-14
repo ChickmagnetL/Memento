@@ -13,8 +13,9 @@ from core.models.chat_completion import (
     ChatCompletionError,
     CloudChatCompletionClient,
 )
+from core.models.factory import build_embedding_client  # noqa: F401 - re-export for test monkeypatching
 from core.rag.chunking import chunk_markdown
-from core.rag.embedding import CloudEmbeddingClient, EmbeddingError, post_json
+from core.rag.embedding import EmbeddingError, post_json
 from core.rag.indexer import DocumentIndexer
 from core.video.cleaner import CleaningError, TranscriptCleaner
 from schemas.document import DocumentRecord
@@ -30,16 +31,6 @@ class ChunkPreview(BaseModel):
     title_path: str
     text: str
     start_timestamp: str | None
-
-
-def build_embedding_client() -> CloudEmbeddingClient:
-    """Build the embedding client from settings (overridable in tests)."""
-    embedding = get_settings().models.embedding
-    return CloudEmbeddingClient(
-        endpoint=embedding.endpoint,
-        api_key=embedding.api_key,
-        model=embedding.model,
-    )
 
 
 def build_chat_completion_client() -> CloudChatCompletionClient:

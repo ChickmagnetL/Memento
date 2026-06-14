@@ -3,21 +3,12 @@
 from fastapi import APIRouter, HTTPException, Request, status
 
 from config.settings import get_settings
-from core.rag.embedding import CloudEmbeddingClient, EmbeddingError
+from core.models.factory import build_embedding_client  # noqa: F401 - re-export for test monkeypatching
+from core.rag.embedding import EmbeddingError
 from core.rag.retrieval import HybridRetriever, SearchResult
 from schemas.search import SearchRequest
 
 router = APIRouter(prefix="/api/search", tags=["search"])
-
-
-def build_embedding_client() -> CloudEmbeddingClient:
-    """Build the embedding client from settings (overridable in tests)."""
-    embedding = get_settings().models.embedding
-    return CloudEmbeddingClient(
-        endpoint=embedding.endpoint,
-        api_key=embedding.api_key,
-        model=embedding.model,
-    )
 
 
 @router.post("", response_model=list[SearchResult])
