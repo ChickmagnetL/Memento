@@ -13,6 +13,7 @@ docs/
 #AI Engineer
 .claude
 .codex
+.agents
 
 # Python
 __pycache__/
