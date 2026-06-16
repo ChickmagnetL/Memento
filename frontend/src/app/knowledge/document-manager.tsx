@@ -121,6 +121,7 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
                 </Button>
                 <Button
                   size="sm"
+                  className="min-w-[90px]"
                   disabled={busyId === doc.id}
                   onClick={() => handleIndex(doc.id)}
                 >
