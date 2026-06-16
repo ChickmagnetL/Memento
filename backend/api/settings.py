@@ -3,6 +3,7 @@
 import asyncio
 import json
 from pathlib import Path
+from typing import Literal
 from urllib.request import urlopen
 
 from fastapi import APIRouter
@@ -115,3 +116,16 @@ async def get_service_status() -> dict:
         "embedding": await model_status(models.embedding),
         "asr": {"status": asr_status, "endpoint": asr_endpoint},
     }
+
+
+@router.get("/models/{name}/api_key")
+async def get_model_api_key(name: Literal["chat", "embedding", "asr"]) -> dict:
+    """Return the plaintext api_key for a single model service.
+
+    ``name`` must be one of ``chat``, ``embedding``, or ``asr``.
+    Returns a 422 via FastAPI's path-validation if the name doesn't match
+    the enum -- no custom error handling needed.
+    """
+    models = get_settings().models
+    config = getattr(models, name)
+    return {"api_key": config.api_key}

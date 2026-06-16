@@ -1,10 +1,11 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { Play, Plus } from "lucide-react";
-import Link from "next/link";
+import { Play, Plus, Database } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorBanner } from "@/components/ui/error-banner";
 import {
   createVideo,
   listVideos,
@@ -68,24 +69,11 @@ export function VideoIntake({ initialHealth, initialVideos }: VideoIntakeProps) 
   }
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col gap-6 px-6 py-10">
+    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-8 py-8">
       <header className="space-y-1">
-        <h1 className="text-2xl font-bold">Memento</h1>
+        <h1 className="text-xl font-semibold">Video Intake</h1>
         <p className="text-sm text-muted-foreground">
-          Backend health: <span className="font-mono">{initialHealth}</span>
-        </p>
-        <p className="text-sm text-muted-foreground">
-          <Link className="underline" href="/knowledge">
-            Knowledge Base →
-          </Link>{" "}
-          ·{" "}
-          <Link className="underline" href="/chat">
-            Chat →
-          </Link>
-          {" "}·{" "}
-          <Link className="underline" href="/settings">
-            Settings
-          </Link>
+          Backend: <span className="font-mono">{initialHealth}</span>
         </p>
       </header>
 
@@ -102,20 +90,20 @@ export function VideoIntake({ initialHealth, initialVideos }: VideoIntakeProps) 
         </Button>
       </form>
 
-      {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      {error ? <ErrorBanner message={error} /> : null}
 
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">Videos</h2>
         {videos.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No videos yet.</p>
+          <EmptyState icon={Database} title="No videos yet" description="Paste a Bilibili or Douyin URL above." />
         ) : (
           <ul className="space-y-3">
             {videos.map((video) => (
-              <li className="rounded-md border p-4" key={video.id}>
+              <li className="rounded-md border border-border p-4 transition-shadow hover:shadow-sm" key={video.id}>
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="font-medium">{video.title}</p>
                   <div className="flex items-center gap-2">
-                    <span className="rounded-md bg-secondary px-2 py-1 text-xs text-secondary-foreground">
+                    <span className="rounded-md bg-[var(--color-bg-hover)] px-2 py-1 text-xs text-secondary-foreground">
                       {video.status}
                     </span>
                     <Button
@@ -147,6 +135,6 @@ export function VideoIntake({ initialHealth, initialVideos }: VideoIntakeProps) 
           </ul>
         )}
       </section>
-    </main>
+    </div>
   );
 }

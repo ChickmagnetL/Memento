@@ -129,3 +129,45 @@ def test_asr_health_non_json_is_unreachable(monkeypatch):
         lambda *args, **kwargs: _FakeResponse(b"<html>not json</html>"),
     )
     assert settings_api._check_asr_health("http://localhost:8001") == "unreachable"
+
+
+def test_get_api_key_returns_plaintext(client, monkeypatch):
+    import config.settings as cs
+
+    test_client, config_path = client
+    test_client.put(
+        "/api/settings/models",
+        json={"chat": {"api_key": "sk-real-key-12345"}},
+    )
+
+    # Patch get_settings so the GET handler reads local config from tmp path
+    import yaml as _yaml
+
+    def _patched():
+        s = cs.Settings()
+        if config_path.exists():
+            data = _yaml.safe_load(config_path.read_text()) or {}
+            models_data = data.get("models", {})
+            if "chat" in models_data and "api_key" in models_data["chat"]:
+                s.models.chat.api_key = models_data["chat"]["api_key"]
+        return s
+
+    monkeypatch.setattr(settings_api, "get_settings", _patched)
+
+    response = test_client.get("/api/settings/models/chat/api_key")
+
+    assert response.status_code == 200
+    assert response.json() == {"api_key": "sk-real-key-12345"}
+
+
+def test_get_api_key_returns_none_when_not_set(client, monkeypatch):
+    import config.settings as cs
+
+    test_client, _config_path = client
+
+    monkeypatch.setattr(settings_api, "get_settings", lambda: cs.Settings())
+
+    response = test_client.get("/api/settings/models/chat/api_key")
+
+    assert response.status_code == 200
+    assert response.json() == {"api_key": None}

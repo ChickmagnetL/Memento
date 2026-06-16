@@ -274,3 +274,15 @@ export async function getServiceStatus(): Promise<
   }
   return res.json();
 }
+
+export async function fetchApiKey(modelName: string): Promise<string | null> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/settings/models/${modelName}/api_key`,
+    { cache: "no-store" }
+  );
+  if (!res.ok) {
+    throw new Error(`Fetch api_key failed: ${res.status}`);
+  }
+  const data = await res.json();
+  return data.api_key;
+}

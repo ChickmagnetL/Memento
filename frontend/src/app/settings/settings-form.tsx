@@ -1,13 +1,14 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import Link from "next/link";
+import { Eye, EyeOff } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
   getModelSettings,
   getServiceStatus,
   updateModelSettings,
+  fetchApiKey,
   type ModelConfig,
   type ModelsSettings,
   type ServiceStatus,
@@ -30,6 +31,8 @@ export function SettingsForm() {
   const [status, setStatus] = useState<Record<string, ServiceStatus>>({});
   const [message, setMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [visibleKeys, setVisibleKeys] = useState<Record<string, boolean>>({});
+  const [plainKeys, setPlainKeys] = useState<Record<string, string | null>>({});
 
   useEffect(() => {
     getModelSettings().then(setSettings).catch(() => setMessage("Load failed"));
@@ -42,6 +45,21 @@ export function SettingsForm() {
         ? { ...current, [name]: { ...current[name], [key]: value } }
         : current
     );
+  }
+
+  async function toggleApiKeyVisibility(name: string) {
+    const currentlyVisible = visibleKeys[name];
+    if (currentlyVisible) {
+      setVisibleKeys((prev) => ({ ...prev, [name]: false }));
+      return;
+    }
+    try {
+      const plain = await fetchApiKey(name);
+      setPlainKeys((prev) => ({ ...prev, [name]: plain }));
+      setVisibleKeys((prev) => ({ ...prev, [name]: true }));
+    } catch {
+      setMessage("Failed to fetch api_key.");
+    }
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -64,14 +82,9 @@ export function SettingsForm() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col gap-6 px-6 py-10">
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-10">
       <header className="space-y-1">
-        <h1 className="text-2xl font-bold">Settings</h1>
-        <p className="text-sm text-muted-foreground">
-          <Link className="underline" href="/">
-            ← Videos
-          </Link>
-        </p>
+        <h1 className="text-xl font-semibold">Settings</h1>
       </header>
 
       {message ? <p className="text-sm">{message}</p> : null}
@@ -90,17 +103,29 @@ export function SettingsForm() {
                 </span>
               </div>
               {FIELDS.map(({ key, label }) => (
-                <label key={key} className="block text-sm">
+                <label key={key} className="relative block text-sm">
                   <span className="mb-1 block text-muted-foreground">
                     {label}
                   </span>
-                  <input
-                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                    value={settings[name][key] ?? ""}
-                    onChange={(event) =>
-                      setField(name, key, event.target.value)
-                    }
-                  />
+                  <div className="relative">
+                    <input
+                      className="h-9 w-full rounded-md border border-input bg-background px-3 pr-9 text-sm"
+                      value={key === "api_key" && visibleKeys[name] ? (plainKeys[name] ?? settings[name][key] ?? "") : (settings[name][key] ?? "")}
+                      onChange={(event) => {
+                        setField(name, key, event.target.value);
+                      }}
+                    />
+                    {key === "api_key" && settings[name].api_key ? (
+                      <button
+                        type="button"
+                        onClick={() => toggleApiKeyVisibility(name)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        aria-label={visibleKeys[name] ? "Hide API key" : "Show API key"}
+                      >
+                        {visibleKeys[name] ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    ) : null}
+                  </div>
                 </label>
               ))}
             </section>
@@ -112,6 +137,6 @@ export function SettingsForm() {
       ) : (
         <p className="text-sm text-muted-foreground">Loading…</p>
       )}
-    </main>
+    </div>
   );
 }

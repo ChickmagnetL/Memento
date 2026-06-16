@@ -1,11 +1,12 @@
 "use client";
 
 import { FormEvent, useEffect, useRef, useState } from "react";
-import Link from "next/link";
-import { SendHorizontal } from "lucide-react";
+import { SendHorizontal, MessageSquare } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorBanner } from "@/components/ui/error-banner";
 import { sendChatMessage } from "@/lib/api";
 
 interface ChatMessage {
@@ -69,30 +70,18 @@ export function ChatPanel() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col px-6 py-10">
+    <div className="mx-auto flex h-full w-full max-w-4xl flex-col px-8 py-8">
       <header className="space-y-1 pb-6">
-        <h1 className="text-2xl font-bold">Chat</h1>
-        <p className="text-sm text-muted-foreground">
-          <Link className="underline" href="/">
-            ← Videos
-          </Link>{" "}
-          ·{" "}
-          <Link className="underline" href="/knowledge">
-            Knowledge Base
-          </Link>
-          {" "}·{" "}
-          <Link className="underline" href="/settings">
-            Settings
-          </Link>
-        </p>
+        <h1 className="text-xl font-semibold">Chat</h1>
       </header>
 
       <section className="flex flex-1 flex-col gap-4 overflow-y-auto pb-6">
         {messages.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            Ask about your indexed videos. Answers cite timestamps like
-            [02:35].
-          </p>
+          <EmptyState
+            icon={MessageSquare}
+            title="Ask about your indexed videos"
+            description="Answers cite timestamps like [02:35]."
+          />
         ) : (
           messages.map((message, index) => (
             <div
@@ -118,7 +107,7 @@ export function ChatPanel() {
         <div ref={scrollRef} />
       </section>
 
-      {error ? <p className="pb-2 text-sm text-destructive">{error}</p> : null}
+      {error ? <ErrorBanner message={error} /> : null}
 
       <form className="flex gap-3" onSubmit={handleSubmit}>
         <input
@@ -133,6 +122,6 @@ export function ChatPanel() {
           Send
         </Button>
       </form>
-    </main>
+    </div>
   );
 }

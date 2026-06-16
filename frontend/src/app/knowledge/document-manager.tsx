@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { Database, Eye, Sparkles, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorBanner } from "@/components/ui/error-banner";
 import {
   cleanDocument,
   deleteDocument,
@@ -77,36 +78,21 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col gap-6 px-6 py-10">
+    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-8 py-8">
       <header className="space-y-1">
-        <h1 className="text-2xl font-bold">Knowledge Base</h1>
-        <p className="text-sm text-muted-foreground">
-          <Link className="underline" href="/">
-            ← Videos
-          </Link>{" "}
-          ·{" "}
-          <Link className="underline" href="/chat">
-            Chat →
-          </Link>
-          {" "}·{" "}
-          <Link className="underline" href="/settings">
-            Settings
-          </Link>
-        </p>
+        <h1 className="text-xl font-semibold">Knowledge Base</h1>
       </header>
 
-      {error ? <p className="text-sm text-red-500">{error}</p> : null}
+      {error ? <ErrorBanner message={error} /> : null}
 
       <section className="space-y-3">
         {documents.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            No documents yet. Process a video first.
-          </p>
+          <EmptyState icon={Database} title="No documents yet" description="Process a video first." />
         ) : (
           documents.map((doc) => (
             <div
               key={doc.id}
-              className="flex flex-col gap-2 rounded-md border border-input p-4 sm:flex-row sm:items-center sm:justify-between"
+              className="flex flex-col gap-2 rounded-md border border-border p-4 sm:flex-row sm:items-center sm:justify-between"
             >
               <div className="min-w-0">
                 <p className="truncate font-mono text-sm">{doc.file_path}</p>
@@ -156,7 +142,7 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
       </section>
 
       {preview ? (
-        <section className="space-y-3 rounded-md border border-input p-4">
+        <section className="space-y-3 rounded-md border border-border p-4">
           <h2 className="text-lg font-semibold">
             Chunk preview ({preview.chunks.length})
           </h2>
@@ -174,6 +160,6 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
           ))}
         </section>
       ) : null}
-    </main>
+    </div>
   );
 }
