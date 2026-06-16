@@ -98,7 +98,8 @@ async def process_video(video_id: str, request: Request) -> dict:
         data_dir=data_dir,
         bilibili_cookie=settings.video_processing.bilibili_cookie,
         audio_downloader=AudioDownloader(
-            data_dir=data_dir, keep_videos=settings.storage.keep_videos
+            data_dir=data_dir, keep_videos=settings.storage.keep_videos,
+            cookie_str=settings.video_processing.bilibili_cookie,
         ),
         douyin_downloader=DouyinAudioDownloader(
             data_dir=data_dir,
