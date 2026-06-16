@@ -55,7 +55,7 @@ export function Sidebar({ health }: SidebarProps) {
       style={{ width }}
     >
       {/* Header */}
-      <div className="flex h-12 items-center gap-2 px-3 border-b border-border" style={{ WebkitAppRegion: "drag" } as React.CSSProperties}>
+      <div className="flex h-12 items-center gap-2 border-b border-border" style={{ paddingLeft: "78px", paddingRight: "12px", WebkitAppRegion: "drag" } as React.CSSProperties}>
         {!collapsed && (
           <span className="flex-1 text-sm font-semibold tracking-tight">
             Memento
