@@ -55,7 +55,7 @@ export function Sidebar({ health }: SidebarProps) {
       style={{ width }}
     >
       {/* Header */}
-      <div className="flex h-12 items-center gap-2 px-3 border-b border-border">
+      <div className="flex h-12 items-center gap-2 px-3 border-b border-border" style={{ WebkitAppRegion: "drag" } as React.CSSProperties}>
         {!collapsed && (
           <span className="flex-1 text-sm font-semibold tracking-tight">
             Memento
@@ -64,6 +64,7 @@ export function Sidebar({ health }: SidebarProps) {
         <button
           onClick={toggle}
           className="rounded-md p-1.5 text-muted-foreground hover:bg-[var(--color-bg-hover)] hover:text-[var(--color-text)] transition-colors"
+          style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
           {collapsed ? (

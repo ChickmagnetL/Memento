@@ -79,7 +79,7 @@ app.whenReady().then(async () => {
     app.quit();
     return;
   }
-  const window = new BrowserWindow({ width: 1280, height: 860 });
+  const window = new BrowserWindow({ width: 1280, height: 860, titleBarStyle: "hiddenInset" });
   window.loadURL(FRONTEND_URL);
 });
 
