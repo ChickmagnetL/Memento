@@ -12,7 +12,6 @@ import {
   processVideo,
   type VideoRecord,
 } from "@/lib/api";
-import { OnboardingChecklist } from "./onboarding-checklist";
 
 interface VideoIntakeProps {
   initialHealth: string;
@@ -77,11 +76,6 @@ export function VideoIntake({ initialHealth, initialVideos }: VideoIntakeProps) 
           Backend: <span className="font-mono">{initialHealth}</span>
         </p>
       </header>
-
-      <OnboardingChecklist
-        backendHealthy={initialHealth !== "unreachable"}
-        hasVideos={videos.some((video) => video.status === "completed")}
-      />
 
       <form className="flex flex-col gap-3 sm:flex-row" onSubmit={handleSubmit}>
         <input
