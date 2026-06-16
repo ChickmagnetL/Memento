@@ -40,7 +40,7 @@ export default async function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex bg-background text-foreground">
+      <body className="h-full flex bg-background text-foreground">
         <Sidebar health={health} />
         <main className="flex-1 overflow-y-auto">{children}</main>
       </body>
