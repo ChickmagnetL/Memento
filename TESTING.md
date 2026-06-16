@@ -135,3 +135,56 @@ it local and out of version control.
 7. Confirm Markdown draft exists under `~/memento_data/knowledge/bilibili/`.
 8. Submit or process a Douyin record.
 9. Confirm it becomes `failed` in Phase 2C.
+
+## MVP E2E 冒烟
+
+`scripts/e2e-mvp.sh` 是一个面向发布前验证的端到端冒烟脚本，它会针对
+**正在运行的整套栈** 完整跑通：导入视频 → 处理 → 生成文档 → 建索引 →
+检索 → 聊天 SSE。它不是 CI 用脚本，也不会被最终用户看到，仅供开发者在
+正式发布前手动执行。
+
+### 前置条件
+
+- 后端已启动并监听 `:8000`（`uvicorn main:app --port 8000`）。
+- 已配置可用的 chat 与 embedding 模型（真实大模型，非 stub）。
+- 本机已安装 `jq`。
+- 准备一个**带 CC 字幕**的 Bilibili 视频链接。如该视频依赖 AI 字幕，
+  请按 Phase 2C 章节设置 `VIDEO_PROCESSING__BILIBILI_COOKIE` 后重启后端。
+
+### 执行命令
+
+从项目根目录：
+
+```bash
+./scripts/e2e-mvp.sh "<bilibili-url-with-cc-subtitles>"
+```
+
+可通过环境变量覆盖后端地址，例如：
+
+```bash
+BASE_URL=http://localhost:8000 ./scripts/e2e-mvp.sh "<url>"
+```
+
+### 期望输出
+
+脚本依次打印每个步骤标题，并在最后输出：
+
+```
+==> ALL PASSED
+```
+
+任一步骤失败时脚本立即退出（`set -euo pipefail`），并打印
+`FAIL: ...` 行说明失败点（如 process status、no document、not indexed、
+no search hits、no done event、error event）。
+
+### 失败排查
+
+若脚本在 Health 之前或某一步骤失败，先确认模型与后端状态：
+
+```bash
+curl -sf http://localhost:8000/api/settings/status | jq .
+```
+
+该接口会汇报 chat / embedding 模型与后端整体健康情况，是定位
+“模型未配置 / 后端未就绪” 类问题的首要入口。随后可对照脚本中的步骤，
+单独重放对应的 `curl` 请求以缩小问题范围。
