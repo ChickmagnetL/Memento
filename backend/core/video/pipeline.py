@@ -1,6 +1,7 @@
 """Video processing pipeline."""
 
 import asyncio
+import logging
 from uuid import uuid4
 
 from pydantic import BaseModel
@@ -12,6 +13,8 @@ from core.video.douyin import DouyinError
 from core.video.language import detect_asr_language
 from core.video.markdown import MarkdownDraftWriter
 from schemas.video import VideoStatus
+
+logger = logging.getLogger(__name__)
 
 
 class VideoProcessingResult(BaseModel):
@@ -97,12 +100,22 @@ class VideoPipeline:
         wav_path = None
         try:
             wav_path = await asyncio.to_thread(downloader.download, video)
-            language = detect_asr_language(
-                video["title"], override=self.asr_language
+            logger.info(
+                "Downloaded audio for %s: %s (%s bytes)",
+                video["id"], wav_path, wav_path.stat().st_size,
             )
-            return await asyncio.to_thread(
+            language = detect_asr_language(
+                video["title"], override=self.asr_language,
+                platform=video.get("platform", ""),
+            )
+            result = await asyncio.to_thread(
                 self.asr_client.transcribe, str(wav_path), language=language
             )
+            logger.info("ASR returned %s segments for %s", len(result), video["id"])
+            return result
+        except Exception:
+            logger.exception("Transcribe fallback failed for %s, wav_path=%s", video["id"], wav_path)
+            raise
         finally:
             if wav_path is not None:
                 await asyncio.to_thread(downloader.cleanup, wav_path)

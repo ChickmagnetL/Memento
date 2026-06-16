@@ -33,8 +33,16 @@ class AsrServiceClient:
                 timeout=ASR_TIMEOUT_SECONDS,
             )
         except OSError as exc:
+            detail = str(exc)
+            # Try to read the response body from an HTTPError for more detail.
+            try:
+                if hasattr(exc, "read"):
+                    body = exc.read().decode("utf-8", errors="replace")[:500]
+                    detail = f"{exc} — body: {body}"
+            except Exception:
+                pass
             raise AsrError(
-                f"ASR service unreachable at {self.endpoint} "
+                f"ASR service unreachable at {self.endpoint}: {detail} "
                 "(start it: services/asr/README.md)"
             ) from exc
 
