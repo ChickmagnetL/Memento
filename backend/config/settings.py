@@ -14,12 +14,20 @@ Author: Memento Team
 Last Updated: 2026-06-07
 """
 
+import sys
 from pathlib import Path
 from typing import Any, Literal
 
 import yaml
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource
+
+
+def resolve_backend_dir() -> Path:
+    """Backend root: the PyInstaller bundle dir when frozen, else this package's parent."""
+    if getattr(sys, "frozen", False):
+        return Path(getattr(sys, "_MEIPASS"))
+    return Path(__file__).parent.parent
 
 
 def _load_yaml_data(config_path: Path | str) -> dict[str, Any]:
@@ -179,7 +187,7 @@ def get_settings() -> Settings:
     Returns:
         Settings instance
     """
-    backend_dir = Path(__file__).parent.parent
+    backend_dir = resolve_backend_dir()
     project_root = backend_dir.parent
 
     default_config = backend_dir / "config" / "default.yaml"
