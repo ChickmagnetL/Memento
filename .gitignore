@@ -27,6 +27,7 @@ venv/
 *.egg-info/
 dist/
 build/
+*.spec
 
 # Node
 node_modules/
