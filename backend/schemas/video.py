@@ -31,5 +31,6 @@ class VideoRecord(BaseModel):
     duration: int | None = None
     url: str
     status: VideoStatus
+    error_message: str | None = None
     created_at: str
     processed_at: str | None = None

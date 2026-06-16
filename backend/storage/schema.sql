@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS videos (
     duration INTEGER,                 -- Duration in seconds
     url TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'pending',  -- pending/processing/completed/failed
+    error_message TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     processed_at TIMESTAMP
 );

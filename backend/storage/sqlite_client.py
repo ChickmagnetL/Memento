@@ -99,7 +99,7 @@ class SQLiteClient:
         conn = self._require_conn()
         cursor = await conn.execute(
             """
-            SELECT id, platform, title, author, duration, url, status, created_at, processed_at
+            SELECT id, platform, title, author, duration, url, status, error_message, created_at, processed_at
             FROM videos
             ORDER BY created_at DESC, id DESC
             """
@@ -112,7 +112,7 @@ class SQLiteClient:
         conn = self._require_conn()
         cursor = await conn.execute(
             """
-            SELECT id, platform, title, author, duration, url, status, created_at, processed_at
+            SELECT id, platform, title, author, duration, url, status, error_message, created_at, processed_at
             FROM videos
             WHERE id = ?
             """,
@@ -121,7 +121,7 @@ class SQLiteClient:
         row = await cursor.fetchone()
         return self._row_to_dict(row) if row else None
 
-    async def update_video_status(self, video_id: str, status: str) -> dict | None:
+    async def update_video_status(self, video_id: str, status: str, error_message: str | None = None) -> dict | None:
         """Update a video status and return the updated record."""
         conn = self._require_conn()
         processed_at_sql = (
@@ -130,10 +130,10 @@ class SQLiteClient:
         await conn.execute(
             f"""
             UPDATE videos
-            SET status = ?{processed_at_sql}
+            SET status = ?{processed_at_sql}, error_message = ?
             WHERE id = ?
             """,
-            (status, video_id),
+            (status, error_message, video_id),
         )
         await conn.commit()
         return await self.get_video(video_id)

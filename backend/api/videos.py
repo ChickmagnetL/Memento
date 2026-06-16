@@ -112,10 +112,12 @@ async def process_video(video_id: str, request: Request) -> dict:
     try:
         result = await pipeline.process(processing_video)
         final_status = "completed" if result.status == "completed" else "failed"
+        error_message = result.error
     except Exception:
         logger.exception("Unexpected video pipeline exception for video %s", video_id)
         final_status = "failed"
-    final_video = await sqlite.update_video_status(video_id, final_status)
+        error_message = "Internal pipeline error"
+    final_video = await sqlite.update_video_status(video_id, final_status, error_message=error_message)
     if final_video is None:
         raise HTTPException(status_code=404, detail="Video not found")
     return final_video

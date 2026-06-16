@@ -188,7 +188,10 @@ class BilibiliSubtitleClient:
         pagelist = self.fetch_json(pagelist_url)
         data = pagelist.get("data") if isinstance(pagelist, dict) else None
         if not isinstance(data, list) or not data or not isinstance(data[0], dict):
-            raise BilibiliSubtitleError("Malformed Bilibili pagelist response")
+            api_code = pagelist.get("code") if isinstance(pagelist, dict) else None
+            api_msg = pagelist.get("message") if isinstance(pagelist, dict) else None
+            detail = f" (B站 code={api_code}, message={api_msg!r})" if api_code is not None else ""
+            raise BilibiliSubtitleError(f"Malformed Bilibili pagelist response{detail}")
         try:
             cid = data[0]["cid"]
         except (KeyError, TypeError, ValueError) as exc:
