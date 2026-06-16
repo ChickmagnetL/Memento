@@ -4,7 +4,14 @@ Video content to searchable knowledge base assistant.
 
 ## Quick Start
 
-### Backend
+### Prerequisites
+
+- Python 3.10+
+- Node 18+
+- [ffmpeg](https://ffmpeg.org) — required for audio extraction (`brew install ffmpeg` on macOS)
+- `jq` — optional, used by the smoke-test script
+
+### 1. Backend
 
 ```bash
 cd backend
@@ -16,7 +23,45 @@ uvicorn main:app --reload
 
 Audio extraction requires [ffmpeg](https://ffmpeg.org) (`brew install ffmpeg` on macOS).
 
-Run backend tests:
+### 2. Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Open http://localhost:3000 once both servers are running.
+
+### 3. ASR Service (optional)
+
+Only needed for videos that have no subtitles. See
+[`services/asr/README.md`](services/asr/README.md) for install and startup
+instructions. Videos with soft subtitles skip ASR entirely.
+
+### 4. Model Configuration
+
+Copy the example config and edit it:
+
+```bash
+cp config.example.yaml config.local.yaml
+```
+
+Configure both a **chat** model and an **embedding** model — both are required.
+Alternatively, use the in-app **Settings** page to configure them at runtime.
+See [Ollama (Local Models)](#ollama-local-models) below to use local models.
+
+### 5. First Video
+
+1. Open **Video Intake**, paste a Bilibili or Douyin URL, click *Add video*.
+2. Click *Process* to extract subtitles (or ASR-transcribe audio).
+3. Go to **Knowledge Base**, select the generated document, click *Index* to
+   vectorize it.
+4. Go to **Chat** and ask questions about the indexed content.
+
+### 6. Test & Smoke
+
+Backend tests:
 
 ```bash
 cd backend
@@ -25,26 +70,20 @@ pip install -r requirements-dev.txt
 pytest
 ```
 
-### Frontend
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-Run frontend lint:
+Frontend lint:
 
 ```bash
 cd frontend
 npm run lint
 ```
 
-Run the Phase 1 smoke test from the project root:
+Phase 1 smoke test from the project root:
 
 ```bash
 ./scripts/smoke-test.sh
 ```
+
+> Tip: an in-app tutorial is available at **Help** in the sidebar (or `/help`).
 
 ## Phase 2A: Video Intake
 

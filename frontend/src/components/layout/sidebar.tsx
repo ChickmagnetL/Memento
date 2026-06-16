@@ -8,6 +8,7 @@ import {
   Database,
   MessageSquare,
   Settings,
+  HelpCircle,
   PanelLeftClose,
   PanelLeft,
 } from "lucide-react";
@@ -30,6 +31,8 @@ export function Sidebar({ health }: SidebarProps) {
 
   useEffect(() => {
     const stored = localStorage.getItem("sidebar-collapsed");
+    // Persisted UI preference; must be read after mount to avoid SSR hydration mismatch.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (stored === "true") setCollapsed(true);
   }, []);
 
@@ -94,6 +97,28 @@ export function Sidebar({ health }: SidebarProps) {
             </Link>
           );
         })}
+        <div className="mx-2 my-2 border-t border-border" />
+        {(() => {
+          const helpHref = "/help";
+          const helpActive = pathname === helpHref;
+          return (
+            <Link
+              href={helpHref}
+              className={cn(
+                "flex items-center gap-3 mx-2 mb-0.5 rounded-md px-3 py-2 text-sm transition-colors",
+                helpActive
+                  ? "bg-[var(--color-bg-hover)] text-[var(--color-text)]"
+                  : "text-[var(--color-text-muted)] hover:bg-[var(--color-bg-hover)] hover:text-[var(--color-text)]"
+              )}
+            >
+              <HelpCircle
+                className="h-4 w-4 shrink-0"
+                strokeWidth={helpActive ? 2 : 1.5}
+              />
+              {!collapsed && <span>Help</span>}
+            </Link>
+          );
+        })()}
       </nav>
 
       {/* Health indicator */}
