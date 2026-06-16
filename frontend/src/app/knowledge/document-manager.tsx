@@ -106,6 +106,7 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
                 <Button
                   variant="outline"
                   size="sm"
+                  className="min-w-[100px]"
                   disabled={busyId === doc.id}
                   onClick={() => handlePreview(doc.id)}
                 >
@@ -114,6 +115,7 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
                 <Button
                   variant="outline"
                   size="sm"
+                  className="min-w-[100px]"
                   disabled={busyId === doc.id}
                   onClick={() => handleClean(doc.id)}
                 >
@@ -121,7 +123,7 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
                 </Button>
                 <Button
                   size="sm"
-                  className="min-w-[90px]"
+                  className="min-w-[100px]"
                   disabled={busyId === doc.id}
                   onClick={() => handleIndex(doc.id)}
                 >
@@ -131,6 +133,7 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
                 <Button
                   variant="outline"
                   size="sm"
+                  className="min-w-[100px]"
                   disabled={busyId === doc.id}
                   onClick={() => handleDelete(doc.id)}
                 >
