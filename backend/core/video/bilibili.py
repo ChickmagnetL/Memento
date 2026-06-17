@@ -17,6 +17,8 @@ USER_AGENT = (
     "Chrome/125.0.0.0 Safari/537.36"
 )
 
+PLAYER_SUBTITLE_RETRY_LIMIT = 5
+
 
 @dataclass(frozen=True)
 class SubtitleEntry:
@@ -71,6 +73,18 @@ def _normalize_subtitle_url(subtitle_url: str, error_message: str) -> str:
     return subtitle_url
 
 
+def _extract_prod_path_prefix(subtitle_url: str) -> str | None:
+    path = urlparse(subtitle_url).path
+    marker = "/prod/"
+    if marker not in path:
+        return None
+    suffix = path.split(marker, 1)[1]
+    if not suffix:
+        return None
+    prod_segment = suffix.split("/", 1)[0]
+    return prod_segment or None
+
+
 class BilibiliSubtitleClient:
     def __init__(
         self,
@@ -119,20 +133,23 @@ class BilibiliSubtitleClient:
             "https://api.bilibili.com/x/player/v2"
             f"?bvid={quoted_bvid}&cid={cid}"
         )
-        player = self.fetch_json(player_url, source_url, self.cookie or None)
-        if not isinstance(player, dict):
-            raise BilibiliSubtitleError("Malformed Bilibili player response")
-        data = player.get("data", {})
-        if not isinstance(data, dict):
-            raise BilibiliSubtitleError("Malformed Bilibili player response")
-        subtitle = data.get("subtitle", {})
-        if not isinstance(subtitle, dict):
-            raise BilibiliSubtitleError("Malformed Bilibili player response")
-        subtitles = subtitle.get("subtitles", [])
-        if not isinstance(subtitles, list):
-            raise BilibiliSubtitleError("Malformed Bilibili player response")
+        for _attempt in range(PLAYER_SUBTITLE_RETRY_LIMIT):
+            player = self.fetch_json(player_url, source_url, self.cookie or None)
+            if not isinstance(player, dict):
+                raise BilibiliSubtitleError("Malformed Bilibili player response")
+            data = player.get("data", {})
+            if not isinstance(data, dict):
+                raise BilibiliSubtitleError("Malformed Bilibili player response")
+            subtitle = data.get("subtitle", {})
+            if not isinstance(subtitle, dict):
+                raise BilibiliSubtitleError("Malformed Bilibili player response")
+            subtitles = subtitle.get("subtitles", [])
+            if not isinstance(subtitles, list):
+                raise BilibiliSubtitleError("Malformed Bilibili player response")
 
-        if subtitles:
+            if not subtitles:
+                return []
+
             first_subtitle = subtitles[0]
             if not isinstance(first_subtitle, dict):
                 raise BilibiliSubtitleError("Malformed Bilibili player response")
@@ -145,6 +162,27 @@ class BilibiliSubtitleClient:
                 subtitle_url,
                 "Malformed Bilibili player response",
             )
+
+            parsed_subtitle_url = urlparse(subtitle_url)
+            prod_path_prefix = _extract_prod_path_prefix(subtitle_url)
+            if (
+                parsed_subtitle_url.hostname == "aisubtitle.hdslb.com"
+                and prod_path_prefix is not None
+            ):
+                aid = data.get("aid")
+                if isinstance(aid, bool):
+                    raise BilibiliSubtitleError("Malformed Bilibili player response")
+                if isinstance(aid, int):
+                    if aid < 0:
+                        raise BilibiliSubtitleError("Malformed Bilibili player response")
+                    aid = str(aid)
+                elif not isinstance(aid, str) or not aid.isdigit():
+                    raise BilibiliSubtitleError("Malformed Bilibili player response")
+
+                expected_prefix = f"{aid}{cid}"
+                if not prod_path_prefix.startswith(expected_prefix):
+                    continue
+
             return self._fetch_subtitle_body(subtitle_url, source_url)
 
         logger.warning(
