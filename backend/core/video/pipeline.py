@@ -33,7 +33,7 @@ class VideoPipeline:
         data_dir,
         subtitle_client=None,
         draft_writer=None,
-        bilibili_cookie: str = "",
+        cookie: str = "",
         audio_downloader=None,
         douyin_downloader=None,
         asr_client=None,
@@ -41,7 +41,7 @@ class VideoPipeline:
     ) -> None:
         self.sqlite = sqlite
         self.subtitle_client = subtitle_client or BilibiliSubtitleClient(
-            bilibili_cookie=bilibili_cookie
+            cookie=cookie
         )
         self.draft_writer = draft_writer or MarkdownDraftWriter(data_dir)
         self.audio_downloader = audio_downloader
@@ -50,13 +50,23 @@ class VideoPipeline:
         self.asr_language = asr_language
 
     async def process(self, video: dict) -> VideoProcessingResult:
+        return await self._process(video, allow_asr_fallback=False)
+
+    async def process_with_asr(self, video: dict) -> VideoProcessingResult:
+        return await self._process(video, allow_asr_fallback=True)
+
+    async def _process(
+        self, video: dict, *, allow_asr_fallback: bool
+    ) -> VideoProcessingResult:
         try:
             if video["platform"] == "bilibili":
                 entries = await asyncio.to_thread(self.subtitle_client.fetch, video)
-                if not entries:
+                if not entries and allow_asr_fallback:
                     entries = await self._transcribe_fallback(video, self.audio_downloader)
                 if not entries:
-                    raise ValueError("No soft subtitles found")
+                    raise BilibiliSubtitleError(
+                        "No subtitles returned — Bilibili may require login cookie or ASR fallback"
+                    )
             elif video["platform"] == "douyin":
                 entries = await self._transcribe_fallback(video, self.douyin_downloader)
                 if not entries:

@@ -1,12 +1,15 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Play, Plus, Database } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorBanner } from "@/components/ui/error-banner";
+import { SubtitleDecisionDialog } from "@/components/ui/subtitle-decision-dialog";
 import {
+  checkSubtitles,
   createVideo,
   listVideos,
   processVideo,
@@ -19,6 +22,7 @@ interface VideoIntakeProps {
 }
 
 export function VideoIntake({ initialHealth, initialVideos }: VideoIntakeProps) {
+  const router = useRouter();
   const [url, setUrl] = useState("");
   const [videos, setVideos] = useState<VideoRecord[]>(initialVideos);
   const [error, setError] = useState("");
@@ -26,6 +30,11 @@ export function VideoIntake({ initialHealth, initialVideos }: VideoIntakeProps) 
   const [processingVideoId, setProcessingVideoId] = useState<string | null>(
     null
   );
+  const [checkingVideoId, setCheckingVideoId] = useState<string | null>(null);
+  const [pendingSubtitleDecision, setPendingSubtitleDecision] = useState<{
+    videoId: string;
+    title: string;
+  } | null>(null);
 
   async function refreshVideos() {
     const items = await listVideos();
@@ -54,17 +63,38 @@ export function VideoIntake({ initialHealth, initialVideos }: VideoIntakeProps) 
     }
   }
 
-  async function handleProcess(videoId: string) {
-    setError("");
+  async function runProcess(videoId: string, fallback?: "asr") {
     setProcessingVideoId(videoId);
-
     try {
-      await processVideo(videoId);
+      await processVideo(videoId, fallback);
       await refreshVideos();
     } catch {
       setError("Processing failed. Try again.");
     } finally {
       setProcessingVideoId(null);
+    }
+  }
+
+  async function handleProcess(video: VideoRecord) {
+    setError("");
+    setCheckingVideoId(video.id);
+
+    let hasSubtitles = true;
+    try {
+      const result = await checkSubtitles(video.id);
+      hasSubtitles = result.has_subtitles;
+    } catch {
+      setError("Failed to check subtitles. Try again.");
+      setCheckingVideoId(null);
+      return;
+    }
+
+    setCheckingVideoId(null);
+
+    if (hasSubtitles) {
+      await runProcess(video.id);
+    } else {
+      setPendingSubtitleDecision({ videoId: video.id, title: video.title });
     }
   }
 
@@ -92,6 +122,19 @@ export function VideoIntake({ initialHealth, initialVideos }: VideoIntakeProps) 
 
       {error ? <ErrorBanner message={error} /> : null}
 
+      {pendingSubtitleDecision ? (
+        <SubtitleDecisionDialog
+          videoTitle={pendingSubtitleDecision.title}
+          onCancel={() => setPendingSubtitleDecision(null)}
+          onUseAsr={() => {
+            const { videoId } = pendingSubtitleDecision;
+            setPendingSubtitleDecision(null);
+            void runProcess(videoId, "asr");
+          }}
+          onConfigureCookie={() => router.push("/settings")}
+        />
+      ) : null}
+
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">Videos</h2>
         {videos.length === 0 ? (
@@ -110,17 +153,21 @@ export function VideoIntake({ initialHealth, initialVideos }: VideoIntakeProps) 
                       className="min-w-28"
                       disabled={
                         video.status === "processing" ||
-                        processingVideoId !== null
+                        processingVideoId !== null ||
+                        checkingVideoId !== null ||
+                        pendingSubtitleDecision !== null
                       }
-                      onClick={() => handleProcess(video.id)}
+                      onClick={() => handleProcess(video)}
                       size="sm"
                       type="button"
                       variant="outline"
                     >
                       <Play />
-                      {processingVideoId === video.id
-                        ? "Processing..."
-                        : "Process"}
+                      {checkingVideoId === video.id
+                        ? "Checking..."
+                        : processingVideoId === video.id
+                          ? "Processing..."
+                          : "Process"}
                     </Button>
                   </div>
                 </div>

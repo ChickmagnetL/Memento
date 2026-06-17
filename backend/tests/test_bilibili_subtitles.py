@@ -1,7 +1,5 @@
 """Tests for the Bilibili soft subtitle client."""
 
-from urllib.parse import parse_qs, urlparse
-
 import pytest
 
 from core.video import bilibili
@@ -183,7 +181,7 @@ def test_fetch_subtitles_normalizes_body_entries(
     assert calls[2] == (expected_fetch_url, source_url)
 
 
-def test_fetch_subtitles_returns_empty_when_no_subtitle_list():
+def test_fetch_subtitles_returns_empty_when_player_has_no_subtitles():
     def fake_fetch_json(url: str, referer: str | None = None, cookie: str | None = None) -> dict:
         if url.startswith("https://api.bilibili.com/x/player/pagelist"):
             return {"data": [{"cid": 456}]}
@@ -194,161 +192,6 @@ def test_fetch_subtitles_returns_empty_when_no_subtitle_list():
     client = BilibiliSubtitleClient(fetch_json=fake_fetch_json)
 
     assert client.fetch({"url": "https://www.bilibili.com/video/BV1abcDEF234"}) == []
-
-
-def _length_delimited_field(field_number: int, value: bytes) -> bytes:
-    return bytes([(field_number << 3) | 2, len(value)]) + value
-
-
-def test_fetch_subtitles_uses_ai_fallback_when_player_subtitles_empty_with_cookie():
-    source_url = "https://www.bilibili.com/video/BV1ag411V7nY/"
-    cid = "403331603"
-    aid = 505309047
-    cookie = "SESSDATA=explicit"
-    subtitle_url = b"//subtitle.bilibili.com/subtitle.json?auth_key=test"
-    fetch_json_calls = []
-    fetch_bytes_calls = []
-
-    def fake_fetch_json(url: str, referer: str | None = None, cookie: str | None = None) -> dict:
-        fetch_json_calls.append((url, referer))
-        if url.startswith("https://api.bilibili.com/x/player/pagelist"):
-            return {"data": [{"cid": cid}]}
-        if url.startswith("https://api.bilibili.com/x/player/v2"):
-            return {"data": {"subtitle": {"subtitles": []}}}
-        if url.startswith("https://api.bilibili.com/x/web-interface/view"):
-            return {"data": {"aid": aid}}
-        if url == "https://subtitle.bilibili.com/subtitle.json?auth_key=test":
-            return {"body": [{"from": 1.25, "content": " AI subtitle "}]}
-        raise AssertionError(f"unexpected URL: {url}")
-
-    def fake_fetch_bytes(
-        url: str,
-        referer: str | None = None,
-        cookie: str | None = None,
-    ) -> bytes:
-        fetch_bytes_calls.append((url, referer, cookie))
-        return _length_delimited_field(1, subtitle_url)
-
-    client = BilibiliSubtitleClient(
-        fetch_json=fake_fetch_json,
-        fetch_bytes=fake_fetch_bytes,
-        bilibili_cookie=cookie,
-    )
-
-    entries = client.fetch({"url": source_url})
-
-    assert entries == [SubtitleEntry(start_seconds=1.25, text="AI subtitle")]
-    assert any(
-        url.endswith("/x/web-interface/view?bvid=BV1ag411V7nY")
-        for url, _referer in fetch_json_calls
-    )
-    assert len(fetch_bytes_calls) == 1
-    ai_url, ai_referer, ai_cookie = fetch_bytes_calls[0]
-    assert ai_referer == source_url
-    assert ai_cookie == cookie
-    parsed_ai_url = urlparse(ai_url)
-    query = parse_qs(parsed_ai_url.query)
-    assert parsed_ai_url.path == "/x/v2/subtitle/web/view"
-    assert query["oid"] == [cid]
-    assert query["pid"] == [str(aid)]
-    assert query["type"] == ["1"]
-    assert query["preferred_language"] == ["ai-zh"]
-
-
-def test_fetch_subtitles_skips_ai_fallback_when_player_subtitles_empty_without_cookie():
-    fetch_json_calls = []
-
-    def fake_fetch_json(url: str, referer: str | None = None, cookie: str | None = None) -> dict:
-        fetch_json_calls.append((url, referer))
-        if url.startswith("https://api.bilibili.com/x/player/pagelist"):
-            return {"data": [{"cid": 456}]}
-        if url.startswith("https://api.bilibili.com/x/player/v2"):
-            return {"data": {"subtitle": {"subtitles": []}}}
-        raise AssertionError(f"unexpected fallback request: {url}")
-
-    def fake_fetch_bytes(
-        url: str,
-        referer: str | None = None,
-        cookie: str | None = None,
-    ) -> bytes:
-        raise AssertionError(f"unexpected AI subtitle request: {url}")
-
-    client = BilibiliSubtitleClient(
-        fetch_json=fake_fetch_json,
-        fetch_bytes=fake_fetch_bytes,
-    )
-
-    assert client.fetch({"url": "https://www.bilibili.com/video/BV1abcDEF234"}) == []
-    assert len(fetch_json_calls) == 2
-
-
-def test_fetch_subtitles_returns_empty_when_ai_fallback_has_no_usable_url():
-    def fake_fetch_json(url: str, referer: str | None = None, cookie: str | None = None) -> dict:
-        if url.startswith("https://api.bilibili.com/x/player/pagelist"):
-            return {"data": [{"cid": 456}]}
-        if url.startswith("https://api.bilibili.com/x/player/v2"):
-            return {"data": {"subtitle": {"subtitles": []}}}
-        if url.startswith("https://api.bilibili.com/x/web-interface/view"):
-            return {"data": {"aid": 123}}
-        raise AssertionError(f"unexpected URL: {url}")
-
-    def fake_fetch_bytes(
-        url: str,
-        referer: str | None = None,
-        cookie: str | None = None,
-    ) -> bytes:
-        return _length_delimited_field(1, b"not a subtitle url")
-
-    client = BilibiliSubtitleClient(
-        fetch_json=fake_fetch_json,
-        fetch_bytes=fake_fetch_bytes,
-        bilibili_cookie="SESSDATA=explicit",
-    )
-
-    assert client.fetch({"url": "https://www.bilibili.com/video/BV1abcDEF234"}) == []
-
-
-@pytest.mark.parametrize(
-    "payload",
-    [
-        b"",
-        b"\x0a\x20//subtitle.bilibili.com/sub",
-    ],
-    ids=["empty-payload", "truncated-protobuf"],
-)
-def test_fetch_subtitles_returns_empty_when_ai_fallback_payload_has_no_usable_url(
-    payload,
-):
-    fetch_json_calls = []
-    fetch_bytes_calls = []
-
-    def fake_fetch_json(url: str, referer: str | None = None, cookie: str | None = None) -> dict:
-        fetch_json_calls.append((url, referer))
-        if url.startswith("https://api.bilibili.com/x/player/pagelist"):
-            return {"data": [{"cid": 456}]}
-        if url.startswith("https://api.bilibili.com/x/player/v2"):
-            return {"data": {"subtitle": {"subtitles": []}}}
-        if url.startswith("https://api.bilibili.com/x/web-interface/view"):
-            return {"data": {"aid": 123}}
-        raise AssertionError(f"unexpected subtitle body fetch: {url}")
-
-    def fake_fetch_bytes(
-        url: str,
-        referer: str | None = None,
-        cookie: str | None = None,
-    ) -> bytes:
-        fetch_bytes_calls.append((url, referer, cookie))
-        return payload
-
-    client = BilibiliSubtitleClient(
-        fetch_json=fake_fetch_json,
-        fetch_bytes=fake_fetch_bytes,
-        bilibili_cookie="SESSDATA=explicit",
-    )
-
-    assert client.fetch({"url": "https://www.bilibili.com/video/BV1abcDEF234"}) == []
-    assert len(fetch_json_calls) == 3
-    assert len(fetch_bytes_calls) == 1
 
 
 def test_fetch_subtitles_returns_empty_when_first_subtitle_url_missing():
@@ -546,7 +389,7 @@ def test_fetch_subtitles_returns_empty_when_subtitle_body_missing():
     assert client.fetch({"url": "https://www.bilibili.com/video/BV1abcDEF234"}) == []
 
 
-def test_fetch_passes_bilibili_cookie_to_player_v2():
+def test_fetch_passes_cookie_to_player_v2():
     calls = []
 
     def fake_fetch_json(url: str, referer: str | None = None, cookie: str | None = None) -> dict:
@@ -564,19 +407,13 @@ def test_fetch_passes_bilibili_cookie_to_player_v2():
                     }
                 },
             }
-        if "/x/web-interface/view" in url:
-            return {"data": {"aid": 123}}
         if "subtitle.example.com" in url:
             return {"body": [{"from": 1.0, "content": "test"}]}
         raise AssertionError(f"Unexpected URL: {url}")
 
-    def fake_fetch_bytes(url: str, referer: str | None = None, cookie: str | None = None) -> bytes:
-        return b""  # empty protobuf → no AI subtitle URL found
-
     client = BilibiliSubtitleClient(
         fetch_json=fake_fetch_json,
-        fetch_bytes=fake_fetch_bytes,
-        bilibili_cookie="test_cookie_value",
+        cookie="test_cookie_value",
     )
     entries = client.fetch({"url": "https://www.bilibili.com/video/BV1abcDEF234"})
 

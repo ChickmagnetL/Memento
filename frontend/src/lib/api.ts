@@ -68,12 +68,34 @@ export async function createVideo(
   return res.json();
 }
 
-export async function processVideo(videoId: string): Promise<VideoRecord> {
-  const res = await fetch(`${API_BASE_URL}/api/videos/${videoId}/process`, {
+export async function processVideo(
+  videoId: string,
+  fallback?: "asr"
+): Promise<VideoRecord> {
+  const qs = fallback ? `?subtitle_fallback=${fallback}` : "";
+  const res = await fetch(`${API_BASE_URL}/api/videos/${videoId}/process${qs}`, {
     method: "POST",
   });
   if (!res.ok) {
     throw new Error(`Process video failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+export interface SubtitleCheckResult {
+  has_subtitles: boolean;
+  platform: string;
+}
+
+export async function checkSubtitles(
+  videoId: string
+): Promise<SubtitleCheckResult> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/videos/${videoId}/check-subtitles`,
+    { cache: "no-store" }
+  );
+  if (!res.ok) {
+    throw new Error(`Check subtitles failed: ${res.status}`);
   }
   return res.json();
 }

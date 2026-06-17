@@ -1,14 +1,17 @@
 """Video record API endpoints."""
 
+import asyncio
 import logging
+from typing import Literal
 from urllib.parse import urlparse
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, HTTPException, Query, Request, status
 
 from config.settings import get_settings
 from core.video.asr_client import AsrServiceClient
 from core.video.audio import AudioDownloader
+from core.video.bilibili import BilibiliSubtitleClient, BilibiliSubtitleError
 from core.video.douyin import DouyinAudioDownloader
 from core.video.pipeline import VideoPipeline
 from schemas.video import VideoCreateRequest, VideoRecord, VideoStatusUpdateRequest
@@ -70,7 +73,11 @@ async def get_video(video_id: str, request: Request) -> dict:
 
 
 @router.post("/{video_id}/process", response_model=VideoRecord)
-async def process_video(video_id: str, request: Request) -> dict:
+async def process_video(
+    video_id: str,
+    request: Request,
+    subtitle_fallback: Literal["asr"] | None = Query(default=None),
+) -> dict:
     """Trigger skeleton processing for a video record."""
     sqlite = get_sqlite(request)
     processing_video = await sqlite.claim_video_for_processing(video_id)
@@ -96,7 +103,7 @@ async def process_video(video_id: str, request: Request) -> dict:
     pipeline = VideoPipeline(
         sqlite=sqlite,
         data_dir=data_dir,
-        bilibili_cookie=settings.video_processing.bilibili_cookie,
+        cookie=settings.video_processing.bilibili_cookie,
         audio_downloader=AudioDownloader(
             data_dir=data_dir, keep_videos=settings.storage.keep_videos,
             cookie_str=settings.video_processing.bilibili_cookie,
@@ -111,7 +118,10 @@ async def process_video(video_id: str, request: Request) -> dict:
         asr_language=settings.video_processing.asr_language,
     )
     try:
-        result = await pipeline.process(processing_video)
+        if subtitle_fallback == "asr":
+            result = await pipeline.process_with_asr(processing_video)
+        else:
+            result = await pipeline.process(processing_video)
         final_status = "completed" if result.status == "completed" else "failed"
         error_message = result.error
     except Exception:
@@ -122,6 +132,29 @@ async def process_video(video_id: str, request: Request) -> dict:
     if final_video is None:
         raise HTTPException(status_code=404, detail="Video not found")
     return final_video
+
+
+@router.get("/{video_id}/check-subtitles")
+async def check_subtitles(video_id: str, request: Request) -> dict:
+    """Pre-check subtitle availability for a video before processing."""
+    sqlite = get_sqlite(request)
+    video = await sqlite.get_video(video_id)
+    if video is None:
+        raise HTTPException(status_code=404, detail="Video not found")
+    platform = video.get("platform")
+    if platform != "bilibili":
+        return {"has_subtitles": True, "platform": platform}
+    settings = get_settings()
+    client = BilibiliSubtitleClient(cookie=settings.video_processing.bilibili_cookie)
+    try:
+        entries = await asyncio.to_thread(client.fetch, video)
+        has_subtitles = bool(entries)
+    except (BilibiliSubtitleError, OSError) as exc:
+        logger.info(
+            "check-subtitles: subtitle fetch failed for %s: %s", video_id, exc
+        )
+        has_subtitles = False
+    return {"has_subtitles": has_subtitles, "platform": "bilibili"}
 
 
 @router.patch("/{video_id}/status", response_model=VideoRecord)

@@ -7,6 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from api import videos
+from core.video.bilibili import BilibiliSubtitleClient, BilibiliSubtitleError
 from core.video.pipeline import VideoPipeline, VideoProcessingResult
 from main import app
 from storage.sqlite_client import SQLiteClient
@@ -128,7 +129,7 @@ def test_process_pending_video_completes_record(client: TestClient, monkeypatch)
     assert seen_statuses == ["processing"]
 
 
-def test_process_video_passes_configured_bilibili_cookie_to_pipeline(
+def test_process_video_passes_configured_cookie_to_pipeline(
     client: TestClient,
     monkeypatch,
     tmp_path: Path,
@@ -146,8 +147,8 @@ def test_process_video_passes_configured_bilibili_cookie_to_pipeline(
             models=SimpleNamespace(asr=SimpleNamespace(endpoint=None)),
         )
 
-    def pipeline_init_spy(self, *, sqlite, data_dir, bilibili_cookie="", **kwargs):
-        seen_cookies.append(bilibili_cookie)
+    def pipeline_init_spy(self, *, sqlite, data_dir, cookie="", **kwargs):
+        seen_cookies.append(cookie)
 
     async def process_spy(self, video: dict) -> VideoProcessingResult:
         return VideoProcessingResult(video_id=video["id"], status="completed")
@@ -279,3 +280,52 @@ def test_process_pipeline_exception_marks_video_failed(client: TestClient, monke
     stored = client.get(f"/api/videos/{created['id']}")
     assert stored.status_code == 200
     assert stored.json()["status"] == "failed"
+
+
+def test_check_subtitles_returns_false_for_bilibili_without_cookie(
+    client: TestClient, monkeypatch
+):
+    created = _create_video(client)
+
+    def fake_fetch(self, video):
+        return []
+
+    monkeypatch.setattr(BilibiliSubtitleClient, "fetch", fake_fetch)
+
+    resp = client.get(f"/api/videos/{created['id']}/check-subtitles")
+
+    assert resp.status_code == 200
+    assert resp.json() == {"has_subtitles": False, "platform": "bilibili"}
+
+
+def test_check_subtitles_true_for_non_bilibili(client: TestClient):
+    created = client.post(
+        "/api/videos",
+        json={"url": "https://www.douyin.com/video/1234567890"},
+    ).json()
+
+    resp = client.get(f"/api/videos/{created['id']}/check-subtitles")
+
+    assert resp.status_code == 200
+    assert resp.json() == {"has_subtitles": True, "platform": "douyin"}
+
+
+@pytest.mark.parametrize(
+    "exc",
+    [BilibiliSubtitleError("malformed"), OSError("network down")],
+    ids=["subtitle-error", "network-error"],
+)
+def test_check_subtitles_returns_false_when_fetch_fails(
+    client: TestClient, monkeypatch, exc
+):
+    created = _create_video(client)
+
+    def fake_fetch(self, video):
+        raise exc
+
+    monkeypatch.setattr(BilibiliSubtitleClient, "fetch", fake_fetch)
+
+    resp = client.get(f"/api/videos/{created['id']}/check-subtitles")
+
+    assert resp.status_code == 200
+    assert resp.json() == {"has_subtitles": False, "platform": "bilibili"}
