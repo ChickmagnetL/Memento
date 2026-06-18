@@ -2,6 +2,7 @@
 
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import Mock
 
 import pytest
 from fastapi.testclient import TestClient
@@ -26,6 +27,7 @@ async def sqlite(tmp_path: Path):
 @pytest.fixture
 def client(sqlite: SQLiteClient):
     app.state.sqlite = sqlite
+    app.state.qdrant = SimpleNamespace(delete_for_document=lambda document_id: None)
     return TestClient(app)
 
 
@@ -224,9 +226,150 @@ def test_process_video_does_not_run_pipeline_when_claim_fails(
     assert process_called is False
 
 
-def test_process_completed_video_keeps_completed_status(client: TestClient, monkeypatch):
+def test_process_completed_video_reprocesses_and_keeps_completed_status(
+    client: TestClient,
+    sqlite: SQLiteClient,
+    monkeypatch,
+    tmp_path: Path,
+):
     created = _create_video(client)
-    completed = _set_video_status(client, created["id"], "completed")
+    _set_video_status(client, created["id"], "completed")
+    canonical_path = tmp_path / "knowledge" / "bilibili" / f"{created['id']}.md"
+    canonical_path.parent.mkdir(parents=True, exist_ok=True)
+    canonical_path.write_text("# draft\n", encoding="utf-8")
+    cleaned_path = canonical_path.parent / f"{created['id']}.clean.md"
+    cleaned_path.write_text("# cleaned\n", encoding="utf-8")
+
+    async def seed_documents() -> None:
+        await sqlite.create_document(
+            document_id="raw-doc",
+            video_id=created["id"],
+            file_path=str(canonical_path),
+            chunk_count=3,
+            is_indexed=True,
+        )
+        await sqlite.mark_document_indexed("raw-doc", chunk_count=3)
+        await sqlite.create_document(
+            document_id="clean-doc",
+            video_id=created["id"],
+            file_path=str(cleaned_path),
+            chunk_count=7,
+            is_indexed=True,
+        )
+        await sqlite.mark_document_indexed("clean-doc", chunk_count=7)
+
+    import asyncio
+
+    asyncio.run(seed_documents())
+
+    monkeypatch.setattr(
+        videos,
+        "get_settings",
+        lambda: SimpleNamespace(
+            storage=SimpleNamespace(data_dir=tmp_path, keep_videos=False),
+            video_processing=SimpleNamespace(
+                bilibili_cookie="",
+                douyin_cookie="",
+                douyin_fetcher_endpoint="http://localhost:8002",
+            ),
+            models=SimpleNamespace(
+                asr=SimpleNamespace(endpoint=None, model="iic/SenseVoiceSmall")
+            ),
+        ),
+    )
+    delete_mock = Mock()
+    monkeypatch.setattr(app.state.qdrant, "delete_for_document", delete_mock)
+    seen_statuses = []
+
+    async def process_spy(self, video: dict) -> VideoProcessingResult:
+        seen_statuses.append(video["status"])
+        return VideoProcessingResult(video_id=video["id"], status="completed")
+
+    monkeypatch.setattr(VideoPipeline, "process", process_spy)
+
+    resp = client.post(f"/api/videos/{created['id']}/process")
+
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "completed"
+    assert seen_statuses == ["processing"]
+    delete_mock.assert_called_once_with("raw-doc")
+
+    raw_document = asyncio.run(sqlite.get_document("raw-doc"))
+    assert raw_document is not None
+    assert raw_document["chunk_count"] == 0
+    assert raw_document["is_indexed"] == 0
+    assert raw_document["indexed_at"] is None
+
+    clean_document = asyncio.run(sqlite.get_document("clean-doc"))
+    assert clean_document is not None
+    assert clean_document["chunk_count"] == 7
+    assert clean_document["is_indexed"] == 1
+    assert clean_document["indexed_at"] is not None
+
+
+def test_process_completed_video_without_canonical_document_does_not_fail(
+    client: TestClient,
+    monkeypatch,
+):
+    created = _create_video(client)
+    _set_video_status(client, created["id"], "completed")
+
+    async def process_spy(self, video: dict) -> VideoProcessingResult:
+        return VideoProcessingResult(video_id=video["id"], status="completed")
+
+    monkeypatch.setattr(VideoPipeline, "process", process_spy)
+
+    resp = client.post(f"/api/videos/{created['id']}/process")
+
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "completed"
+
+
+def test_process_completed_video_reset_failure_restores_completed_status(
+    client: TestClient,
+    sqlite: SQLiteClient,
+    monkeypatch,
+    tmp_path: Path,
+):
+    created = _create_video(client)
+    _set_video_status(client, created["id"], "completed")
+    canonical_path = tmp_path / "knowledge" / "bilibili" / f"{created['id']}.md"
+    canonical_path.parent.mkdir(parents=True, exist_ok=True)
+    canonical_path.write_text("# draft\n", encoding="utf-8")
+
+    import asyncio
+
+    asyncio.run(
+        sqlite.create_document(
+            document_id="raw-doc",
+            video_id=created["id"],
+            file_path=str(canonical_path),
+            chunk_count=3,
+            is_indexed=True,
+        )
+    )
+    asyncio.run(sqlite.mark_document_indexed("raw-doc", chunk_count=3))
+
+    monkeypatch.setattr(
+        videos,
+        "get_settings",
+        lambda: SimpleNamespace(
+            storage=SimpleNamespace(data_dir=tmp_path, keep_videos=False),
+            video_processing=SimpleNamespace(
+                bilibili_cookie="",
+                douyin_cookie="",
+                douyin_fetcher_endpoint="http://localhost:8002",
+            ),
+            models=SimpleNamespace(
+                asr=SimpleNamespace(endpoint=None, model="iic/SenseVoiceSmall")
+            ),
+        ),
+    )
+
+    def delete_raises(document_id: str) -> None:
+        raise RuntimeError("qdrant delete failed")
+
+    monkeypatch.setattr(app.state.qdrant, "delete_for_document", delete_raises)
     process_called = False
 
     async def process_spy(self, video: dict) -> VideoProcessingResult:
@@ -238,9 +381,11 @@ def test_process_completed_video_keeps_completed_status(client: TestClient, monk
 
     resp = client.post(f"/api/videos/{created['id']}/process")
 
-    assert resp.status_code == 200
-    assert resp.json() == completed
+    assert resp.status_code == 500
     assert process_called is False
+    current = asyncio.run(sqlite.get_video(created["id"]))
+    assert current is not None
+    assert current["status"] == "completed"
 
 
 def test_process_failed_video_completes_record(client: TestClient, monkeypatch):

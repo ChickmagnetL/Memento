@@ -20,11 +20,15 @@ class MarkdownDraftWriter:
     def __init__(self, data_dir) -> None:
         self.data_dir = Path(data_dir).expanduser()
 
+    def path_for(self, video: dict) -> Path:
+        """Return the canonical raw transcript path for a video."""
+        return self.data_dir / "knowledge" / video["platform"] / f"{video['id']}.md"
+
     def write(self, video: dict, entries: list[SubtitleEntry]) -> Path:
         if not entries:
             raise ValueError("empty transcript")
 
-        path = self.data_dir / "knowledge" / video["platform"] / f"{video['id']}.md"
+        path = self.path_for(video)
         path.parent.mkdir(parents=True, exist_ok=True)
 
         transcript_lines = [

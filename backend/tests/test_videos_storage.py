@@ -110,7 +110,23 @@ async def test_claim_video_for_processing_from_failed(sqlite: SQLiteClient):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("video_status", ["processing", "completed"])
+async def test_claim_video_for_processing_from_completed(sqlite: SQLiteClient):
+    await sqlite.create_video(
+        video_id="video-1",
+        platform="bilibili",
+        title="Example video",
+        url="https://www.bilibili.com/video/BV123",
+    )
+    await sqlite.update_video_status("video-1", "completed")
+
+    claimed = await sqlite.claim_video_for_processing("video-1")
+
+    assert claimed is not None
+    assert claimed["status"] == "processing"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("video_status", ["processing"])
 async def test_claim_video_for_processing_rejects_unclaimable_status(
     sqlite: SQLiteClient,
     video_status: str,

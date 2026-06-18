@@ -81,12 +81,18 @@ class VideoPipeline:
                 video,
                 entries,
             )
-            document_id = uuid4().hex
-            await self.sqlite.create_document(
-                document_id=document_id,
-                video_id=video["id"],
-                file_path=str(document_path),
+            document = await self.sqlite.get_document_by_video_and_path(
+                video["id"], str(document_path)
             )
+            if document is None:
+                document_id = uuid4().hex
+                await self.sqlite.create_document(
+                    document_id=document_id,
+                    video_id=video["id"],
+                    file_path=str(document_path),
+                )
+            else:
+                document_id = document["id"]
 
             return VideoProcessingResult(
                 video_id=video["id"],

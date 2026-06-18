@@ -77,6 +77,12 @@ export function VideoIntake({ initialHealth, initialVideos }: VideoIntakeProps) 
 
   async function handleProcess(video: VideoRecord) {
     setError("");
+
+    if (video.status === "completed") {
+      await runProcess(video.id);
+      return;
+    }
+
     setCheckingVideoId(video.id);
 
     let hasSubtitles = true;
@@ -165,9 +171,12 @@ export function VideoIntake({ initialHealth, initialVideos }: VideoIntakeProps) 
                       <Play />
                       {checkingVideoId === video.id
                         ? "Checking..."
-                        : processingVideoId === video.id
+                        : processingVideoId === video.id ||
+                            video.status === "processing"
                           ? "Processing..."
-                          : "Process"}
+                          : video.status === "completed"
+                            ? "Re-process"
+                            : "Process"}
                     </Button>
                   </div>
                 </div>

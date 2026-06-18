@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+from pathlib import Path
 from typing import Literal
 from urllib.parse import urlparse
 from uuid import uuid4
@@ -13,6 +14,7 @@ from core.video.asr_client import AsrServiceClient
 from core.video.audio import AudioDownloader
 from core.video.bilibili import BilibiliSubtitleClient, BilibiliSubtitleError
 from core.video.douyin import DouyinAudioDownloader
+from core.video.markdown import MarkdownDraftWriter
 from core.video.pipeline import VideoPipeline
 from schemas.video import VideoCreateRequest, VideoRecord, VideoStatusUpdateRequest
 from storage.sqlite_client import SQLiteClient
@@ -40,6 +42,14 @@ def get_sqlite(request: Request) -> SQLiteClient:
     if sqlite is None:
         raise HTTPException(status_code=500, detail="SQLite client is not initialized")
     return sqlite
+
+
+def get_qdrant(request: Request):
+    """Return the app-scoped Qdrant client."""
+    qdrant = getattr(request.app.state, "qdrant", None)
+    if qdrant is None:
+        raise HTTPException(status_code=500, detail="Qdrant client is not initialized")
+    return qdrant
 
 
 @router.post("", response_model=VideoRecord, status_code=status.HTTP_201_CREATED)
@@ -80,14 +90,18 @@ async def process_video(
 ) -> dict:
     """Trigger skeleton processing for a video record."""
     sqlite = get_sqlite(request)
+    current_video = await sqlite.get_video(video_id)
+    if current_video is None:
+        raise HTTPException(status_code=404, detail="Video not found")
+    was_completed = current_video["status"] == "completed"
     processing_video = await sqlite.claim_video_for_processing(video_id)
     if processing_video is None:
-        current_video = await sqlite.get_video(video_id)
-        if current_video is None:
+        refreshed_video = await sqlite.get_video(video_id)
+        if refreshed_video is None:
             raise HTTPException(status_code=404, detail="Video not found")
-        if current_video["status"] == "completed":
-            return current_video
-        if current_video["status"] == "processing":
+        if refreshed_video["status"] == "completed":
+            return refreshed_video
+        if refreshed_video["status"] == "processing":
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Video is already processing",
@@ -99,6 +113,17 @@ async def process_video(
 
     settings = get_settings()
     data_dir = settings.storage.data_dir.expanduser()
+    if was_completed:
+        try:
+            await _reset_canonical_transcript_indexing(
+                sqlite=sqlite,
+                qdrant=get_qdrant(request),
+                data_dir=data_dir,
+                video=processing_video,
+            )
+        except Exception as exc:
+            await sqlite.update_video_status(video_id, "completed")
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
     asr_endpoint = settings.models.asr.endpoint or "http://localhost:8001"
     asr_model = settings.models.asr.model or "iic/SenseVoiceSmall"
     pipeline = VideoPipeline(
@@ -133,6 +158,24 @@ async def process_video(
     if final_video is None:
         raise HTTPException(status_code=404, detail="Video not found")
     return final_video
+
+
+async def _reset_canonical_transcript_indexing(
+    *,
+    sqlite: SQLiteClient,
+    qdrant,
+    data_dir: Path,
+    video: dict,
+) -> None:
+    """Reset indexing state for the canonical raw transcript document when present."""
+    canonical_path = MarkdownDraftWriter(data_dir).path_for(video)
+    document = await sqlite.get_document_by_video_and_path(
+        video["id"], str(canonical_path)
+    )
+    if document is None:
+        return
+    qdrant.delete_for_document(document["id"])
+    await sqlite.reset_document_indexing(document["id"])
 
 
 @router.get("/{video_id}/check-subtitles")

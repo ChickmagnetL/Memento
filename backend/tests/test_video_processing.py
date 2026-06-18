@@ -124,6 +124,93 @@ async def test_process_bilibili_video_writes_document(
 
 
 @pytest.mark.asyncio
+async def test_process_reuses_existing_canonical_document_record(
+    sqlite: SQLiteClient, tmp_path: Path
+):
+    video = make_video("video-1", "bilibili")
+    await sqlite.create_video(
+        video_id=video["id"],
+        platform=video["platform"],
+        title=video["title"],
+        url=video["url"],
+    )
+    canonical_path = tmp_path / "knowledge" / "bilibili" / "video-1.md"
+    canonical_path.parent.mkdir(parents=True, exist_ok=True)
+    canonical_path.write_text("# old raw\n", encoding="utf-8")
+    cleaned_path = canonical_path.parent / "video-1.clean.md"
+    cleaned_path.write_text("# cleaned\n", encoding="utf-8")
+    await sqlite.create_document(
+        document_id="raw-doc",
+        video_id=video["id"],
+        file_path=str(canonical_path),
+    )
+    await sqlite.create_document(
+        document_id="clean-doc",
+        video_id=video["id"],
+        file_path=str(cleaned_path),
+    )
+    pipeline = VideoPipeline(
+        sqlite=sqlite,
+        data_dir=tmp_path,
+        subtitle_client=FakeSubtitleClient(
+            [SubtitleEntry(start_seconds=1.0, text="第一行")]
+        ),
+    )
+
+    result = await pipeline.process(video)
+
+    assert result.status == "completed"
+    assert result.document_id == "raw-doc"
+    assert result.document_path == str(canonical_path)
+    documents = await sqlite.list_documents_for_video("video-1")
+    assert {document["id"] for document in documents} == {"raw-doc", "clean-doc"}
+    assert len(documents) == 2
+    assert cleaned_path.read_text(encoding="utf-8") == "# cleaned\n"
+
+
+@pytest.mark.asyncio
+async def test_process_creates_canonical_document_record_when_missing(
+    sqlite: SQLiteClient, tmp_path: Path
+):
+    video = make_video("video-1", "bilibili")
+    await sqlite.create_video(
+        video_id=video["id"],
+        platform=video["platform"],
+        title=video["title"],
+        url=video["url"],
+    )
+    canonical_path = tmp_path / "knowledge" / "bilibili" / "video-1.md"
+    canonical_path.parent.mkdir(parents=True, exist_ok=True)
+    cleaned_path = canonical_path.parent / "video-1.clean.md"
+    cleaned_path.write_text("# cleaned\n", encoding="utf-8")
+    await sqlite.create_document(
+        document_id="clean-doc",
+        video_id=video["id"],
+        file_path=str(cleaned_path),
+    )
+    pipeline = VideoPipeline(
+        sqlite=sqlite,
+        data_dir=tmp_path,
+        subtitle_client=FakeSubtitleClient(
+            [SubtitleEntry(start_seconds=1.0, text="第一行")]
+        ),
+    )
+
+    result = await pipeline.process(video)
+
+    assert result.status == "completed"
+    assert result.document_id is not None
+    assert result.document_id != "clean-doc"
+    assert result.document_path == str(canonical_path)
+    documents = await sqlite.list_documents_for_video("video-1")
+    assert {document["id"] for document in documents} == {
+        result.document_id,
+        "clean-doc",
+    }
+    assert len(documents) == 2
+
+
+@pytest.mark.asyncio
 async def test_process_runs_subtitle_fetch_and_draft_write_in_worker_threads(
     sqlite: SQLiteClient, tmp_path: Path
 ):

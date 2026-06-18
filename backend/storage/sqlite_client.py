@@ -139,13 +139,13 @@ class SQLiteClient:
         return await self.get_video(video_id)
 
     async def claim_video_for_processing(self, video_id: str) -> dict | None:
-        """Atomically claim a pending or failed video for processing."""
+        """Atomically claim a pending, failed, or completed video for processing."""
         conn = self._require_conn()
         cursor = await conn.execute(
             """
             UPDATE videos
             SET status = 'processing'
-            WHERE id = ? AND status IN ('pending', 'failed')
+            WHERE id = ? AND status IN ('pending', 'failed', 'completed')
             """,
             (video_id,),
         )
@@ -221,6 +221,24 @@ class SQLiteClient:
         rows = await cursor.fetchall()
         return [self._row_to_dict(row) for row in rows]
 
+    async def get_document_by_video_and_path(
+        self, video_id: str, file_path: str
+    ) -> dict | None:
+        """Return a document record matching a video and exact file path."""
+        conn = self._require_conn()
+        cursor = await conn.execute(
+            """
+            SELECT id, video_id, file_path, chunk_count, is_indexed, indexed_at
+            FROM documents
+            WHERE video_id = ? AND file_path = ?
+            ORDER BY rowid DESC
+            LIMIT 1
+            """,
+            (video_id, file_path),
+        )
+        row = await cursor.fetchone()
+        return self._row_to_dict(row) if row else None
+
     async def delete_document(self, document_id: str) -> bool:
         """Delete a document record. Return True when a row was removed."""
         conn = self._require_conn()
@@ -242,6 +260,20 @@ class SQLiteClient:
             WHERE id = ?
             """,
             (chunk_count, document_id),
+        )
+        await conn.commit()
+        return await self.get_document(document_id)
+
+    async def reset_document_indexing(self, document_id: str) -> dict | None:
+        """Reset indexing metadata and return the updated document."""
+        conn = self._require_conn()
+        await conn.execute(
+            """
+            UPDATE documents
+            SET chunk_count = 0, is_indexed = 0, indexed_at = NULL
+            WHERE id = ?
+            """,
+            (document_id,),
         )
         await conn.commit()
         return await self.get_document(document_id)
