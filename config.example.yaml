@@ -6,6 +6,10 @@ storage:
   keep_videos: false
 
 models:
+  asr:
+    provider: "local"
+    endpoint: "http://localhost:8001"
+    model: "iic/SenseVoiceSmall"
   chat:
     provider: "cloud"  # or "ollama" for local
     # OpenAI-compatible base URL, e.g. https://api.deepseek.com/v1

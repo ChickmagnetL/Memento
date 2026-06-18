@@ -100,6 +100,7 @@ async def process_video(
     settings = get_settings()
     data_dir = settings.storage.data_dir.expanduser()
     asr_endpoint = settings.models.asr.endpoint or "http://localhost:8001"
+    asr_model = settings.models.asr.model or "iic/SenseVoiceSmall"
     pipeline = VideoPipeline(
         sqlite=sqlite,
         data_dir=data_dir,
@@ -115,7 +116,7 @@ async def process_video(
             fetcher_endpoint=settings.video_processing.douyin_fetcher_endpoint,
         ),
         asr_client=AsrServiceClient(endpoint=asr_endpoint),
-        asr_language=settings.video_processing.asr_language,
+        asr_model=asr_model,
     )
     try:
         if subtitle_fallback == "asr":

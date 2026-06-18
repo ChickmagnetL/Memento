@@ -129,26 +129,43 @@ def test_process_pending_video_completes_record(client: TestClient, monkeypatch)
     assert seen_statuses == ["processing"]
 
 
-def test_process_video_passes_configured_cookie_to_pipeline(
+@pytest.mark.parametrize(
+    ("configured_model", "expected_model"),
+    [
+        ("custom/asr-model", "custom/asr-model"),
+        (None, "iic/SenseVoiceSmall"),
+    ],
+    ids=["configured-asr-model", "default-asr-model"],
+)
+def test_process_video_passes_configured_cookie_and_asr_model_to_pipeline(
     client: TestClient,
     monkeypatch,
     tmp_path: Path,
+    configured_model: str | None,
+    expected_model: str,
 ):
     created = _create_video(client)
     seen_cookies = []
+    seen_asr_models = []
 
     def get_settings_spy():
         return SimpleNamespace(
             storage=SimpleNamespace(data_dir=tmp_path, keep_videos=False),
             video_processing=SimpleNamespace(
-                bilibili_cookie="SESSDATA=explicit", asr_language="auto",
+                bilibili_cookie="SESSDATA=explicit",
                 douyin_cookie="", douyin_fetcher_endpoint="http://localhost:8002"
             ),
-            models=SimpleNamespace(asr=SimpleNamespace(endpoint=None)),
+            models=SimpleNamespace(
+                asr=SimpleNamespace(
+                    endpoint=None,
+                    model=configured_model,
+                )
+            ),
         )
 
     def pipeline_init_spy(self, *, sqlite, data_dir, cookie="", **kwargs):
         seen_cookies.append(cookie)
+        seen_asr_models.append(kwargs["asr_model"])
 
     async def process_spy(self, video: dict) -> VideoProcessingResult:
         return VideoProcessingResult(video_id=video["id"], status="completed")
@@ -161,6 +178,7 @@ def test_process_video_passes_configured_cookie_to_pipeline(
 
     assert resp.status_code == 200
     assert seen_cookies == ["SESSDATA=explicit"]
+    assert seen_asr_models == [expected_model]
 
 
 def test_process_missing_video_returns_404(client: TestClient):

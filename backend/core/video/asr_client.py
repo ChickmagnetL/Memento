@@ -23,12 +23,12 @@ class AsrServiceClient:
         self.endpoint = endpoint.rstrip("/")
         self.post_json = post_json
 
-    def transcribe(self, audio_path: str, *, language: str) -> list[SubtitleEntry]:
+    def transcribe(self, audio_path: str, *, model: str) -> list[SubtitleEntry]:
         """Transcribe a local audio file via the ASR service."""
         try:
             response = self.post_json(
                 f"{self.endpoint}/transcribe",
-                {"audio_path": audio_path, "language": language},
+                {"audio_path": audio_path, "model": model},
                 {"Content-Type": "application/json"},
                 timeout=ASR_TIMEOUT_SECONDS,
             )

@@ -18,6 +18,7 @@ models:
   asr:
     provider: "local"
     endpoint: "http://localhost:8001"
+    model: "iic/SenseVoiceSmall"
   embedding:
     provider: "ollama"
     endpoint: "http://localhost:11434"

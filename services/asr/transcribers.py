@@ -1,23 +1,32 @@
 """Model-backed transcribers. Heavy imports stay inside functions."""
 
-import tempfile
-from pathlib import Path
-
 import numpy as np
-import soundfile as sf
 
 from chunking import iter_chunks
 
+sf = None
+
 
 def _load_mono(audio_path: str) -> tuple[np.ndarray, int]:
+    global sf
+    if sf is None:
+        import soundfile as _sf
+
+        sf = _sf
     audio, sample_rate = sf.read(audio_path, dtype="float32")
     if audio.ndim > 1:
         audio = audio.mean(axis=1)
     return audio, sample_rate
 
 
-class SenseVoiceTranscriber:
-    """Chinese (and zh/en mixed) transcription, 30s windows."""
+def _moonshine_voice_model(model: str, ModelArch):
+    if model == "moonshine_voice/medium-streaming-en":
+        return "en", ModelArch.MEDIUM_STREAMING
+    raise ValueError(f"Unsupported Moonshine Voice model: {model}")
+
+
+class FunAsrTranscriber:
+    """FunASR-backed transcription, 30s windows."""
 
     def __init__(
         self,
@@ -40,7 +49,7 @@ class SenseVoiceTranscriber:
         segments = []
         for offset, chunk in iter_chunks(audio, sample_rate):
             result = self.model.generate(
-                input=chunk, fs=sample_rate, language="zh", use_itn=True
+                input=chunk, fs=sample_rate, use_itn=True
             )
             text = rich_transcription_postprocess(result[0]["text"]).strip()
             if text:
@@ -48,33 +57,44 @@ class SenseVoiceTranscriber:
         return segments
 
 
-class MoonshineTranscriber:
-    """English transcription with Moonshine, 30s windows.
+class MoonshineVoiceTranscriber:
+    """Moonshine Voice-backed transcription."""
 
-    The moonshine_onnx package accepts file paths (not numpy arrays),
-    so chunks are written to temporary WAV files for each window.
-    """
+    def __init__(self, *, model: str):
+        try:
+            from moonshine_voice import (
+                ModelArch,
+                Transcriber,
+                get_model_for_language,
+            )
+        except ImportError as exc:
+            raise RuntimeError(
+                "Moonshine Voice ASR requires the moonshine_voice dependency. "
+                "Install it in the ASR venv with: "
+                "pip install moonshine-voice"
+            ) from exc
 
-    def __init__(self, model_name: str = "moonshine/base"):
-        import moonshine_onnx
-
-        self.moonshine = moonshine_onnx
-        self.model_name = model_name
+        language, model_arch = _moonshine_voice_model(model, ModelArch)
+        model_path, resolved_arch = get_model_for_language(
+            wanted_language=language,
+            wanted_model_arch=model_arch,
+        )
+        self.transcriber = Transcriber(
+            model_path=model_path,
+            model_arch=resolved_arch,
+        )
 
     def transcribe(self, audio_path: str) -> list[dict]:
         audio, sample_rate = _load_mono(audio_path)
+        transcript = self.transcriber.transcribe_without_streaming(
+            audio.tolist(),
+            sample_rate,
+        )
         segments = []
-        for offset, chunk in iter_chunks(audio, sample_rate):
-            tmp_path = None
-            try:
-                with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
-                    tmp_path = f.name
-                sf.write(tmp_path, chunk, sample_rate)
-                text = self.moonshine.transcribe(tmp_path, self.model_name)
-                text = text.strip() if isinstance(text, str) else ""
-            finally:
-                if tmp_path is not None:
-                    Path(tmp_path).unlink(missing_ok=True)
+        for line in transcript.lines:
+            text = line.text.strip()
             if text:
-                segments.append({"start_seconds": offset, "text": text})
+                segments.append(
+                    {"start_seconds": line.start_time, "text": text}
+                )
         return segments

@@ -236,8 +236,8 @@ class FakeAsrClient:
         self.error = error
         self.calls: list[tuple[str, str]] = []
 
-    def transcribe(self, audio_path: str, *, language: str):
-        self.calls.append((audio_path, language))
+    def transcribe(self, audio_path: str, *, model: str):
+        self.calls.append((audio_path, model))
         if self.error:
             raise self.error
         return self.entries
@@ -258,13 +258,13 @@ async def test_no_subtitles_falls_back_to_asr(sqlite: SQLiteClient, tmp_path: Pa
         subtitle_client=FakeSubtitleClient([]),  # no soft subtitles
         audio_downloader=downloader,
         asr_client=asr,
-        asr_language="auto",
+        asr_model="custom/asr-model",
     )
 
     result = await pipeline.process_with_asr(video)
 
     assert result.status == "completed"
-    assert asr.calls == [(str(downloader.wav_path), "zh")]  # bilibili -> zh default
+    assert asr.calls == [(str(downloader.wav_path), "custom/asr-model")]
     assert downloader.cleaned_up == [downloader.wav_path]
     assert "ASR 第一段" in Path(result.document_path).read_text(encoding="utf-8")
 
@@ -282,7 +282,7 @@ async def test_asr_failure_cleans_up_and_fails(sqlite: SQLiteClient, tmp_path: P
         subtitle_client=FakeSubtitleClient([]),
         audio_downloader=downloader,
         asr_client=asr,
-        asr_language="auto",
+        asr_model="iic/SenseVoiceSmall",
     )
 
     result = await pipeline.process_with_asr(video)
@@ -312,13 +312,13 @@ async def test_douyin_video_goes_straight_to_asr(
         subtitle_client=subtitle_client,
         douyin_downloader=downloader,
         asr_client=asr,
-        asr_language="zh",
+        asr_model="custom/asr-model",
     )
 
     result = await pipeline.process(video)
 
     assert result.status == "completed"
-    assert asr.calls == [(str(downloader.wav_path), "zh")]
+    assert asr.calls == [(str(downloader.wav_path), "custom/asr-model")]
     # Bilibili subtitle client must not be touched for douyin.
     assert subtitle_client.calls == 0
     assert "抖音内容" in Path(result.document_path).read_text(encoding="utf-8")

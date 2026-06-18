@@ -10,7 +10,6 @@ from core.video.asr_client import AsrError
 from core.video.audio import AudioDownloadError
 from core.video.bilibili import BilibiliSubtitleClient, BilibiliSubtitleError
 from core.video.douyin import DouyinError
-from core.video.language import detect_asr_language
 from core.video.markdown import MarkdownDraftWriter
 from schemas.video import VideoStatus
 
@@ -37,7 +36,7 @@ class VideoPipeline:
         audio_downloader=None,
         douyin_downloader=None,
         asr_client=None,
-        asr_language: str = "auto",
+        asr_model: str = "iic/SenseVoiceSmall",
     ) -> None:
         self.sqlite = sqlite
         self.subtitle_client = subtitle_client or BilibiliSubtitleClient(
@@ -47,7 +46,7 @@ class VideoPipeline:
         self.audio_downloader = audio_downloader
         self.douyin_downloader = douyin_downloader
         self.asr_client = asr_client
-        self.asr_language = asr_language
+        self.asr_model = asr_model
 
     async def process(self, video: dict) -> VideoProcessingResult:
         return await self._process(video, allow_asr_fallback=False)
@@ -114,12 +113,8 @@ class VideoPipeline:
                 "Downloaded audio for %s: %s (%s bytes)",
                 video["id"], wav_path, wav_path.stat().st_size,
             )
-            language = detect_asr_language(
-                video["title"], override=self.asr_language,
-                platform=video.get("platform", ""),
-            )
             result = await asyncio.to_thread(
-                self.asr_client.transcribe, str(wav_path), language=language
+                self.asr_client.transcribe, str(wav_path), model=self.asr_model
             )
             logger.info("ASR returned %s segments for %s", len(result), video["id"])
             return result
