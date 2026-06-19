@@ -149,24 +149,24 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-8 py-8">
-      <header className="space-y-1">
+      <header className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Knowledge Base</h1>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={scanning}
+          onClick={handleScanUnimported}
+        >
+          <FolderSearch className="mr-1 h-4 w-4" />
+          {scanning ? "Scanning..." : "Scan unimported"}
+        </Button>
       </header>
 
       {error ? <ErrorBanner message={error} /> : null}
 
-      <section className="space-y-3">
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={scanning}
-            onClick={handleScanUnimported}
-          >
-            <FolderSearch className="mr-1 h-4 w-4" />
-            {scanning ? "Scanning..." : "Scan unimported"}
-          </Button>
-          {unimported.length > 0 ? (
+      {unimported.length > 0 ? (
+        <section className="space-y-3">
+          <div className="flex items-center gap-2">
             <Button
               size="sm"
               disabled={selectedUnimported.size === 0}
@@ -174,45 +174,44 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
             >
               Import to knowledge base ({selectedUnimported.size})
             </Button>
-          ) : null}
-        </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleSelectAll}
+            >
+              {allUnimportedSelected ? "Deselect all" : "Select all"}
+            </Button>
+          </div>
 
-        {unimported.length > 0 ? (
-          <>
-            <label className="flex items-center gap-2 text-sm text-muted-foreground">
-              <input
-                type="checkbox"
-                checked={allUnimportedSelected}
-                onChange={toggleSelectAll}
-              />
-              Select all
-            </label>
-            <ul className="space-y-2">
-              {unimported.map((item) => (
-                <li
-                  key={item.file_path}
-                  className="flex cursor-pointer items-center gap-2 rounded-md border border-border p-3 text-sm transition-colors hover:bg-muted/50"
-                  onClick={() => toggleUnimported(item.file_path)}
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedUnimported.has(item.file_path)}
-                    readOnly
-                  />
-                  <div className="min-w-0">
-                    <p className="truncate font-medium">
-                      {item.title ?? "(untitled)"}
-                    </p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {item.platform ?? "?"} · {item.file_path}
-                    </p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </>
-        ) : null}
-      </section>
+          <ul className="space-y-2">
+            {unimported.map((item) => (
+              <li
+                key={item.file_path}
+                className={`flex cursor-pointer items-center gap-2 rounded-md border p-3 text-sm transition-colors hover:bg-muted/50 ${
+                  selectedUnimported.has(item.file_path)
+                    ? "border-primary bg-primary/10"
+                    : "border-border"
+                }`}
+                onClick={() => toggleUnimported(item.file_path)}
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedUnimported.has(item.file_path)}
+                  readOnly
+                />
+                <div className="min-w-0">
+                  <p className="truncate font-medium">
+                    {item.title ?? "(untitled)"}
+                  </p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {item.platform ?? "?"} · {item.file_path}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <section className="space-y-3">
         {documents.length === 0 ? (
