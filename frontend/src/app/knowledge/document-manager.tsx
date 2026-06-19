@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Database, Eye, FolderSearch, Sparkles, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { DeleteDocumentDialog } from "@/components/ui/delete-document-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorBanner } from "@/components/ui/error-banner";
 import {
@@ -32,8 +33,11 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
     documentId: string;
     chunks: ChunkPreview[];
   } | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteSource, setDeleteSource] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    documentId: string;
+    fileName: string;
+  } | null>(null);
   const [unimported, setUnimported] = useState<UnimportedDocument[]>([]);
   const [selectedUnimported, setSelectedUnimported] = useState<Set<string>>(
     new Set()
@@ -70,15 +74,15 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
     });
   }
 
-  async function handleDelete(documentId: string) {
+  async function handleDelete(documentId: string, deleteSourceFile: boolean) {
     await withBusy(documentId, async () => {
-      await deleteDocument(documentId, deleteSource);
+      await deleteDocument(documentId, deleteSourceFile);
       setPreview((current) =>
         current?.documentId === documentId ? null : current
       );
       await refresh();
     });
-    setDeletingId(null);
+    setDeleteTarget(null);
     setDeleteSource(false);
   }
 
@@ -112,6 +116,18 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
         next.add(filePath);
       }
       return next;
+    });
+  }
+
+  const allUnimportedSelected =
+    unimported.length > 0 && selectedUnimported.size === unimported.length;
+
+  function toggleSelectAll() {
+    setSelectedUnimported((current) => {
+      if (unimported.length > 0 && current.size === unimported.length) {
+        return new Set();
+      }
+      return new Set(unimported.map((item) => item.file_path));
     });
   }
 
@@ -156,34 +172,45 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
               disabled={selectedUnimported.size === 0}
               onClick={handleImportUnimported}
             >
-              Import to KB ({selectedUnimported.size})
+              Import to knowledge base ({selectedUnimported.size})
             </Button>
           ) : null}
         </div>
 
         {unimported.length > 0 ? (
-          <ul className="space-y-2">
-            {unimported.map((item) => (
-              <li
-                key={item.file_path}
-                className="flex items-center gap-2 rounded-md border border-border p-3 text-sm"
-              >
-                <input
-                  type="checkbox"
-                  checked={selectedUnimported.has(item.file_path)}
-                  onChange={() => toggleUnimported(item.file_path)}
-                />
-                <div className="min-w-0">
-                  <p className="truncate font-medium">
-                    {item.title ?? "(untitled)"}
-                  </p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {item.platform ?? "?"} · {item.file_path}
-                  </p>
-                </div>
-              </li>
-            ))}
-          </ul>
+          <>
+            <label className="flex items-center gap-2 text-sm text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={allUnimportedSelected}
+                onChange={toggleSelectAll}
+              />
+              Select all
+            </label>
+            <ul className="space-y-2">
+              {unimported.map((item) => (
+                <li
+                  key={item.file_path}
+                  className="flex cursor-pointer items-center gap-2 rounded-md border border-border p-3 text-sm transition-colors hover:bg-muted/50"
+                  onClick={() => toggleUnimported(item.file_path)}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedUnimported.has(item.file_path)}
+                    readOnly
+                  />
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">
+                      {item.title ?? "(untitled)"}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {item.platform ?? "?"} · {item.file_path}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </>
         ) : null}
       </section>
 
@@ -232,47 +259,21 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
                   <Database className="mr-1 h-4 w-4" />
                   {doc.is_indexed ? "Re-index" : "Index"}
                 </Button>
-                {deletingId === doc.id ? (
-                  <div className="flex shrink-0 items-center gap-2">
-                    <label className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <input
-                        type="checkbox"
-                        checked={deleteSource}
-                        onChange={(e) => setDeleteSource(e.target.checked)}
-                      />
-                      Delete source file
-                    </label>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={busyId === doc.id}
-                      onClick={() => handleDelete(doc.id)}
-                    >
-                      Confirm
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={busyId === doc.id}
-                      onClick={() => {
-                        setDeletingId(null);
-                        setDeleteSource(false);
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-[100px]"
-                    disabled={busyId === doc.id}
-                    onClick={() => setDeletingId(doc.id)}
-                  >
-                    <Trash2 className="mr-1 h-4 w-4" /> Delete
-                  </Button>
-                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-[100px]"
+                  disabled={busyId === doc.id}
+                  onClick={() => {
+                    setDeleteSource(false);
+                    setDeleteTarget({
+                      documentId: doc.id,
+                      fileName: doc.file_path,
+                    });
+                  }}
+                >
+                  <Trash2 className="mr-1 h-4 w-4" /> Delete
+                </Button>
               </div>
             </div>
           ))
@@ -297,6 +298,19 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
             </div>
           ))}
         </section>
+      ) : null}
+
+      {deleteTarget ? (
+        <DeleteDocumentDialog
+          fileName={deleteTarget.fileName}
+          deleteSource={deleteSource}
+          onDeleteSourceChange={setDeleteSource}
+          onConfirm={() => handleDelete(deleteTarget.documentId, deleteSource)}
+          onCancel={() => {
+            setDeleteTarget(null);
+            setDeleteSource(false);
+          }}
+        />
       ) : null}
     </div>
   );

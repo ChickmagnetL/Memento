@@ -80,9 +80,6 @@ export function VideoIntake({ initialHealth, initialVideos }: VideoIntakeProps) 
   }
 
   async function handleDelete(videoId: string) {
-    if (!window.confirm("Delete this import record? Knowledge-base content is unaffected.")) {
-      return;
-    }
     setError("");
     try {
       await deleteVideo(videoId);
