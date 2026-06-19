@@ -169,3 +169,27 @@ async def test_claim_video_for_processing_only_succeeds_once(sqlite: SQLiteClien
     assert first_claim is not None
     assert first_claim["status"] == "processing"
     assert second_claim is None
+
+
+@pytest.mark.asyncio
+async def test_delete_video_removes_record_and_nulls_documents(sqlite: SQLiteClient):
+    await sqlite.create_video(
+        video_id="v1", platform="bilibili", title="t", url="https://example.com"
+    )
+    await sqlite.create_document(
+        document_id="d1", video_id="v1", file_path="/tmp/d1.md"
+    )
+
+    deleted = await sqlite.delete_video("v1")
+
+    assert deleted is True
+    assert await sqlite.get_video("v1") is None
+    # document survives, video_id nulled (FK ON DELETE SET NULL)
+    surviving = await sqlite.get_document("d1")
+    assert surviving is not None
+    assert surviving["video_id"] is None
+
+
+@pytest.mark.asyncio
+async def test_delete_missing_video_returns_false(sqlite: SQLiteClient):
+    assert await sqlite.delete_video("missing") is False

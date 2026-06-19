@@ -11,6 +11,8 @@ Last Updated: 2026-06-07
 import aiosqlite
 from pathlib import Path
 
+from storage.migrations import run_migrations
+
 
 class SQLiteClient:
     """
@@ -56,6 +58,8 @@ class SQLiteClient:
 
         await self._conn.executescript(schema)
         await self._conn.commit()
+
+        await run_migrations(self._conn)
 
     def _require_conn(self) -> aiosqlite.Connection:
         """Return an active connection or raise a clear error."""
@@ -158,7 +162,7 @@ class SQLiteClient:
         self,
         *,
         document_id: str,
-        video_id: str,
+        video_id: str | None = None,
         file_path: str,
         chunk_count: int = 0,
         is_indexed: bool = False,
@@ -244,6 +248,19 @@ class SQLiteClient:
         conn = self._require_conn()
         cursor = await conn.execute(
             "DELETE FROM documents WHERE id = ?", (document_id,)
+        )
+        await conn.commit()
+        return cursor.rowcount == 1
+
+    async def delete_video(self, video_id: str) -> bool:
+        """Delete a video record. Return True when a row was removed.
+
+        Child documents keep their rows; their video_id is SET NULL by the
+        foreign key (knowledge-base content is preserved).
+        """
+        conn = self._require_conn()
+        cursor = await conn.execute(
+            "DELETE FROM videos WHERE id = ?", (video_id,)
         )
         await conn.commit()
         return cursor.rowcount == 1

@@ -193,3 +193,46 @@ async def test_clean_document_file_missing_returns_500(
     (tmp_path / "v1.md").unlink()
     response = test_client.post("/api/documents/d1/clean")
     assert response.status_code == 500
+
+
+@pytest.mark.asyncio
+async def test_delete_document_preserves_source_file_by_default(client, tmp_path: Path):
+    test_client, sqlite = client
+    await _seed_document(sqlite, tmp_path)
+    draft_path = tmp_path / "v1.md"
+    assert draft_path.exists()
+
+    resp = test_client.delete("/api/documents/d1")
+
+    assert resp.status_code == 204
+    assert draft_path.exists()  # source file preserved
+    assert await sqlite.get_document("d1") is None
+
+
+@pytest.mark.asyncio
+async def test_delete_document_removes_source_file_when_requested(
+    client, tmp_path: Path
+):
+    test_client, sqlite = client
+    await _seed_document(sqlite, tmp_path)
+    draft_path = tmp_path / "v1.md"
+    assert draft_path.exists()
+
+    resp = test_client.delete("/api/documents/d1?delete_source_file=true")
+
+    assert resp.status_code == 204
+    assert not draft_path.exists()  # source file deleted
+    assert await sqlite.get_document("d1") is None
+
+
+@pytest.mark.asyncio
+async def test_delete_document_with_missing_source_file_does_not_error(
+    client, tmp_path: Path
+):
+    test_client, sqlite = client
+    await _seed_document(sqlite, tmp_path)
+    (tmp_path / "v1.md").unlink()  # file already gone
+
+    resp = test_client.delete("/api/documents/d1?delete_source_file=true")
+
+    assert resp.status_code == 204

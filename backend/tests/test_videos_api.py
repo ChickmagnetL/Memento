@@ -445,6 +445,24 @@ def test_process_pipeline_exception_marks_video_failed(client: TestClient, monke
     assert stored.json()["status"] == "failed"
 
 
+def test_delete_video_removes_record(client: TestClient):
+    created = client.post(
+        "/api/videos",
+        json={"url": "https://www.bilibili.com/video/BV1234567890", "title": "Bili"},
+    ).json()
+
+    resp = client.delete(f"/api/videos/{created['id']}")
+
+    assert resp.status_code == 204
+    assert client.get(f"/api/videos/{created['id']}").status_code == 404
+
+
+def test_delete_missing_video_returns_404(client: TestClient):
+    resp = client.delete("/api/videos/missing")
+
+    assert resp.status_code == 404
+
+
 def test_check_subtitles_returns_false_for_bilibili_without_cookie(
     client: TestClient, monkeypatch
 ):

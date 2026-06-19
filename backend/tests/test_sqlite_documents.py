@@ -57,3 +57,12 @@ async def test_delete_document_removes_record(sqlite: SQLiteClient):
 @pytest.mark.asyncio
 async def test_delete_missing_document_returns_false(sqlite: SQLiteClient):
     assert await sqlite.delete_document("missing") is False
+
+
+@pytest.mark.asyncio
+async def test_create_document_allows_null_video_id(sqlite: SQLiteClient):
+    doc = await sqlite.create_document(
+        document_id="d9", video_id=None, file_path="/tmp/d9.md"
+    )
+    assert doc["video_id"] is None
+    assert doc["is_indexed"] == 0

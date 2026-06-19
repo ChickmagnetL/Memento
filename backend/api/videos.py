@@ -82,6 +82,19 @@ async def get_video(video_id: str, request: Request) -> dict:
     return video
 
 
+@router.delete("/{video_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_video_endpoint(video_id: str, request: Request) -> None:
+    """Delete a video import record.
+
+    Knowledge-base content (documents, .md files, vectors) is preserved;
+    child documents have their video_id SET NULL by the foreign key.
+    """
+    sqlite = get_sqlite(request)
+    deleted = await sqlite.delete_video(video_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Video not found")
+
+
 @router.post("/{video_id}/process", response_model=VideoRecord)
 async def process_video(
     video_id: str,

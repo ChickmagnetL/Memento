@@ -17,12 +17,12 @@ CREATE TABLE IF NOT EXISTS videos (
 -- Stores markdown documents generated from videos
 CREATE TABLE IF NOT EXISTS documents (
     id TEXT PRIMARY KEY,
-    video_id TEXT NOT NULL,
+    video_id TEXT,                       -- nullable: documents can stand alone
     file_path TEXT NOT NULL,         -- Path to markdown file
     chunk_count INTEGER DEFAULT 0,   -- Number of chunks created
     is_indexed BOOLEAN DEFAULT 0,    -- Whether indexed in Qdrant
     indexed_at TIMESTAMP,
-    FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE
+    FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE SET NULL
 );
 
 -- Configuration table
