@@ -3,14 +3,11 @@
 from typing import Callable
 
 from core.rag.embedding import post_json as default_post_json
+from core.video.asr_supervisor import AsrError, ensure_asr_running
 from core.video.bilibili import SubtitleEntry
 
 # Transcription of a long video can take minutes on CPU.
 ASR_TIMEOUT_SECONDS = 900
-
-
-class AsrError(Exception):
-    pass
 
 
 class AsrServiceClient:
@@ -19,12 +16,15 @@ class AsrServiceClient:
         *,
         endpoint: str,
         post_json: Callable[..., dict] = default_post_json,
+        ensure_running: Callable[[str], None] = ensure_asr_running,
     ) -> None:
         self.endpoint = endpoint.rstrip("/")
         self.post_json = post_json
+        self.ensure_running = ensure_running
 
     def transcribe(self, audio_path: str, *, model: str) -> list[SubtitleEntry]:
         """Transcribe a local audio file via the ASR service."""
+        self.ensure_running(self.endpoint)
         try:
             response = self.post_json(
                 f"{self.endpoint}/transcribe",

@@ -15,6 +15,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from config.settings import get_settings
+from core.video import asr_supervisor
 from storage.sqlite_client import SQLiteClient
 from storage.qdrant_client import QdrantStore
 from api.health import router as health_router
@@ -50,6 +51,7 @@ async def lifespan(app: FastAPI):
 
     await sqlite.close()
     qdrant.close()
+    asr_supervisor.shutdown()
     logger.info("Databases closed")
 
 

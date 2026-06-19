@@ -11,7 +11,6 @@ import { SubtitleDecisionDialog } from "@/components/ui/subtitle-decision-dialog
 import {
   checkSubtitles,
   createVideo,
-  getServiceStatus,
   listVideos,
   processVideo,
   type VideoRecord,
@@ -42,20 +41,6 @@ export function VideoIntake({ initialHealth, initialVideos }: VideoIntakeProps) 
     setVideos(items);
   }
 
-  async function ensureAsrReady() {
-    try {
-      const status = await getServiceStatus();
-      if (status.asr?.status === "ok") {
-        return true;
-      }
-    } catch {
-      setError("Failed to check ASR status. Try again.");
-      return false;
-    }
-    setError("ASR service is unreachable. Start ASR before processing this video.");
-    return false;
-  }
-
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -79,10 +64,6 @@ export function VideoIntake({ initialHealth, initialVideos }: VideoIntakeProps) 
   }
 
   async function runProcess(videoId: string, fallback?: "asr") {
-    if (fallback === "asr" && !(await ensureAsrReady())) {
-      return;
-    }
-
     setProcessingVideoId(videoId);
     try {
       const processed = await processVideo(videoId, fallback);
@@ -99,10 +80,6 @@ export function VideoIntake({ initialHealth, initialVideos }: VideoIntakeProps) 
 
   async function handleProcess(video: VideoRecord) {
     setError("");
-
-    if (video.platform === "douyin" && !(await ensureAsrReady())) {
-      return;
-    }
 
     if (video.status === "completed") {
       await runProcess(video.id);
