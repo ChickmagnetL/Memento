@@ -37,3 +37,12 @@ FunASR 模型文件存放在 `model_cache/` 目录，首次转录时自动下载
 ```bash
 rm -rf .venv model_cache
 ```
+
+## 可选模型接口
+
+```bash
+#中文
+iic/SenseVoiceSmall
+#英文
+moonshine_voice/medium-streaming-en
+```
