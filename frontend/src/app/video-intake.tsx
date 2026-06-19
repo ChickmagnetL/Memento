@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Play, Plus, Database } from "lucide-react";
+import { Play, Plus, Database, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -11,6 +11,7 @@ import { SubtitleDecisionDialog } from "@/components/ui/subtitle-decision-dialog
 import {
   checkSubtitles,
   createVideo,
+  deleteVideo,
   listVideos,
   processVideo,
   type VideoRecord,
@@ -75,6 +76,19 @@ export function VideoIntake({ initialHealth, initialVideos }: VideoIntakeProps) 
       setError("Processing failed. Try again.");
     } finally {
       setProcessingVideoId(null);
+    }
+  }
+
+  async function handleDelete(videoId: string) {
+    if (!window.confirm("Delete this import record? Knowledge-base content is unaffected.")) {
+      return;
+    }
+    setError("");
+    try {
+      await deleteVideo(videoId);
+      await refreshVideos();
+    } catch {
+      setError("Delete failed. Try again.");
     }
   }
 
@@ -180,6 +194,17 @@ export function VideoIntake({ initialHealth, initialVideos }: VideoIntakeProps) 
                           : video.status === "completed"
                             ? "Re-process"
                             : "Process"}
+                    </Button>
+                    <Button
+                      className="min-w-28"
+                      disabled={processingVideoId !== null}
+                      onClick={() => handleDelete(video.id)}
+                      size="sm"
+                      type="button"
+                      variant="outline"
+                    >
+                      <Trash2 />
+                      Delete
                     </Button>
                   </div>
                 </div>

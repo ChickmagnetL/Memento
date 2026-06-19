@@ -83,6 +83,15 @@ export async function processVideo(
   return res.json();
 }
 
+export async function deleteVideo(videoId: string): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}/api/videos/${videoId}`, {
+    method: "DELETE",
+  });
+  if (!res.ok && res.status !== 404) {
+    throw new Error(`Delete video failed: ${res.status}`);
+  }
+}
+
 export interface SubtitleCheckResult {
   has_subtitles: boolean;
   platform: string;
@@ -103,7 +112,7 @@ export async function checkSubtitles(
 
 export interface DocumentRecord {
   id: string;
-  video_id: string;
+  video_id: string | null;
   file_path: string;
   chunk_count: number;
   is_indexed: boolean;
@@ -153,8 +162,12 @@ export async function previewChunks(
   return res.json();
 }
 
-export async function deleteDocument(documentId: string): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/api/documents/${documentId}`, {
+export async function deleteDocument(
+  documentId: string,
+  deleteSourceFile = false
+): Promise<void> {
+  const qs = deleteSourceFile ? "?delete_source_file=true" : "";
+  const res = await fetch(`${API_BASE_URL}/api/documents/${documentId}${qs}`, {
     method: "DELETE",
   });
   if (!res.ok) {
@@ -171,6 +184,38 @@ export async function cleanDocument(
   );
   if (!res.ok) {
     throw new Error(`Clean document failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+export interface UnimportedDocument {
+  file_path: string;
+  title: string | null;
+  platform: string | null;
+  source_url: string | null;
+  video_id: string | null;
+}
+
+export async function listUnimportedDocuments(): Promise<UnimportedDocument[]> {
+  const res = await fetch(`${API_BASE_URL}/api/documents/unimported`, {
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`List unimported failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function importUnimportedDocuments(
+  filePaths: string[]
+): Promise<DocumentRecord[]> {
+  const res = await fetch(`${API_BASE_URL}/api/documents/unimported/import`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ file_paths: filePaths }),
+  });
+  if (!res.ok) {
+    throw new Error(`Import unimported failed: ${res.status}`);
   }
   return res.json();
 }
