@@ -14,6 +14,7 @@ Author: Memento Team
 Last Updated: 2026-06-07
 """
 
+import os
 import sys
 from pathlib import Path
 from typing import Any, Literal
@@ -28,6 +29,13 @@ def resolve_backend_dir() -> Path:
     if getattr(sys, "frozen", False):
         return Path(getattr(sys, "_MEIPASS"))
     return Path(__file__).parent.parent
+
+
+def resolve_project_root(backend_dir: Path | None = None) -> Path:
+    """Project root containing user config files."""
+    if override := os.environ.get("MEMENTO_PROJECT_ROOT"):
+        return Path(override)
+    return (backend_dir or resolve_backend_dir()).parent
 
 
 def _load_yaml_data(config_path: Path | str) -> dict[str, Any]:
@@ -187,7 +195,7 @@ def get_settings() -> Settings:
         Settings instance
     """
     backend_dir = resolve_backend_dir()
-    project_root = backend_dir.parent
+    project_root = resolve_project_root(backend_dir)
 
     default_config = backend_dir / "config" / "default.yaml"
     user_config = project_root / "config.yaml"

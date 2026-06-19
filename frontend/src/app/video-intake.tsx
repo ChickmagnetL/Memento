@@ -11,6 +11,7 @@ import { SubtitleDecisionDialog } from "@/components/ui/subtitle-decision-dialog
 import {
   checkSubtitles,
   createVideo,
+  getServiceStatus,
   listVideos,
   processVideo,
   type VideoRecord,
@@ -41,6 +42,20 @@ export function VideoIntake({ initialHealth, initialVideos }: VideoIntakeProps) 
     setVideos(items);
   }
 
+  async function ensureAsrReady() {
+    try {
+      const status = await getServiceStatus();
+      if (status.asr?.status === "ok") {
+        return true;
+      }
+    } catch {
+      setError("Failed to check ASR status. Try again.");
+      return false;
+    }
+    setError("ASR service is unreachable. Start ASR before processing this video.");
+    return false;
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -64,10 +79,17 @@ export function VideoIntake({ initialHealth, initialVideos }: VideoIntakeProps) 
   }
 
   async function runProcess(videoId: string, fallback?: "asr") {
+    if (fallback === "asr" && !(await ensureAsrReady())) {
+      return;
+    }
+
     setProcessingVideoId(videoId);
     try {
-      await processVideo(videoId, fallback);
+      const processed = await processVideo(videoId, fallback);
       await refreshVideos();
+      if (processed.status === "failed" && processed.error_message) {
+        setError(processed.error_message);
+      }
     } catch {
       setError("Processing failed. Try again.");
     } finally {
@@ -77,6 +99,10 @@ export function VideoIntake({ initialHealth, initialVideos }: VideoIntakeProps) 
 
   async function handleProcess(video: VideoRecord) {
     setError("");
+
+    if (video.platform === "douyin" && !(await ensureAsrReady())) {
+      return;
+    }
 
     if (video.status === "completed") {
       await runProcess(video.id);
@@ -186,6 +212,11 @@ export function VideoIntake({ initialHealth, initialVideos }: VideoIntakeProps) 
                 <p className="mt-2 text-xs text-muted-foreground">
                   {video.platform} · {video.created_at}
                 </p>
+                {video.status === "failed" && video.error_message ? (
+                  <p className="mt-2 break-all text-xs text-destructive">
+                    {video.error_message}
+                  </p>
+                ) : null}
               </li>
             ))}
           </ul>

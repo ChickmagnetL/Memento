@@ -8,7 +8,7 @@ from urllib.request import urlopen
 
 from fastapi import APIRouter
 
-from config.settings import get_settings
+from config.settings import get_settings, resolve_project_root
 from core.config_store import ConfigStore
 from schemas.settings import ModelsUpdateRequest
 
@@ -17,7 +17,7 @@ router = APIRouter(prefix="/api/settings", tags=["settings"])
 
 def local_config_path() -> Path:
     """Path of config.local.yaml (project root). Overridable in tests."""
-    return Path(__file__).resolve().parent.parent.parent / "config.local.yaml"
+    return resolve_project_root() / "config.local.yaml"
 
 
 def _mask_key(api_key: str | None) -> str | None:

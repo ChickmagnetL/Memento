@@ -8,13 +8,24 @@
 
 const { app, BrowserWindow, dialog } = require("electron");
 const { spawn } = require("child_process");
+const fs = require("fs");
 const path = require("path");
 
 const FRONTEND_URL =
   process.env.MEMENTO_FRONTEND_URL || "http://localhost:3000";
 const BACKEND_HEALTH_URL = "http://localhost:8000/api/health";
+const DOUYIN_FETCHER_HEALTH_URL = "http://127.0.0.1:8002/health";
 
 let backendProcess = null;
+let douyinFetcherProcess = null;
+
+function resolveBackendEnv() {
+  const projectRoot = process.env.MEMENTO_PROJECT_ROOT || path.join(__dirname, "..");
+  return {
+    ...process.env,
+    MEMENTO_PROJECT_ROOT: projectRoot,
+  };
+}
 
 function resolveBackendCommand() {
   // Dev override, e.g. MEMENTO_BACKEND_CMD="../backend/venv/bin/uvicorn main:app"
@@ -28,11 +39,31 @@ function resolveBackendCommand() {
   return { command: binary, args: [], cwd: path.dirname(binary) };
 }
 
+function resolveDouyinFetcherCommand() {
+  const serviceDir = path.join(__dirname, "..", "services", "douyin_fetcher");
+  if (process.env.MEMENTO_DOUYIN_FETCHER_CMD) {
+    const [command, ...args] = process.env.MEMENTO_DOUYIN_FETCHER_CMD.split(" ");
+    return { command, args, cwd: serviceDir };
+  }
+  const uvicorn = path.join(serviceDir, ".venv", "bin", "uvicorn");
+  if (!fs.existsSync(uvicorn)) {
+    console.warn(
+      `[douyin-fetcher] Not started: ${uvicorn} is missing. Run services/douyin_fetcher/setup.sh to enable Douyin desktop processing.`
+    );
+    return null;
+  }
+  return {
+    command: uvicorn,
+    args: ["server:app", "--host", "127.0.0.1", "--port", "8002"],
+    cwd: serviceDir,
+  };
+}
+
 function startBackend() {
   const { command, args, cwd } = resolveBackendCommand();
   backendProcess = spawn(command, args, {
     cwd,
-    env: { ...process.env },
+    env: resolveBackendEnv(),
     stdio: ["ignore", "pipe", "pipe"],
   });
   backendProcess.stdout.on("data", (d) => process.stdout.write(`[backend] ${d}`));
@@ -42,6 +73,49 @@ function startBackend() {
     if (code !== 0 && code !== null) {
       dialog.showErrorBox("Memento", `Backend exited with code ${code}`);
       app.quit();
+    }
+  });
+}
+
+async function isDouyinFetcherHealthy() {
+  try {
+    const response = await Promise.race([
+      fetch(DOUYIN_FETCHER_HEALTH_URL),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 1000)),
+    ]);
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+async function startDouyinFetcher() {
+  if (await isDouyinFetcherHealthy()) {
+    console.log("[douyin-fetcher] Already healthy on 127.0.0.1:8002; not spawning another process.");
+    return;
+  }
+
+  const commandConfig = resolveDouyinFetcherCommand();
+  if (!commandConfig) {
+    return;
+  }
+
+  const { command, args, cwd } = commandConfig;
+  douyinFetcherProcess = spawn(command, args, {
+    cwd,
+    env: process.env,
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  douyinFetcherProcess.stdout.on("data", (d) => process.stdout.write(`[douyin-fetcher] ${d}`));
+  douyinFetcherProcess.stderr.on("data", (d) => process.stderr.write(`[douyin-fetcher] ${d}`));
+  douyinFetcherProcess.on("error", (error) => {
+    console.warn(`[douyin-fetcher] Failed to start: ${error.message}`);
+    douyinFetcherProcess = null;
+  });
+  douyinFetcherProcess.on("exit", (code) => {
+    douyinFetcherProcess = null;
+    if (code !== 0 && code !== null) {
+      console.warn(`[douyin-fetcher] Exited with code ${code}`);
     }
   });
 }
@@ -69,13 +143,26 @@ function stopBackend() {
   }
 }
 
+function stopDouyinFetcher() {
+  if (douyinFetcherProcess) {
+    douyinFetcherProcess.kill();
+    douyinFetcherProcess = null;
+  }
+}
+
+function stopSidecars() {
+  stopDouyinFetcher();
+  stopBackend();
+}
+
 app.whenReady().then(async () => {
+  await startDouyinFetcher();
   startBackend();
   try {
     await waitForHealth();
   } catch (error) {
     dialog.showErrorBox("Memento", String(error));
-    stopBackend();
+    stopSidecars();
     app.quit();
     return;
   }
@@ -84,8 +171,8 @@ app.whenReady().then(async () => {
 });
 
 app.on("window-all-closed", () => {
-  stopBackend();
+  stopSidecars();
   app.quit();
 });
 
-app.on("before-quit", stopBackend);
+app.on("before-quit", stopSidecars);

@@ -1,5 +1,7 @@
 """Tests for the settings API."""
 
+import asyncio
+import os
 from pathlib import Path
 
 import pytest
@@ -7,14 +9,52 @@ import yaml
 from fastapi.testclient import TestClient
 
 from api import settings as settings_api
-from config.settings import ModelConfig
-from main import app
+from config.settings import ModelConfig, Settings
+from main import app, settings as app_settings
+
+
+SETTINGS_ENV_PREFIXES = (
+    "STORAGE",
+    "MODELS",
+    "VIDEO_PROCESSING",
+    "RAG",
+)
+SETTINGS_ENV_VARS = (
+    "API_HOST",
+    "API_PORT",
+    "API_RELOAD",
+    "CORS_ORIGINS",
+    "LOG_LEVEL",
+)
+
+
+def _isolate_settings_env(monkeypatch):
+    target_env_vars = {env_var.lower() for env_var in SETTINGS_ENV_VARS}
+    target_env_prefixes = tuple(
+        f"{env_prefix.lower()}__" for env_prefix in SETTINGS_ENV_PREFIXES
+    )
+    target_env_vars.update(env_prefix.lower() for env_prefix in SETTINGS_ENV_PREFIXES)
+    for env_var in tuple(os.environ):
+        normalized_env_var = env_var.lower()
+        if (
+            normalized_env_var in target_env_vars
+            or normalized_env_var.startswith(target_env_prefixes)
+        ):
+            monkeypatch.delenv(env_var, raising=False)
 
 
 @pytest.fixture
 def client(tmp_path: Path, monkeypatch):
     config_path = tmp_path / "config.local.yaml"
     monkeypatch.setattr(settings_api, "local_config_path", lambda: config_path)
+    monkeypatch.setattr(app_settings.storage, "data_dir", tmp_path / "data")
+
+    def _test_settings() -> Settings:
+        if not config_path.exists():
+            return Settings()
+        return Settings(**(yaml.safe_load(config_path.read_text()) or {}))
+
+    monkeypatch.setattr(settings_api, "get_settings", _test_settings)
     app.state.chat_sessions = {}
     with TestClient(app) as test_client:
         yield test_client, config_path
@@ -43,6 +83,41 @@ def test_put_settings_persists_to_local_config(client):
     assert response.status_code == 200
     data = yaml.safe_load(config_path.read_text())
     assert data["models"]["chat"]["api_key"] == "sk-real"
+
+
+def test_local_config_path_uses_project_root_env(monkeypatch, tmp_path: Path):
+    project_root = tmp_path / "project"
+    monkeypatch.setenv("MEMENTO_PROJECT_ROOT", str(project_root))
+
+    assert settings_api.local_config_path() == project_root / "config.local.yaml"
+
+
+def test_put_settings_round_trips_project_root_config(monkeypatch, tmp_path: Path):
+    _isolate_settings_env(monkeypatch)
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    monkeypatch.setenv("MEMENTO_PROJECT_ROOT", str(project_root))
+
+    response = asyncio.run(
+        settings_api.update_model_settings(
+            settings_api.ModelsUpdateRequest(
+                chat={
+                    "provider": "cloud",
+                    "endpoint": "https://example.invalid/v1",
+                    "api_key": "sk-roundtrip",
+                    "model": "roundtrip-model",
+                }
+            )
+        )
+    )
+
+    data = yaml.safe_load((project_root / "config.local.yaml").read_text())
+    assert data["models"]["chat"]["endpoint"] == "https://example.invalid/v1"
+    assert data["models"]["chat"]["api_key"] == "sk-roundtrip"
+    assert data["models"]["chat"]["model"] == "roundtrip-model"
+    assert response["chat"]["endpoint"] == "https://example.invalid/v1"
+    assert response["chat"]["api_key"] == "sk-r***"
+    assert response["chat"]["model"] == "roundtrip-model"
 
 
 def test_put_masked_key_does_not_overwrite(client):

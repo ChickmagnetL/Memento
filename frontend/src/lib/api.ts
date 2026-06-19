@@ -24,6 +24,7 @@ export interface VideoRecord {
   duration: number | null;
   url: string;
   status: VideoStatus;
+  error_message: string | null;
   created_at: string;
   processed_at: string | null;
 }
