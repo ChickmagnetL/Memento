@@ -10,7 +10,7 @@ from core.rag.tokenize import tokenize
 
 
 class SearchResult(BaseModel):
-    video_id: str
+    video_id: str | None
     document_id: str
     chunk_index: int
     title_path: str

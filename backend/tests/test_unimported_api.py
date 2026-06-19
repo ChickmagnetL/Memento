@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 
 from api import documents
 from main import app
+from storage.qdrant_client import QdrantStore
 from storage.sqlite_client import SQLiteClient
 
 
@@ -21,6 +22,11 @@ DRAFT_WITH_HEADER = """# 示例视频
 
 [00:01] 内容
 """
+
+
+class FakeEmbeddingClient:
+    def embed(self, texts: list[str]) -> list[list[float]]:
+        return [[0.1, 0.2, 0.3, 0.4] for _ in texts]
 
 
 @pytest.fixture
@@ -40,6 +46,30 @@ async def client(tmp_path: Path, monkeypatch):
         app.state.sqlite = sqlite
         yield test_client, sqlite
     await sqlite.close()
+
+
+@pytest.fixture
+async def client_with_indexing(tmp_path: Path, monkeypatch):
+    """Client with a real QdrantStore (upsert/delete no-op'd) and a fake
+    embedding client, so an unimported document (video_id=None) can be indexed."""
+    sqlite = SQLiteClient(tmp_path / "metadata.db")
+    await sqlite.connect()
+    qdrant = QdrantStore(tmp_path / "qdrant")
+    qdrant.connect(vector_size=4)
+    monkeypatch.setattr(
+        documents, "build_embedding_client", lambda: FakeEmbeddingClient()
+    )
+    # Qdrant local mode uses SQLite internally, which is not thread-safe.
+    # FastAPI's TestClient runs async handlers in a thread-pool, so we
+    # replace the QdrantStore methods with thread-safe no-ops.
+    monkeypatch.setattr(qdrant, "upsert_points", lambda **kwargs: None)
+    monkeypatch.setattr(qdrant, "delete_for_document", lambda document_id: None)
+    with TestClient(app) as test_client:
+        app.state.sqlite = sqlite
+        app.state.qdrant = qdrant
+        yield test_client, sqlite
+    await sqlite.close()
+    qdrant.close()
 
 
 @pytest.mark.asyncio
@@ -120,3 +150,31 @@ async def test_import_unimported_skips_already_imported_and_missing(
 
     assert resp.status_code == 201
     assert resp.json() == []  # one already imported, one missing
+
+
+@pytest.mark.asyncio
+async def test_index_unimported_document_with_null_video_id(
+    client_with_indexing, tmp_path: Path
+):
+    test_client, sqlite = client_with_indexing
+    knowledge = tmp_path / "knowledge" / "bilibili"
+    knowledge.mkdir(parents=True)
+    target = knowledge / "bv1.md"
+    target.write_text(DRAFT_WITH_HEADER, encoding="utf-8")
+
+    import_resp = test_client.post(
+        "/api/documents/unimported/import",
+        json={"file_paths": [str(target)]},
+    )
+    assert import_resp.status_code == 201
+    created = import_resp.json()
+    assert len(created) == 1
+    assert created[0]["video_id"] is None
+    doc_id = created[0]["id"]
+
+    resp = test_client.post(f"/api/documents/{doc_id}/index")
+
+    assert resp.status_code == 200
+    record = resp.json()
+    assert record["is_indexed"] is True
+    assert record["chunk_count"] > 0

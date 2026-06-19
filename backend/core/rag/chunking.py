@@ -17,7 +17,7 @@ TIMESTAMP_PATTERN = re.compile(r"\[(\d{1,2}:\d{2}(?::\d{2})?)\]")
 
 @dataclass(frozen=True)
 class Chunk:
-    video_id: str
+    video_id: str | None
     document_id: str
     chunk_index: int
     title_path: str
@@ -90,7 +90,7 @@ def _split_long_body(body: str, chunk_size: int, overlap: int) -> list[str]:
 def chunk_markdown(
     content: str,
     *,
-    video_id: str,
+    video_id: str | None,
     document_id: str,
     chunk_size: int,
     overlap: int,
