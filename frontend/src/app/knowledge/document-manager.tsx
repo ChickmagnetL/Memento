@@ -149,7 +149,7 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-8 py-8">
-      <header className="flex items-center justify-between">
+      <header className="flex flex-wrap items-center gap-2">
         <h1 className="text-xl font-semibold">Knowledge Base</h1>
         <Button
           variant="outline"
@@ -160,13 +160,8 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
           <FolderSearch className="mr-1 h-4 w-4" />
           {scanning ? "Scanning..." : "Scan unimported"}
         </Button>
-      </header>
-
-      {error ? <ErrorBanner message={error} /> : null}
-
-      {unimported.length > 0 ? (
-        <section className="space-y-3">
-          <div className="flex items-center gap-2">
+        {unimported.length > 0 ? (
+          <>
             <Button
               size="sm"
               disabled={selectedUnimported.size === 0}
@@ -181,9 +176,14 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
             >
               {allUnimportedSelected ? "Deselect all" : "Select all"}
             </Button>
-          </div>
+          </>
+        ) : null}
+      </header>
 
-          <ul className="space-y-2">
+      {error ? <ErrorBanner message={error} /> : null}
+
+      {unimported.length > 0 ? (
+        <ul className="space-y-2">
             {unimported.map((item) => (
               <li
                 key={item.file_path}
@@ -210,7 +210,6 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
               </li>
             ))}
           </ul>
-        </section>
       ) : null}
 
       <section className="space-y-3">
