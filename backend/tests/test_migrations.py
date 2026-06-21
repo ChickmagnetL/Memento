@@ -34,6 +34,33 @@ CREATE TABLE documents (
 );
 """
 
+# Schema at user_version 1 (post document-nullable migration, pre author_id
+# migration).  Used to test the author_id addition migration in isolation.
+SCHEMA_AT_V1 = """
+CREATE TABLE videos (
+    id TEXT PRIMARY KEY,
+    platform TEXT NOT NULL,
+    title TEXT NOT NULL,
+    author TEXT,
+    duration INTEGER,
+    url TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    error_message TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    processed_at TIMESTAMP
+);
+
+CREATE TABLE documents (
+    id TEXT PRIMARY KEY,
+    video_id TEXT,
+    file_path TEXT NOT NULL,
+    chunk_count INTEGER DEFAULT 0,
+    is_indexed BOOLEAN DEFAULT 0,
+    indexed_at TIMESTAMP,
+    FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE SET NULL
+);
+"""
+
 
 async def _old_database(db_path: Path) -> None:
     """Create a database with the pre-migration schema and seed data."""
@@ -73,6 +100,51 @@ async def test_migration_makes_video_id_nullable_and_set_null(tmp_path: Path):
         assert surviving["video_id"] is None
     finally:
         await client.close()
+
+
+async def _database_at_version_1(db_path: Path) -> None:
+    """Create a database at user_version 1 (pre-author_id migration)."""
+    async with aiosqlite.connect(db_path) as conn:
+        await conn.executescript(SCHEMA_AT_V1)
+        await conn.execute("PRAGMA user_version = 1")
+        await conn.execute(
+            "INSERT INTO videos (id, platform, title, url) VALUES (?, ?, ?, ?)",
+            ("v1", "bilibili", "t", "https://example.com"),
+        )
+        await conn.commit()
+
+
+@pytest.mark.asyncio
+async def test_migration_adds_author_id(tmp_path: Path):
+    """Migration 2: adds author_id TEXT column to videos table.
+
+    Existing rows get NULL for the new column. The column sits after author
+    and stores the platform-native author identifier (B站 owner.mid or
+    抖音 sec_uid).
+    """
+    db_path = tmp_path / "metadata.db"
+    await _database_at_version_1(db_path)
+
+    async with aiosqlite.connect(db_path) as conn:
+        await run_migrations(conn)
+
+        # Column exists
+        cursor = await conn.execute("PRAGMA table_info(videos)")
+        rows = await cursor.fetchall()
+        columns = [r[1] for r in rows]
+        assert "author_id" in columns
+
+        # Existing record has NULL author_id
+        cursor = await conn.execute(
+            "SELECT author_id FROM videos WHERE id = ?", ("v1",)
+        )
+        row = await cursor.fetchone()
+        assert row[0] is None
+
+        # PRAGMA user_version bumped to 2
+        cursor = await conn.execute("PRAGMA user_version")
+        row = await cursor.fetchone()
+        assert row[0] == 2
 
 
 @pytest.mark.asyncio

@@ -2,10 +2,12 @@
 
 Runs in its own venv because f2 requires pydantic==2.9.* which
 conflicts with the main backend (>=2.12). Receives an aweme_id
-and optional cookie, returns the best playable video URL.
+and optional cookie, returns the best playable video URL plus metadata.
 """
 
 from __future__ import annotations
+
+import re
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
@@ -20,6 +22,10 @@ class ResolveRequest(BaseModel):
 
 class ResolveResponse(BaseModel):
     video_url: str
+    title: str | None
+    author: str | None
+    author_id: str | None
+    duration: int | None
 
 
 @app.get("/health")
@@ -37,6 +43,8 @@ def _build_cookie(cookie: str) -> str:
 
 def _extract_video_url(detail: dict) -> str:
     video = detail.get("video") or {}
+    if not isinstance(video, dict):
+        video = {}
 
     bit_rates = video.get("bit_rate") or []
     for item in bit_rates:
@@ -51,6 +59,42 @@ def _extract_video_url(detail: dict) -> str:
         return urls[0]
 
     raise HTTPException(status_code=502, detail="No playable video URL found in response")
+
+
+def _optional_str(value) -> str | None:
+    return value if isinstance(value, str) else None
+
+
+def _title_without_topics(value) -> str | None:
+    if not isinstance(value, str):
+        return None
+    title = re.sub(r"(?<![A-Za-z0-9])#\S+", "", value).strip()
+    title = re.sub(r"\s+", " ", title)
+    return title or None
+
+
+def _duration_seconds(value) -> int | None:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    return int(value / 1000)
+
+
+def _build_resolve_payload(detail: dict) -> dict:
+    video = detail.get("video") or {}
+    if not isinstance(video, dict):
+        video = {}
+    author = detail.get("author") or {}
+    if not isinstance(author, dict):
+        author = {}
+    duration_ms = video.get("duration")
+
+    return {
+        "video_url": _extract_video_url(detail),
+        "title": _title_without_topics(detail.get("desc")),
+        "author": _optional_str(author.get("nickname")),
+        "author_id": _optional_str(author.get("sec_uid")),
+        "duration": _duration_seconds(duration_ms),
+    }
 
 
 @app.post("/resolve", response_model=ResolveResponse)
@@ -83,6 +127,5 @@ async def resolve(payload: ResolveRequest) -> dict:
 
     raw = video._to_raw()
     detail = raw.get("aweme_detail") or {}
-    video_url = _extract_video_url(detail)
 
-    return {"video_url": video_url}
+    return _build_resolve_payload(detail)

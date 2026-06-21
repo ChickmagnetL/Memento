@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 
 from api import videos
 from core.video.bilibili import BilibiliSubtitleClient, BilibiliSubtitleError
+from core.video.douyin import DouyinMetadata
 from core.video.pipeline import VideoPipeline, VideoProcessingResult
 from main import app
 from storage.sqlite_client import SQLiteClient
@@ -22,6 +23,27 @@ async def sqlite(tmp_path: Path):
         yield client
     finally:
         await client.close()
+
+
+@pytest.fixture(autouse=True)
+def isolate_video_import_dependencies(monkeypatch, tmp_path: Path):
+    def default_get_settings():
+        return SimpleNamespace(
+            storage=SimpleNamespace(data_dir=tmp_path, keep_videos=False),
+            video_processing=SimpleNamespace(
+                bilibili_cookie="",
+                douyin_cookie="",
+                douyin_fetcher_endpoint="",
+            ),
+            models=SimpleNamespace(
+                asr=SimpleNamespace(endpoint=None, model="iic/SenseVoiceSmall")
+            ),
+    )
+
+    monkeypatch.setattr(videos, "get_settings", default_get_settings)
+    monkeypatch.setattr(
+        BilibiliSubtitleClient, "fetch_metadata", lambda self, bvid: None
+    )
 
 
 @pytest.fixture
@@ -45,6 +67,58 @@ def test_create_video_from_bilibili_url(client: TestClient):
     assert data["status"] == "pending"
 
 
+def test_create_bilibili_video_uses_fetched_metadata(client: TestClient, monkeypatch):
+    seen_cookies = []
+
+    def get_settings_spy():
+        raise AssertionError("Bilibili metadata import should not read settings")
+
+    def fetch_metadata(self, bvid: str):
+        assert bvid == "BV1234567890"
+        seen_cookies.append(self.cookie)
+        return {
+            "title": "真实标题",
+            "author": "作者名",
+            "author_id": "456789",
+            "duration": 123,
+        }
+
+    monkeypatch.setattr(videos, "get_settings", get_settings_spy)
+    monkeypatch.setattr(BilibiliSubtitleClient, "fetch_metadata", fetch_metadata)
+
+    resp = client.post(
+        "/api/videos",
+        json={"url": "https://www.bilibili.com/video/BV1234567890"},
+    )
+
+    assert resp.status_code == 201
+    data = resp.json()
+    assert data["title"] == "真实标题"
+    assert data["author"] == "作者名"
+    assert data["author_id"] == "456789"
+    assert data["duration"] == 123
+    assert seen_cookies == [""]
+
+
+def test_create_bilibili_video_falls_back_when_metadata_fetch_fails(
+    client: TestClient, monkeypatch
+):
+    def fetch_metadata(self, bvid: str):
+        raise OSError("network down")
+
+    monkeypatch.setattr(BilibiliSubtitleClient, "fetch_metadata", fetch_metadata)
+
+    url = "https://www.bilibili.com/video/BV1234567890"
+    resp = client.post("/api/videos", json={"url": url})
+
+    assert resp.status_code == 201
+    data = resp.json()
+    assert data["title"] == url
+    assert data["author"] is None
+    assert data["author_id"] is None
+    assert data["duration"] is None
+
+
 def test_create_video_from_douyin_url(client: TestClient):
     resp = client.post(
         "/api/videos",
@@ -56,6 +130,50 @@ def test_create_video_from_douyin_url(client: TestClient):
     assert data["platform"] == "douyin"
     assert data["title"] == "https://www.douyin.com/video/1234567890"
     assert data["status"] == "pending"
+
+
+def test_create_douyin_video_uses_fetched_metadata(client: TestClient, monkeypatch):
+    def get_settings_spy():
+        return SimpleNamespace(
+            video_processing=SimpleNamespace(
+                douyin_cookie="msToken=explicit",
+                douyin_fetcher_endpoint="http://metadata-fetcher.test",
+            )
+        )
+
+    def fake_build_http_resolver(endpoint: str):
+        assert endpoint == "http://metadata-fetcher.test"
+
+        def resolve(aweme_id: str, cookie: str):
+            assert aweme_id == "1234567890"
+            assert cookie == "msToken=explicit"
+            return DouyinMetadata(
+                video_url="https://cdn.example.com/video.mp4",
+                title="抖音标题",
+                author="抖音作者",
+                author_id="sec-user",
+                duration=42,
+            )
+
+        return resolve
+
+    monkeypatch.setattr(videos, "get_settings", get_settings_spy)
+    monkeypatch.setattr(videos, "build_douyin_http_resolver", fake_build_http_resolver)
+
+    url = "https://www.douyin.com/video/1234567890"
+    resp = client.post(
+        "/api/videos",
+        json={"url": url},
+    )
+
+    assert resp.status_code == 201
+    data = resp.json()
+    assert data["title"] == "抖音标题"
+    assert data["author"] == "抖音作者"
+    assert data["author_id"] == "sec-user"
+    assert data["duration"] == 42
+    assert data["url"] == url
+    assert "video_url" not in data
 
 
 def test_create_video_rejects_unknown_platform(client: TestClient):

@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS videos (
     platform TEXT NOT NULL,           -- 'bilibili' or 'douyin'
     title TEXT NOT NULL,
     author TEXT,
+    author_id TEXT,
     duration INTEGER,                 -- Duration in seconds
     url TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'pending',  -- pending/processing/completed/failed

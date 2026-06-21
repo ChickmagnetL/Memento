@@ -35,7 +35,20 @@ async def _migrate_documents_video_id_nullable(conn: aiosqlite.Connection) -> No
     await conn.commit()
 
 
-_MIGRATIONS = [_migrate_documents_video_id_nullable]
+async def _migrate_videos_add_author_id(conn: aiosqlite.Connection) -> None:
+    """Migration 2: add author_id TEXT column to videos table.
+
+    Stores platform-native author identifier (B站 owner.mid, 抖音 sec_uid).
+    Existing rows get NULL.
+    """
+    cursor = await conn.execute("PRAGMA table_info(videos)")
+    rows = await cursor.fetchall()
+    if not any(r[1] == "author_id" for r in rows):
+        await conn.execute("ALTER TABLE videos ADD COLUMN author_id TEXT")
+        await conn.commit()
+
+
+_MIGRATIONS = [_migrate_documents_video_id_nullable, _migrate_videos_add_author_id]
 
 
 async def run_migrations(conn: aiosqlite.Connection) -> None:

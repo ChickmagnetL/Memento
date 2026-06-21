@@ -89,6 +89,36 @@ def test_fetch_json_sets_cookie_header_when_cookie_provided(monkeypatch):
     assert captured["request"].get_header("Cookie") == "SESSDATA=abc123"
 
 
+def test_client_strips_cookie_line_breaks_before_request(monkeypatch):
+    seen_cookies = []
+
+    def fake_fetch_json(url: str, referer: str | None = None, cookie: str | None = None) -> dict:
+        seen_cookies.append(cookie)
+        if url.startswith("https://api.bilibili.com/x/player/pagelist"):
+            return {"data": [{"cid": 456}]}
+        if url.startswith("https://api.bilibili.com/x/player/v2"):
+            return {
+                "data": {
+                    "subtitle": {
+                        "subtitles": [
+                            {"lan": "zh-Hans", "subtitle_url": "//subtitle.example.com/subtitle.json"}
+                        ]
+                    }
+                }
+            }
+        if url == "https://subtitle.example.com/subtitle.json":
+            return {"body": [{"from": 1.0, "content": "human subtitle"}]}
+        raise AssertionError(f"unexpected URL: {url}")
+
+    client = BilibiliSubtitleClient(
+        fetch_json=fake_fetch_json,
+        cookie="SESSDATA=abc;\n buvid3=def;\r\n",
+    )
+
+    assert client.fetch({"url": "https://www.bilibili.com/video/BV1abcDEF234"})
+    assert seen_cookies[1] == "SESSDATA=abc; buvid3=def;"
+
+
 def test_fetch_json_omits_cookie_header_when_cookie_not_provided(monkeypatch):
     captured = {}
 
@@ -211,6 +241,46 @@ def test_fetch_subtitles_returns_empty_when_first_subtitle_url_missing():
     assert len(calls) == 2
 
 
+def test_fetch_subtitles_prefers_human_track_and_skips_ai_prod_prefix_validation():
+    calls = []
+    human_url = (
+        "https://aisubtitle.hdslb.com/bfs/ai_subtitle/prod/"
+        "987654321456def456/subtitle.json"
+    )
+    ai_url = (
+        "https://aisubtitle.hdslb.com/bfs/ai_subtitle/prod/"
+        "123456789456abc123/subtitle.json"
+    )
+
+    def fake_fetch_json(url: str, referer: str | None = None, cookie: str | None = None) -> dict:
+        calls.append((url, referer, cookie))
+        if url.startswith("https://api.bilibili.com/x/player/pagelist"):
+            return {"data": [{"cid": 456}]}
+        if url.startswith("https://api.bilibili.com/x/player/v2"):
+            return {
+                "data": {
+                    "aid": 123456789,
+                    "subtitle": {
+                        "subtitles": [
+                            {"lan": "ai-zh", "subtitle_url": ai_url},
+                            {"lan": "zh-Hans", "subtitle_url": human_url},
+                        ]
+                    },
+                }
+            }
+        if url == human_url:
+            return {"body": [{"from": 1.0, "content": "human subtitle"}]}
+        raise AssertionError(f"unexpected URL: {url}")
+
+    client = BilibiliSubtitleClient(fetch_json=fake_fetch_json)
+
+    entries = client.fetch({"url": "https://www.bilibili.com/video/BV1abcDEF234"})
+
+    assert entries == [SubtitleEntry(start_seconds=1.0, text="human subtitle")]
+    assert calls[-1][0] == human_url
+    assert ai_url not in [call[0] for call in calls]
+
+
 def test_fetch_subtitles_retries_until_player_returns_matching_prod_prefix():
     calls = []
     matched_url = (
@@ -227,7 +297,7 @@ def test_fetch_subtitles_retries_until_player_returns_matching_prod_prefix():
                 "data": {
                     "aid": 123456789,
                     "subtitle": {
-                        "subtitles": [{"subtitle_url": mismatched_url}]
+                        "subtitles": [{"lan": "ai-zh", "subtitle_url": mismatched_url}]
                     },
                 }
             },
@@ -235,7 +305,7 @@ def test_fetch_subtitles_retries_until_player_returns_matching_prod_prefix():
                 "data": {
                     "aid": 123456789,
                     "subtitle": {
-                        "subtitles": [{"subtitle_url": matched_url}]
+                        "subtitles": [{"lan": "ai-zh", "subtitle_url": matched_url}]
                     },
                 }
             },
@@ -262,9 +332,24 @@ def test_fetch_subtitles_retries_until_player_returns_matching_prod_prefix():
     assert calls[-1][0] == matched_url
 
 
-def test_fetch_subtitles_returns_empty_when_player_never_returns_matching_prod_prefix():
+def test_fetch_subtitles_returns_empty_when_player_never_returns_matching_prod_prefix(
+    monkeypatch,
+):
     matched_prefix = "123456789456"
     calls = []
+    mismatched_url = (
+        "https://aisubtitle.hdslb.com/bfs/ai_subtitle/prod/"
+        "987654321456def456/subtitle.json"
+    )
+    monotonic_values = iter([0, 0, 1, 2, 3, 4, 5, 6, 10])
+    sleep_calls = []
+
+    monkeypatch.setattr(bilibili.time, "monotonic", lambda: next(monotonic_values))
+    monkeypatch.setattr(
+        bilibili.time,
+        "sleep",
+        lambda seconds: sleep_calls.append(seconds),
+    )
 
     def fake_fetch_json(url: str, referer: str | None = None, cookie: str | None = None) -> dict:
         calls.append((url, referer, cookie))
@@ -277,10 +362,8 @@ def test_fetch_subtitles_returns_empty_when_player_never_returns_matching_prod_p
                     "subtitle": {
                         "subtitles": [
                             {
-                                "subtitle_url": (
-                                    "https://aisubtitle.hdslb.com/bfs/ai_subtitle/prod/"
-                                    "987654321456def456/subtitle.json"
-                                )
+                                "lan": "ai-zh",
+                                "subtitle_url": mismatched_url,
                             }
                         ]
                     },
@@ -292,8 +375,13 @@ def test_fetch_subtitles_returns_empty_when_player_never_returns_matching_prod_p
 
     assert client.fetch({"url": "https://www.bilibili.com/video/BV1abcDEF234"}) == []
     player_calls = [call for call in calls if "/x/player/v2" in call[0]]
-    assert len(player_calls) > 1
-    assert all(matched_prefix not in call[0] for call in player_calls)
+    body_calls = [call for call in calls if call[0] == mismatched_url]
+    assert len(player_calls) > 5
+    assert not body_calls
+    assert sleep_calls == [
+        bilibili.PLAYER_SUBTITLE_RETRY_INTERVAL_SECONDS
+    ] * len(player_calls)
+    assert matched_prefix not in mismatched_url
 
 
 def _fetch_subtitles_with_player_response(player_response):

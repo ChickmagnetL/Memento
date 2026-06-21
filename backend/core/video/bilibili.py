@@ -4,6 +4,7 @@ from dataclasses import dataclass
 import json
 import logging
 import math
+import time
 from typing import Callable
 from urllib.parse import quote, urlparse
 from urllib.request import Request, urlopen
@@ -17,7 +18,8 @@ USER_AGENT = (
     "Chrome/125.0.0.0 Safari/537.36"
 )
 
-PLAYER_SUBTITLE_RETRY_LIMIT = 5
+PLAYER_SUBTITLE_RETRY_SECONDS = 10
+PLAYER_SUBTITLE_RETRY_INTERVAL_SECONDS = 0.25
 
 
 @dataclass(frozen=True)
@@ -85,6 +87,28 @@ def _extract_prod_path_prefix(subtitle_url: str) -> str | None:
     return prod_segment or None
 
 
+def _select_subtitle_track(subtitles: list) -> dict | None:
+    """Return the first human subtitle track, falling back to the first AI track.
+
+    Human tracks have a ``lan`` field that does NOT start with ``ai-`` (e.g.
+    "zh-Hans", "en").  AI tracks have ``lan`` starting with ``ai-`` (e.g.
+    "ai-zh", "ai-en").
+    """
+    for track in subtitles:
+        if not isinstance(track, dict):
+            continue
+        lan = track.get("lan", "")
+        if isinstance(lan, str) and not lan.startswith("ai-"):
+            return track
+    for track in subtitles:
+        if not isinstance(track, dict):
+            continue
+        lan = track.get("lan", "")
+        if isinstance(lan, str) and lan.startswith("ai-"):
+            return track
+    return None
+
+
 class BilibiliSubtitleClient:
     def __init__(
         self,
@@ -92,7 +116,48 @@ class BilibiliSubtitleClient:
         cookie: str = "",
     ) -> None:
         self.fetch_json = fetch_json
-        self.cookie = cookie.strip()
+        self.cookie = " ".join(cookie.split())
+
+    def fetch_metadata(self, bvid: str) -> dict | None:
+        metadata_url = (
+            "https://api.bilibili.com/x/web-interface/view"
+            f"?bvid={quote(bvid)}"
+        )
+        try:
+            response = self.fetch_json(metadata_url)
+            if not isinstance(response, dict) or response.get("code") != 0:
+                return None
+            data = response["data"]
+            if not isinstance(data, dict):
+                return None
+            owner = data["owner"]
+            if not isinstance(owner, dict):
+                return None
+            title = data["title"]
+            duration = data["duration"]
+            author = owner["name"]
+            author_id = owner["mid"]
+        except (KeyError, TypeError, ValueError, OSError):
+            return None
+        if not isinstance(title, str):
+            return None
+        if not isinstance(author, str):
+            return None
+        if isinstance(duration, bool) or not isinstance(duration, int):
+            return None
+        if isinstance(author_id, bool):
+            return None
+        if isinstance(author_id, int):
+            author_id = str(author_id)
+        elif not isinstance(author_id, str) or not author_id:
+            return None
+
+        return {
+            "title": title,
+            "author": author,
+            "author_id": author_id,
+            "duration": duration,
+        }
 
     def fetch(self, video: dict) -> list[SubtitleEntry]:
         source_url = video["url"]
@@ -133,7 +198,8 @@ class BilibiliSubtitleClient:
             "https://api.bilibili.com/x/player/v2"
             f"?bvid={quoted_bvid}&cid={cid}"
         )
-        for _attempt in range(PLAYER_SUBTITLE_RETRY_LIMIT):
+        start = time.monotonic()
+        while time.monotonic() - start < PLAYER_SUBTITLE_RETRY_SECONDS:
             player = self.fetch_json(player_url, source_url, self.cookie or None)
             if not isinstance(player, dict):
                 raise BilibiliSubtitleError("Malformed Bilibili player response")
@@ -150,10 +216,10 @@ class BilibiliSubtitleClient:
             if not subtitles:
                 return []
 
-            first_subtitle = subtitles[0]
-            if not isinstance(first_subtitle, dict):
+            selected_subtitle = _select_subtitle_track(subtitles)
+            if selected_subtitle is None:
                 raise BilibiliSubtitleError("Malformed Bilibili player response")
-            subtitle_url = first_subtitle.get("subtitle_url")
+            subtitle_url = selected_subtitle.get("subtitle_url")
             if subtitle_url is None or subtitle_url == "":
                 return []
             if not isinstance(subtitle_url, str):
@@ -165,8 +231,11 @@ class BilibiliSubtitleClient:
 
             parsed_subtitle_url = urlparse(subtitle_url)
             prod_path_prefix = _extract_prod_path_prefix(subtitle_url)
+            lan = selected_subtitle.get("lan", "")
             if (
-                parsed_subtitle_url.hostname == "aisubtitle.hdslb.com"
+                isinstance(lan, str)
+                and lan.startswith("ai-")
+                and parsed_subtitle_url.hostname == "aisubtitle.hdslb.com"
                 and prod_path_prefix is not None
             ):
                 aid = data.get("aid")
@@ -181,12 +250,14 @@ class BilibiliSubtitleClient:
 
                 expected_prefix = f"{aid}{cid}"
                 if not prod_path_prefix.startswith(expected_prefix):
+                    time.sleep(PLAYER_SUBTITLE_RETRY_INTERVAL_SECONDS)
                     continue
 
             return self._fetch_subtitle_body(subtitle_url, source_url)
 
         logger.warning(
-            "Bilibili player/v2 returned no subtitles for %s, may need login cookie",
+            "Bilibili player/v2 did not return a usable subtitle for %s "
+            "before retry timeout",
             bvid,
         )
         return []

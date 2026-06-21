@@ -21,6 +21,7 @@ export interface VideoRecord {
   platform: VideoPlatform;
   title: string;
   author: string | null;
+  author_id: string | null;
   duration: number | null;
   url: string;
   status: VideoStatus;

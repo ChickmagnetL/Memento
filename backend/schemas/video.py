@@ -28,6 +28,7 @@ class VideoRecord(BaseModel):
     platform: VideoPlatform
     title: str
     author: str | None = None
+    author_id: str | None = None
     duration: int | None = None
     url: str
     status: VideoStatus

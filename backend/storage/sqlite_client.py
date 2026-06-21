@@ -80,16 +80,17 @@ class SQLiteClient:
         title: str,
         url: str,
         author: str | None = None,
+        author_id: str | None = None,
         duration: int | None = None,
     ) -> dict:
         """Create a pending video record and return it."""
         conn = self._require_conn()
         await conn.execute(
             """
-            INSERT INTO videos (id, platform, title, author, duration, url, status)
-            VALUES (?, ?, ?, ?, ?, ?, 'pending')
+            INSERT INTO videos (id, platform, title, author, author_id, duration, url, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
             """,
-            (video_id, platform, title, author, duration, url),
+            (video_id, platform, title, author, author_id, duration, url),
         )
         await conn.commit()
 
@@ -103,7 +104,7 @@ class SQLiteClient:
         conn = self._require_conn()
         cursor = await conn.execute(
             """
-            SELECT id, platform, title, author, duration, url, status, error_message, created_at, processed_at
+            SELECT id, platform, title, author, author_id, duration, url, status, error_message, created_at, processed_at
             FROM videos
             ORDER BY created_at DESC, id DESC
             """
@@ -116,7 +117,7 @@ class SQLiteClient:
         conn = self._require_conn()
         cursor = await conn.execute(
             """
-            SELECT id, platform, title, author, duration, url, status, error_message, created_at, processed_at
+            SELECT id, platform, title, author, author_id, duration, url, status, error_message, created_at, processed_at
             FROM videos
             WHERE id = ?
             """,

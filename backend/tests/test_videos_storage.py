@@ -24,6 +24,7 @@ async def test_create_and_get_video(sqlite: SQLiteClient):
         platform="bilibili",
         title="Example video",
         url="https://www.bilibili.com/video/BV123",
+        author_id="12345",
     )
 
     loaded = await sqlite.get_video("video-1")
@@ -34,6 +35,7 @@ async def test_create_and_get_video(sqlite: SQLiteClient):
     assert loaded["title"] == "Example video"
     assert loaded["url"] == "https://www.bilibili.com/video/BV123"
     assert loaded["status"] == "pending"
+    assert loaded["author_id"] == "12345"
 
 
 @pytest.mark.asyncio

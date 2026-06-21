@@ -12,8 +12,12 @@ from fastapi import APIRouter, HTTPException, Query, Request, status
 from config.settings import get_settings
 from core.video.asr_client import AsrServiceClient
 from core.video.audio import AudioDownloader
-from core.video.bilibili import BilibiliSubtitleClient, BilibiliSubtitleError
-from core.video.douyin import DouyinAudioDownloader
+from core.video.bilibili import BilibiliSubtitleClient, BilibiliSubtitleError, extract_bvid
+from core.video.douyin import (
+    DouyinAudioDownloader,
+    _build_http_resolver as build_douyin_http_resolver,
+    direct_aweme_id,
+)
 from core.video.markdown import MarkdownDraftWriter
 from core.video.pipeline import VideoPipeline
 from schemas.video import VideoCreateRequest, VideoRecord, VideoStatusUpdateRequest
@@ -57,11 +61,52 @@ async def create_video(payload: VideoCreateRequest, request: Request) -> dict:
     """Create a pending video record."""
     platform = detect_platform(payload.url)
     sqlite = get_sqlite(request)
+    title = payload.title or payload.url
+    author = None
+    author_id = None
+    duration = None
+
+    if platform == "bilibili":
+        bvid = extract_bvid(payload.url)
+        if bvid is not None:
+            client = BilibiliSubtitleClient()
+            try:
+                metadata = await asyncio.to_thread(client.fetch_metadata, bvid)
+            except Exception as exc:
+                logger.info("Bilibili metadata fetch failed for %s: %s", bvid, exc)
+            else:
+                if metadata is not None:
+                    title = metadata["title"]
+                    author = metadata["author"]
+                    author_id = metadata["author_id"]
+                    duration = metadata["duration"]
+    elif platform == "douyin":
+        aweme_id = direct_aweme_id(payload.url)
+        settings = get_settings()
+        if aweme_id is not None and settings.video_processing.douyin_fetcher_endpoint:
+            resolver = build_douyin_http_resolver(
+                settings.video_processing.douyin_fetcher_endpoint
+            )
+            try:
+                metadata = await asyncio.to_thread(
+                    resolver, aweme_id, settings.video_processing.douyin_cookie
+                )
+            except Exception as exc:
+                logger.info("Douyin metadata fetch failed for %s: %s", aweme_id, exc)
+            else:
+                title = metadata.title or title
+                author = metadata.author
+                author_id = metadata.author_id
+                duration = metadata.duration
+
     return await sqlite.create_video(
         video_id=uuid4().hex,
         platform=platform,
-        title=payload.title or payload.url,
+        title=title,
         url=payload.url,
+        author=author,
+        author_id=author_id,
+        duration=duration,
     )
 
 

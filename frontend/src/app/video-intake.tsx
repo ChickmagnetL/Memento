@@ -164,7 +164,14 @@ export function VideoIntake({ initialHealth, initialVideos }: VideoIntakeProps) 
             {videos.map((video) => (
               <li className="rounded-md border border-border p-4 transition-shadow hover:shadow-sm" key={video.id}>
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="font-medium">{video.title}</p>
+                  <div className="min-w-0">
+                    <p className="font-medium">{video.title}</p>
+                    {video.author ? (
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {video.author}
+                      </p>
+                    ) : null}
+                  </div>
                   <div className="flex items-center gap-2">
                     <span className="rounded-md bg-[var(--color-bg-hover)] px-2 py-1 text-xs text-secondary-foreground">
                       {video.status}

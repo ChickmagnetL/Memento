@@ -1,5 +1,6 @@
 """Douyin video helpers: aweme_id resolution and audio downloading."""
 
+from dataclasses import dataclass
 import json
 import re
 import urllib.request
@@ -15,6 +16,23 @@ AWEME_ID_PATTERN = re.compile(r"^\d{5,}$")
 
 class DouyinError(Exception):
     pass
+
+
+@dataclass(frozen=True)
+class DouyinMetadata:
+    video_url: str
+    title: str | None = None
+    author: str | None = None
+    author_id: str | None = None
+    duration: int | None = None
+
+
+def _optional_str(value) -> str | None:
+    return value if isinstance(value, str) else None
+
+
+def _optional_int(value) -> int | None:
+    return value if isinstance(value, int) and not isinstance(value, bool) else None
 
 
 def direct_aweme_id(value: str) -> str | None:
@@ -45,10 +63,10 @@ def fetch_bytes(url: str) -> bytes:
         return response.read()
 
 
-def _build_http_resolver(endpoint: str) -> Callable[[str, str], str]:
-    """Return a function resolving aweme_id -> video URL via douyin_fetcher."""
+def _build_http_resolver(endpoint: str) -> Callable[[str, str], DouyinMetadata]:
+    """Return a function resolving aweme_id -> metadata via douyin_fetcher."""
 
-    def resolve(aweme_id: str, cookie: str) -> str:
+    def resolve(aweme_id: str, cookie: str) -> DouyinMetadata:
         data = json.dumps({"aweme_id": aweme_id, "cookie": cookie}).encode()
         req = urllib.request.Request(
             f"{endpoint}/resolve",
@@ -63,10 +81,18 @@ def _build_http_resolver(endpoint: str) -> Callable[[str, str], str]:
                 f"Douyin fetcher unreachable at {endpoint} "
                 "(start it: services/douyin_fetcher/README.md)"
             ) from exc
-        url = body.get("video_url")
-        if not url:
+        if not isinstance(body, dict):
             raise DouyinError("Fetcher returned no video URL")
-        return url
+        url = body.get("video_url")
+        if not isinstance(url, str) or not url:
+            raise DouyinError("Fetcher returned no video URL")
+        return DouyinMetadata(
+            video_url=url,
+            title=_optional_str(body.get("title")),
+            author=_optional_str(body.get("author")),
+            author_id=_optional_str(body.get("author_id")),
+            duration=_optional_int(body.get("duration")),
+        )
 
     return resolve
 
@@ -80,7 +106,7 @@ class DouyinAudioDownloader:
         data_dir,
         keep_videos: bool,
         cookie: str,
-        resolve_video_url: Callable[[str, str], str] | None = None,
+        resolve_video_url: Callable[[str, str], str | DouyinMetadata] | None = None,
         fetcher_endpoint: str = "",
         fetch_bytes: Callable[[str], bytes] = fetch_bytes,
         run_command: Callable[[list[str]], None] = default_run_command,
@@ -119,7 +145,8 @@ class DouyinAudioDownloader:
         mp4_path = self.temp_dir / f"{video['id']}.mp4"
         wav_path = self.temp_dir / f"{video['id']}.wav"
 
-        video_url = self.resolve_video_url(aweme_id, self.cookie)
+        resolved = self.resolve_video_url(aweme_id, self.cookie)
+        video_url = resolved.video_url if isinstance(resolved, DouyinMetadata) else resolved
         mp4_path.write_bytes(self.fetch_bytes(video_url))
         try:
             self.run_command(
