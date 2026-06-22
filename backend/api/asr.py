@@ -5,10 +5,17 @@ import importlib.util
 from pathlib import Path
 import threading
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, HTTPException, status
 
-from config.settings import resolve_project_root
-from schemas.asr import AsrDeployStatus, DeployProgress
+from config.settings import get_settings, resolve_project_root
+from core.asr_model_manager import AsrModelManager
+from schemas.asr import (
+    AsrDeployStatus,
+    AsrManagerProgress,
+    AsrManagerStatus,
+    DeployProgress,
+    SelectModelResponse,
+)
 
 
 router = APIRouter(prefix="/api/asr", tags=["asr"])
@@ -20,6 +27,23 @@ _executor = ThreadPoolExecutor(max_workers=1)
 _progress = DeployProgress(stage="idle", detail="", percent=None)
 _future: Future | None = None
 _lock = threading.RLock()
+
+# ---------------------------------------------------------------------------
+# Local model management (Task 5)
+# ---------------------------------------------------------------------------
+
+_manager: AsrModelManager | None = None
+
+
+def _get_manager() -> AsrModelManager:
+    """Lazy singleton AsrModelManager."""
+    global _manager
+    if _manager is None:
+        settings = get_settings()
+        data_dir = settings.storage.data_dir.expanduser().resolve()
+        data_dir.mkdir(parents=True, exist_ok=True)
+        _manager = AsrModelManager(service_dir=SERVICE_DIR, data_dir=data_dir)
+    return _manager
 
 
 def _models_installed() -> bool:
@@ -101,3 +125,73 @@ def start_deploy() -> DeployProgress:
 @router.get("/deploy/progress", response_model=DeployProgress)
 def deploy_progress() -> DeployProgress:
     return _progress
+
+
+# ---------------------------------------------------------------------------
+# Local model management endpoints (Task 5)
+# ---------------------------------------------------------------------------
+
+
+@router.get("/local/status", response_model=AsrManagerStatus)
+def local_status() -> AsrManagerStatus:
+    """Return full local ASR status: environment, models, current, disks, progress."""
+    return _get_manager().get_status()
+
+
+@router.post(
+    "/local/models/{slug}/install",
+    response_model=AsrManagerProgress,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+def local_install_model(slug: str) -> AsrManagerProgress:
+    """Start installing a single local ASR model by slug."""
+    try:
+        return _get_manager().install_model(slug)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Model '{slug}' not found")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.post(
+    "/local/models/{slug}/select",
+    response_model=SelectModelResponse,
+)
+def local_select_model(slug: str) -> SelectModelResponse:
+    """Select an installed model as the current local ASR model."""
+    try:
+        _get_manager().select_model(slug)
+        return SelectModelResponse(current=slug)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Model '{slug}' not found")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.delete(
+    "/local/models/{slug}",
+    response_model=AsrManagerProgress,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+def local_uninstall_model(slug: str) -> AsrManagerProgress:
+    """Start uninstalling a single local ASR model by slug."""
+    try:
+        return _get_manager().uninstall_model(slug)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Model '{slug}' not found")
+
+
+@router.post(
+    "/local/uninstall-all",
+    response_model=AsrManagerProgress,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+def local_uninstall_all() -> AsrManagerProgress:
+    """Uninstall all local ASR models and environment."""
+    return _get_manager().uninstall_all_local_asr()
+
+
+@router.get("/local/progress", response_model=AsrManagerProgress)
+def local_progress() -> AsrManagerProgress:
+    """Return the current or latest local ASR job progress."""
+    return _get_manager().get_status().progress

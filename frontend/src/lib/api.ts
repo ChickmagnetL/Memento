@@ -399,3 +399,121 @@ export async function getAsrDeployProgress(): Promise<AsrDeployProgress> {
   }
   return res.json();
 }
+
+// ── Local ASR Manager (model shelf) ──────────────────────────────────────────
+
+export interface AsrEnvironment {
+  venv_exists: boolean;
+  service_python_exists: boolean;
+  service_dir_exists: boolean;
+  platform: string;
+}
+
+export interface AsrModelInfo {
+  slug: string;
+  family: string;
+  label: string;
+  model_id: string;
+  spec: string | null;
+  size: string;
+  runtime: string;
+  installed: boolean | null;
+  installing: boolean;
+  selected: boolean;
+  estimated_size: string;
+  cache_path: string | null;
+  cache_paths_checked: string[];
+  last_error: string | null;
+}
+
+export interface AsrDiskInfo {
+  total: number;
+  free: number;
+  used: number;
+}
+
+export interface AsrManagerProgress {
+  stage: string;
+  model_slug: string | null;
+  percent: number | null;
+  detail: string | null;
+  error: string | null;
+  done: boolean;
+}
+
+export interface AsrManagerStatus {
+  environment: AsrEnvironment;
+  models: Record<string, AsrModelInfo>;
+  current: string | null;
+  disks: {
+    service_disk: AsrDiskInfo;
+    data_disk: AsrDiskInfo;
+  };
+  progress: AsrManagerProgress;
+}
+
+export async function getLocalAsrStatus(): Promise<AsrManagerStatus> {
+  const res = await fetch(`${API_BASE_URL}/api/asr/local/status`, {
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`Get local ASR status failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function installLocalAsrModel(
+  slug: string
+): Promise<AsrManagerProgress> {
+  const res = await fetch(`${API_BASE_URL}/api/asr/local/models/${slug}/install`, {
+    method: "POST",
+  });
+  if (!res.ok) {
+    throw new Error(`Install local ASR model failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function selectLocalAsrModel(
+  slug: string
+): Promise<{ current: string }> {
+  const res = await fetch(`${API_BASE_URL}/api/asr/local/models/${slug}/select`, {
+    method: "POST",
+  });
+  if (!res.ok) {
+    throw new Error(`Select local ASR model failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function uninstallLocalAsrModel(
+  slug: string
+): Promise<AsrManagerProgress> {
+  const res = await fetch(`${API_BASE_URL}/api/asr/local/models/${slug}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) {
+    throw new Error(`Uninstall local ASR model failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function uninstallAllLocalAsr(): Promise<AsrManagerProgress> {
+  const res = await fetch(`${API_BASE_URL}/api/asr/local/uninstall-all`, {
+    method: "POST",
+  });
+  if (!res.ok) {
+    throw new Error(`Uninstall all local ASR failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function getLocalAsrProgress(): Promise<AsrManagerProgress> {
+  const res = await fetch(`${API_BASE_URL}/api/asr/local/progress`, {
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`Get local ASR progress failed: ${res.status}`);
+  }
+  return res.json();
+}

@@ -78,15 +78,15 @@ def test_get_transcriber_cache_is_keyed_by_model(monkeypatch):
         def __init__(self, *, model: str) -> None:
             seen_models.append(model)
 
-    monkeypatch.setattr(server, "FunAsrTranscriber", FakeTranscriber)
+    monkeypatch.setattr(server, "MoonshineVoiceTranscriber", FakeTranscriber)
 
-    first = server.get_transcriber("model-a")
-    second = server.get_transcriber("model-a")
-    third = server.get_transcriber("model-b")
+    first = server.get_transcriber("tiny-en")
+    second = server.get_transcriber("tiny-en")
+    third = server.get_transcriber("base-en")
 
     assert first is second
     assert third is not first
-    assert seen_models == ["model-a", "model-b"]
+    assert seen_models == ["tiny-en", "base-en"]
 
 
 def test_get_transcriber_selects_moonshine_voice_from_model_prefix(monkeypatch):
@@ -151,13 +151,13 @@ def test_get_transcriber_cache_uses_exact_moonshine_voice_model(monkeypatch):
 
     first = server.get_transcriber("moonshine_voice/medium-streaming-en")
     second = server.get_transcriber("moonshine_voice/medium-streaming-en")
-    third = server.get_transcriber("moonshine_voice/custom")
+    third = server.get_transcriber("moonshine_voice/tiny-en")
 
     assert first is second
     assert third is not first
     assert seen_models == [
         "moonshine_voice/medium-streaming-en",
-        "moonshine_voice/custom",
+        "moonshine_voice/tiny-en",
     ]
 
 

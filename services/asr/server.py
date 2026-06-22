@@ -19,9 +19,40 @@ MoonshineVoiceTranscriber = None
 
 DEFAULT_ASR_MODEL = "iic/SenseVoiceSmall"
 
+# ---------------------------------------------------------------------------
+# Model routing tables (mirror backend/core/asr_model_registry.py)
+# ---------------------------------------------------------------------------
+_MOONSHINE_SPECS = frozenset({
+    "tiny-en",
+    "base-en",
+    "tiny-streaming-en",
+    "small-streaming-en",
+    "medium-streaming-en",
+})
+
+_SENSEVOICE_MODELS = frozenset({
+    "iic/SenseVoiceSmall",
+    "sensevoice-small",
+})
+
+
+def _normalize_model(model: str) -> str:
+    """Resolve model aliases to canonical model IDs."""
+    if model == "sensevoice-small":
+        return "iic/SenseVoiceSmall"
+    return model
+
 
 def _get_transcriber_class(model: str):
+    """Return the transcriber class for *model*, or raise ValueError.
+
+    *model* must already be normalized via :func:`_normalize_model`.
+    """
+    # Detect Moonshine models: full model_id or bare spec
+    spec = model
     if model.startswith("moonshine_voice/"):
+        spec = model[len("moonshine_voice/"):]
+    if spec in _MOONSHINE_SPECS:
         global MoonshineVoiceTranscriber
         if MoonshineVoiceTranscriber is None:
             from transcribers import (
@@ -31,16 +62,21 @@ def _get_transcriber_class(model: str):
             MoonshineVoiceTranscriber = _MoonshineVoiceTranscriber
         return MoonshineVoiceTranscriber
 
-    global FunAsrTranscriber
-    if FunAsrTranscriber is None:
-        from transcribers import FunAsrTranscriber as _FunAsrTranscriber
+    # SenseVoice Small (model_id or alias)
+    if model in _SENSEVOICE_MODELS:
+        global FunAsrTranscriber
+        if FunAsrTranscriber is None:
+            from transcribers import FunAsrTranscriber as _FunAsrTranscriber
 
-        FunAsrTranscriber = _FunAsrTranscriber
-    return FunAsrTranscriber
+            FunAsrTranscriber = _FunAsrTranscriber
+        return FunAsrTranscriber
+
+    raise ValueError(f"Unsupported ASR model: {model}")
 
 
 def get_transcriber(model: str):
     """Lazy-load and cache the transcriber for a configured model."""
+    model = _normalize_model(model)
     if model not in _transcribers:
         transcriber_class = _get_transcriber_class(model)
         _transcribers[model] = transcriber_class(model=model)

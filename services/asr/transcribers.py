@@ -19,10 +19,29 @@ def _load_mono(audio_path: str) -> tuple[np.ndarray, int]:
     return audio, sample_rate
 
 
+_MOONSHINE_SPEC_TO_ARCH = {
+    "tiny-en": "TINY",
+    "base-en": "BASE",
+    "tiny-streaming-en": "TINY_STREAMING",
+    "small-streaming-en": "SMALL_STREAMING",
+    "medium-streaming-en": "MEDIUM_STREAMING",
+}
+
+
 def _moonshine_voice_model(model: str, ModelArch):
-    if model == "moonshine_voice/medium-streaming-en":
-        return "en", ModelArch.MEDIUM_STREAMING
-    raise ValueError(f"Unsupported Moonshine Voice model: {model}")
+    """Resolve a Moonshine model spec or model_id to (language, ModelArch).
+
+    Accepts both bare spec strings (``"tiny-en"``) and full model IDs
+    (``"moonshine_voice/tiny-en"``).  All currently supported variants use
+    English (``"en"``).
+    """
+    spec = model
+    if spec.startswith("moonshine_voice/"):
+        spec = spec[len("moonshine_voice/"):]
+    arch_attr = _MOONSHINE_SPEC_TO_ARCH.get(spec)
+    if arch_attr is None:
+        raise ValueError(f"Unsupported Moonshine Voice model: {model}")
+    return "en", getattr(ModelArch, arch_attr)
 
 
 class FunAsrTranscriber:

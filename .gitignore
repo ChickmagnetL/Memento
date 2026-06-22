@@ -14,6 +14,7 @@ docs/
 .claude
 .codex
 .agents
+.superpowers
 
 # Python
 __pycache__/
