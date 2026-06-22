@@ -301,6 +301,59 @@ def test_process_video_passes_configured_cookie_and_asr_model_to_pipeline(
     assert seen_asr_models == [expected_model]
 
 
+def test_process_video_passes_asr_protocol_and_api_key_to_client(
+    client: TestClient,
+    monkeypatch,
+    tmp_path: Path,
+):
+    created = _create_video(client)
+    seen_client_kwargs = []
+
+    def get_settings_spy():
+        return SimpleNamespace(
+            storage=SimpleNamespace(data_dir=tmp_path, keep_videos=False),
+            video_processing=SimpleNamespace(
+                bilibili_cookie="",
+                douyin_cookie="",
+                douyin_fetcher_endpoint="http://localhost:8002",
+            ),
+            models=SimpleNamespace(
+                asr=SimpleNamespace(
+                    endpoint="https://api.xiaomimimo.com/v1",
+                    model="mimo-v2.5-asr",
+                    protocol="chat_audio",
+                    api_key="sk-asr",
+                )
+            ),
+        )
+
+    class FakeAsrServiceClient:
+        def __init__(self, **kwargs):
+            seen_client_kwargs.append(kwargs)
+
+    def pipeline_init_spy(self, *, sqlite, data_dir, cookie="", **kwargs):
+        pass
+
+    async def process_spy(self, video: dict) -> VideoProcessingResult:
+        return VideoProcessingResult(video_id=video["id"], status="completed")
+
+    monkeypatch.setattr(videos, "get_settings", get_settings_spy)
+    monkeypatch.setattr(videos, "AsrServiceClient", FakeAsrServiceClient)
+    monkeypatch.setattr(VideoPipeline, "__init__", pipeline_init_spy)
+    monkeypatch.setattr(VideoPipeline, "process", process_spy)
+
+    resp = client.post(f"/api/videos/{created['id']}/process")
+
+    assert resp.status_code == 200
+    assert seen_client_kwargs == [
+        {
+            "endpoint": "https://api.xiaomimimo.com/v1",
+            "protocol": "chat_audio",
+            "api_key": "sk-asr",
+        }
+    ]
+
+
 def test_process_missing_video_returns_404(client: TestClient):
     resp = client.post("/api/videos/missing/process")
 

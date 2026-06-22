@@ -1,7 +1,8 @@
 fastapi
+python-multipart
 uvicorn[standard]
 soundfile
 numpy
 funasr
 modelscope
-torch
+moonshine-voice

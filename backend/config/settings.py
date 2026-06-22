@@ -69,6 +69,7 @@ class ModelConfig(BaseModel):
     endpoint: str | None = None
     api_key: str | None = None
     model: str | None = None
+    protocol: Literal["transcriptions", "chat_audio"] | None = None
 
 
 class ModelsConfig(BaseModel):

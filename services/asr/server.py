@@ -1,34 +1,20 @@
 """Memento ASR service.
 
-Runs in its own venv because funasr/torch are heavy. Receives local
-audio paths (same machine as the main backend) and returns timed
-segments. The configured Settings ASR model is lazy-loaded on first use.
+Runs in its own venv because funasr/torch are heavy. Receives uploaded
+audio and returns OpenAI-compatible verbose JSON transcription output.
+The configured Settings ASR model is lazy-loaded on first use.
 """
 
+import tempfile
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 
 app = FastAPI(title="Memento ASR Service", version="0.1.0")
 
 _transcribers: dict = {}
 FunAsrTranscriber = None
 MoonshineVoiceTranscriber = None
-
-
-class TranscribeRequest(BaseModel):
-    audio_path: str
-    model: str | None = None
-
-
-class Segment(BaseModel):
-    start_seconds: float
-    text: str
-
-
-class TranscribeResponse(BaseModel):
-    segments: list[Segment]
 
 
 DEFAULT_ASR_MODEL = "iic/SenseVoiceSmall"
@@ -66,13 +52,35 @@ def health() -> dict:
     return {"status": "ok"}
 
 
-@app.post("/transcribe", response_model=TranscribeResponse)
-def transcribe(payload: TranscribeRequest) -> dict:
-    if not Path(payload.audio_path).is_file():
-        raise HTTPException(status_code=404, detail="Audio file not found")
+@app.post("/v1/audio/transcriptions")
+def transcribe(
+    file: UploadFile = File(...),
+    model: str = Form(DEFAULT_ASR_MODEL),
+    response_format: str = Form("verbose_json"),
+) -> dict:
+    suffix = Path(file.filename or "").suffix
+    temp_path = None
     try:
-        transcriber = get_transcriber(payload.model or DEFAULT_ASR_MODEL)
-        segments = transcriber.transcribe(payload.audio_path)
+        with tempfile.NamedTemporaryFile(
+            prefix="memento-asr-",
+            suffix=suffix,
+            delete=False,
+        ) as temp_file:
+            temp_path = Path(temp_file.name)
+            temp_file.write(file.file.read())
+        transcriber = get_transcriber(model or DEFAULT_ASR_MODEL)
+        segments = transcriber.transcribe(str(temp_path))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
-    return {"segments": segments}
+    finally:
+        if temp_path is not None:
+            temp_path.unlink(missing_ok=True)
+
+    response_segments = [
+        {"start": segment["start_seconds"], "text": segment["text"]}
+        for segment in segments
+    ]
+    text = " ".join(segment["text"] for segment in segments if segment["text"])
+    if response_format == "text":
+        return {"text": text}
+    return {"text": text, "segments": response_segments}

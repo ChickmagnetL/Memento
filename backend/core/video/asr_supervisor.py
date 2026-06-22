@@ -55,13 +55,17 @@ def _port_from_endpoint(endpoint: str) -> int:
     return 443 if parsed.scheme == "https" else 80
 
 
+def _is_local_endpoint(endpoint: str) -> bool:
+    return urlparse(endpoint).hostname in {"localhost", "127.0.0.1", "::1"}
+
+
 def _spawn(venv: Path, port: int) -> subprocess.Popen:
     project_root = resolve_project_root()
     return subprocess.Popen(
         [str(venv), "server:app", "--host", "127.0.0.1", "--port", str(port)],
         cwd=str(project_root / "services" / "asr"),
         stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
         start_new_session=True,
     )
 
@@ -76,6 +80,18 @@ def _terminate(proc: subprocess.Popen) -> None:
 
 def _cleanup() -> None:
     shutdown()
+
+
+def _startup_error(proc: subprocess.Popen) -> str:
+    try:
+        _, stderr = proc.communicate(timeout=0.1)
+    except Exception:
+        return "process exited before becoming healthy"
+    if isinstance(stderr, bytes):
+        detail = stderr.decode("utf-8", errors="replace").strip()
+    else:
+        detail = str(stderr or "").strip()
+    return detail[-1000:] or "process exited before becoming healthy"
 
 
 def shutdown() -> None:
@@ -109,6 +125,9 @@ def ensure_asr_running(
     """
     global _spawned_proc
 
+    if not _is_local_endpoint(endpoint):
+        return
+
     if is_healthy(endpoint):
         return
 
@@ -137,6 +156,10 @@ def ensure_asr_running(
         if is_healthy(endpoint):
             logger.info("ASR service ready at %s", endpoint)
             return
+        if _spawned_proc is not None and _spawned_proc.poll() is not None:
+            detail = _startup_error(_spawned_proc)
+            _spawned_proc = None
+            raise AsrError(f"ASR service failed to start at {endpoint}: {detail}")
         sleep(poll_interval)
     raise AsrError(
         f"ASR service did not become healthy at {endpoint} within {timeout}s"

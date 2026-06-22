@@ -1,6 +1,7 @@
 """Tests for douyin helpers."""
 
 from pathlib import Path
+from urllib.error import HTTPError
 
 import pytest
 
@@ -74,6 +75,59 @@ def test_download_resolves_fetches_and_extracts(tmp_path: Path):
     assert ffmpeg_args[0] == "ffmpeg"
     assert str(tmp_path / "videos" / "temp" / "video-1.mp4") in ffmpeg_args
     assert not (tmp_path / "videos" / "temp" / "video-1.mp4").exists()
+
+
+def test_download_re_resolves_once_after_forbidden_video_url(tmp_path: Path):
+    events: list = []
+    resolved_urls = iter(
+        [
+            "https://cdn.example.com/expired.mp4",
+            "https://cdn.example.com/fresh.mp4",
+        ]
+    )
+
+    def fake_resolve_video_url(aweme_id: str, cookie: str) -> str:
+        url = next(resolved_urls)
+        events.append(("resolve", aweme_id, url))
+        return url
+
+    def fake_fetch_bytes(url: str) -> bytes:
+        events.append(("download", url))
+        if url.endswith("/expired.mp4"):
+            raise HTTPError(url, 403, "Forbidden", hdrs=None, fp=None)
+        return b"MP4DATA"
+
+    def fake_run_command(args: list[str]) -> None:
+        events.append(("ffmpeg", args))
+        Path(args[-1]).write_bytes(b"RIFF")
+
+    downloader = DouyinAudioDownloader(
+        data_dir=tmp_path,
+        keep_videos=False,
+        cookie="sessionid=test",
+        resolve_video_url=fake_resolve_video_url,
+        fetch_bytes=fake_fetch_bytes,
+        run_command=fake_run_command,
+    )
+
+    wav_path = downloader.download(make_video())
+
+    assert wav_path.exists()
+    assert events[:4] == [
+        (
+            "resolve",
+            "7640347491958803748",
+            "https://cdn.example.com/expired.mp4",
+        ),
+        ("download", "https://cdn.example.com/expired.mp4"),
+        (
+            "resolve",
+            "7640347491958803748",
+            "https://cdn.example.com/fresh.mp4",
+        ),
+        ("download", "https://cdn.example.com/fresh.mp4"),
+    ]
+    assert events[4][0] == "ffmpeg"
 
 
 def test_download_unresolvable_url_raises(tmp_path: Path):

@@ -10,6 +10,7 @@ class ModelConfigUpdate(BaseModel):
     endpoint: str | None = None
     api_key: str | None = None
     model: str | None = None
+    protocol: str | None = None
 
 
 class ModelsUpdateRequest(BaseModel):

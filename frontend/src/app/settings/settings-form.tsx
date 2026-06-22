@@ -5,10 +5,15 @@ import { Eye, EyeOff } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
+  deployAsr,
+  getAsrDeployProgress,
+  getAsrDeployStatus,
   getModelSettings,
   getServiceStatus,
   updateModelSettings,
   fetchApiKey,
+  type AsrDeployProgress,
+  type AsrDeployStatus,
   type ModelConfig,
   type ModelsSettings,
   type ServiceStatus,
@@ -26,6 +31,32 @@ const FIELDS: { key: keyof ModelConfig; label: string }[] = [
   { key: "model", label: "Model" },
 ];
 
+function asrBaseUrl(endpoint: string | null) {
+  const fallback = "http://localhost:8001/v1";
+  const value = (endpoint || fallback).trim() || fallback;
+  const base = value.replace(/\/+$/, "");
+  try {
+    const parsed = new URL(base);
+    if (
+      ["localhost", "127.0.0.1", "::1"].includes(parsed.hostname) &&
+      !parsed.pathname.replace(/\/+$/, "")
+    ) {
+      return `${base}/v1`;
+    }
+  } catch {
+    // Keep partially typed custom endpoints visible while the user edits.
+  }
+  return base;
+}
+
+function asrRequestUrl(endpoint: string | null, protocol: ModelConfig["protocol"]) {
+  const route =
+    (protocol ?? "transcriptions") === "chat_audio"
+      ? "/chat/completions"
+      : "/audio/transcriptions";
+  return `${asrBaseUrl(endpoint)}${route}`;
+}
+
 export function SettingsForm() {
   const [settings, setSettings] = useState<ModelsSettings | null>(null);
   const [status, setStatus] = useState<Record<string, ServiceStatus>>({});
@@ -33,11 +64,39 @@ export function SettingsForm() {
   const [isSaving, setIsSaving] = useState(false);
   const [visibleKeys, setVisibleKeys] = useState<Record<string, boolean>>({});
   const [plainKeys, setPlainKeys] = useState<Record<string, string | null>>({});
+  const [asrDeployStatus, setAsrDeployStatus] =
+    useState<AsrDeployStatus | null>(null);
+  const [asrDeployProgress, setAsrDeployProgress] =
+    useState<AsrDeployProgress | null>(null);
+  const [isDeployingAsr, setIsDeployingAsr] = useState(false);
 
   useEffect(() => {
     getModelSettings().then(setSettings).catch(() => setMessage("Load failed"));
     getServiceStatus().then(setStatus).catch(() => {});
+    getAsrDeployStatus().then(setAsrDeployStatus).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!isDeployingAsr) {
+      return;
+    }
+    const interval = window.setInterval(async () => {
+      try {
+        const progress = await getAsrDeployProgress();
+        setAsrDeployProgress(progress);
+        if (progress.done) {
+          window.clearInterval(interval);
+          setIsDeployingAsr(false);
+          setAsrDeployStatus(await getAsrDeployStatus());
+        }
+      } catch {
+        window.clearInterval(interval);
+        setIsDeployingAsr(false);
+        setMessage("ASR deploy status failed.");
+      }
+    }, 1000);
+    return () => window.clearInterval(interval);
+  }, [isDeployingAsr]);
 
   function setField(name: ModelName, key: keyof ModelConfig, value: string) {
     setSettings((current) =>
@@ -45,6 +104,18 @@ export function SettingsForm() {
         ? { ...current, [name]: { ...current[name], [key]: value } }
         : current
     );
+  }
+
+  async function handleDeployAsr() {
+    setMessage("");
+    setIsDeployingAsr(true);
+    try {
+      const progress = await deployAsr();
+      setAsrDeployProgress(progress);
+    } catch {
+      setIsDeployingAsr(false);
+      setMessage("ASR deploy failed.");
+    }
   }
 
   async function toggleApiKeyVisibility(name: string) {
@@ -126,8 +197,65 @@ export function SettingsForm() {
                       </button>
                     ) : null}
                   </div>
+                  {name === "asr" && label === "Endpoint" ? (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      本地默认使用 http://localhost:8001/v1；云端或局域网 ASR 也填写 OpenAI-compatible base URL。
+                    </p>
+                  ) : null}
                 </label>
               ))}
+              {name === "asr" ? (
+                <div className="space-y-3">
+                  <label className="block text-sm">
+                    <span className="mb-1 block text-muted-foreground">
+                      Protocol
+                    </span>
+                    <select
+                      className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                      value={settings.asr.protocol ?? "transcriptions"}
+                      onChange={(event) =>
+                        setField(
+                          "asr",
+                          "protocol",
+                          event.target.value
+                        )
+                      }
+                    >
+                      <option value="transcriptions">transcriptions</option>
+                      <option value="chat_audio">chat_audio</option>
+                    </select>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      当前协议将请求 {asrRequestUrl(settings.asr.endpoint, settings.asr.protocol)}
+                    </p>
+                  </label>
+                  {asrDeployStatus && !asrDeployStatus.venv_exists ? (
+                    <div className="flex items-center justify-between gap-3 rounded-md border border-input p-3">
+                      <span className="text-sm text-muted-foreground">
+                        本地 ASR 未安装
+                      </span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleDeployAsr}
+                        disabled={isDeployingAsr}
+                      >
+                        一键部署
+                      </Button>
+                    </div>
+                  ) : null}
+                  {asrDeployProgress ? (
+                    <p className="text-xs text-muted-foreground">
+                      {asrDeployProgress.detail}
+                      {asrDeployProgress.percent !== null
+                        ? ` ${asrDeployProgress.percent}%`
+                        : ""}
+                      {asrDeployProgress.error
+                        ? `: ${asrDeployProgress.error}`
+                        : ""}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
             </section>
           ))}
           <Button type="submit" disabled={isSaving}>

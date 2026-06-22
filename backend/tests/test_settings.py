@@ -5,7 +5,7 @@ import os
 import pytest
 
 import config.settings as settings_module
-from config.settings import Settings, get_settings
+from config.settings import ModelConfig, Settings, get_settings
 
 
 SETTINGS_ENV_VARS = (
@@ -22,14 +22,17 @@ SETTINGS_ENV_VARS = (
     "MODELS__ASR__ENDPOINT",
     "MODELS__ASR__API_KEY",
     "MODELS__ASR__MODEL",
+    "MODELS__ASR__PROTOCOL",
     "MODELS__EMBEDDING__PROVIDER",
     "MODELS__EMBEDDING__ENDPOINT",
     "MODELS__EMBEDDING__API_KEY",
     "MODELS__EMBEDDING__MODEL",
+    "MODELS__EMBEDDING__PROTOCOL",
     "MODELS__CHAT__PROVIDER",
     "MODELS__CHAT__ENDPOINT",
     "MODELS__CHAT__API_KEY",
     "MODELS__CHAT__MODEL",
+    "MODELS__CHAT__PROTOCOL",
     "VIDEO_PROCESSING",
     "VIDEO_PROCESSING__AUTO_CLEAN",
     "VIDEO_PROCESSING__PRESERVE_TIMESTAMP",
@@ -78,6 +81,20 @@ video_processing:
     settings = Settings.load_from_yaml(config_path)
 
     assert settings.video_processing.bilibili_cookie == "SESSDATA=example"
+
+
+def test_model_protocol_defaults():
+    config = ModelConfig(provider="local")
+
+    assert config.protocol is None
+
+
+def test_default_asr_protocol_is_transcriptions():
+    settings = Settings.load_from_yaml(settings_module.resolve_backend_dir() / "config" / "default.yaml")
+
+    assert settings.models.asr.protocol == "transcriptions"
+    assert settings.models.embedding.protocol is None
+    assert settings.models.chat.protocol is None
 
 
 def test_config_local_partial_override_preserves_config_yaml_nested_values(tmp_path, monkeypatch):

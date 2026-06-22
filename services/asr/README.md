@@ -1,48 +1,60 @@
 # Memento ASR Service
 
-独立的 ASR（语音识别）服务，使用自己的 venv 隔离 funasr/torch 等重量级依赖。ASR 模型由后端 Settings 或请求中的 `model` 配置决定，省略时默认使用 `iic/SenseVoiceSmall`。
-
-Settings 中的 ASR Model 同时决定使用哪个后端：`moonshine_voice/*` 模型使用 Moonshine Voice，其他模型使用 FunASR。Phase 0 Moonshine medium 对应的模型字符串是 `moonshine_voice/medium-streaming-en`。
+独立 ASR 服务，使用自己的 venv 隔离 funasr/torch 等重量级依赖。接口兼容 OpenAI Whisper 风格的 `/v1/audio/transcriptions`，可本机、局域网或云主机独立部署。
 
 ## 安装
 
 ```bash
-bash setup.sh
+cd services/asr
+python deploy.py
 ```
 
-`setup.sh` 安装默认 FunASR 依赖，默认模型为 `iic/SenseVoiceSmall`。
+部署器会创建 `.venv`、安装 `requirements.txt`、按平台安装 torch，并预下载两个绑定模型：
 
-Moonshine Voice 是可选后端。使用 `moonshine_voice/medium-streaming-en` 模型前，需要在 ASR venv 中额外安装：
+- `iic/SenseVoiceSmall`
+- `moonshine_voice/medium-streaming-en`
+
+CUDA 主机可显式指定：
 
 ```bash
-cd services/asr
-.venv/bin/pip install -r requirements-moonshine.txt
+python deploy.py --device cuda
 ```
 
 ## 启动
 
 ```bash
 cd services/asr
-.venv/bin/uvicorn server:app --port 8001
+bash run.sh
 ```
 
-服务默认监听端口 **8001**。
+`run.sh` 默认监听 `0.0.0.0:8001`，便于 LAN GPU 主机使用。可用环境变量覆盖：
 
-## 模型缓存
+```bash
+ASR_HOST=127.0.0.1 ASR_PORT=8001 bash run.sh
+```
 
-FunASR 模型文件存放在 `model_cache/` 目录，首次转录时自动下载，无需手动操作。Moonshine Voice 的下载和缓存行为由 `moonshine-voice` 包管理，不使用本服务的 `model_cache/`。
+## API
+
+```bash
+curl -X POST http://localhost:8001/v1/audio/transcriptions \
+  -F model=iic/SenseVoiceSmall \
+  -F response_format=verbose_json \
+  -F file=@audio.wav
+```
+
+返回：
+
+```json
+{
+  "text": "完整文本",
+  "segments": [
+    {"start": 0.0, "text": "分段文本"}
+  ]
+}
+```
 
 ## 删除
 
 ```bash
 rm -rf .venv model_cache
-```
-
-## 可选模型接口
-
-```bash
-#中文
-iic/SenseVoiceSmall
-#英文
-moonshine_voice/medium-streaming-en
 ```

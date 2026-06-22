@@ -11,13 +11,13 @@ import server
 
 
 def test_transcribe_uses_requested_model(monkeypatch, tmp_path: Path):
-    audio_path = tmp_path / "audio.wav"
-    audio_path.write_bytes(b"RIFF")
     seen_models = []
+    seen_paths = []
 
     class FakeTranscriber:
         def transcribe(self, path: str) -> list[dict]:
-            return [{"start_seconds": 0.0, "text": path}]
+            seen_paths.append(path)
+            return [{"start_seconds": 0.0, "text": Path(path).name}]
 
     def fake_get_transcriber(model: str):
         seen_models.append(model)
@@ -26,20 +26,20 @@ def test_transcribe_uses_requested_model(monkeypatch, tmp_path: Path):
     monkeypatch.setattr(server, "get_transcriber", fake_get_transcriber)
 
     response = TestClient(server.app).post(
-        "/transcribe",
-        json={"audio_path": str(audio_path), "model": "custom-asr-model"},
+        "/v1/audio/transcriptions",
+        data={"model": "custom-asr-model"},
+        files={"file": ("audio.wav", b"RIFF", "audio/wav")},
     )
 
     assert response.status_code == 200
     assert seen_models == ["custom-asr-model"]
+    assert seen_paths and Path(seen_paths[0]).name.startswith("memento-asr-")
     assert response.json()["segments"] == [
-        {"start_seconds": 0.0, "text": str(audio_path)}
+        {"start": 0.0, "text": Path(seen_paths[0]).name}
     ]
 
 
-def test_transcribe_defaults_to_sensevoice_model(monkeypatch, tmp_path: Path):
-    audio_path = tmp_path / "audio.wav"
-    audio_path.write_bytes(b"RIFF")
+def test_transcribe_defaults_to_sensevoice_model(monkeypatch):
     seen_models = []
 
     class FakeTranscriber:
@@ -53,12 +53,21 @@ def test_transcribe_defaults_to_sensevoice_model(monkeypatch, tmp_path: Path):
     monkeypatch.setattr(server, "get_transcriber", fake_get_transcriber)
 
     response = TestClient(server.app).post(
-        "/transcribe",
-        json={"audio_path": str(audio_path)},
+        "/v1/audio/transcriptions",
+        files={"file": ("audio.wav", b"RIFF", "audio/wav")},
     )
 
     assert response.status_code == 200
     assert seen_models == ["iic/SenseVoiceSmall"]
+
+
+def test_legacy_transcribe_endpoint_is_removed():
+    response = TestClient(server.app).post(
+        "/transcribe",
+        json={"audio_path": "/tmp/audio.wav", "model": "custom-asr-model"},
+    )
+
+    assert response.status_code == 404
 
 
 def test_get_transcriber_cache_is_keyed_by_model(monkeypatch):
@@ -171,11 +180,9 @@ def test_transcribe_reports_missing_moonshine_voice_dependency(
     server._transcribers.clear()
 
     response = TestClient(server.app).post(
-        "/transcribe",
-        json={
-            "audio_path": str(audio_path),
-            "model": "moonshine_voice/medium-streaming-en",
-        },
+        "/v1/audio/transcriptions",
+        data={"model": "moonshine_voice/medium-streaming-en"},
+        files={"file": ("audio.wav", audio_path.read_bytes(), "audio/wav")},
     )
 
     assert response.status_code == 500

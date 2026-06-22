@@ -120,6 +120,20 @@ def test_put_settings_round_trips_project_root_config(monkeypatch, tmp_path: Pat
     assert response["chat"]["model"] == "roundtrip-model"
 
 
+def test_asr_protocol_round_trips(client):
+    test_client, config_path = client
+
+    response = test_client.put(
+        "/api/settings/models",
+        json={"asr": {"protocol": "chat_audio"}},
+    )
+
+    assert response.status_code == 200
+    data = yaml.safe_load(config_path.read_text())
+    assert data["models"]["asr"]["protocol"] == "chat_audio"
+    assert response.json()["asr"]["protocol"] == "chat_audio"
+
+
 def test_put_masked_key_does_not_overwrite(client):
     test_client, config_path = client
     test_client.put(
@@ -204,6 +218,19 @@ def test_asr_health_non_json_is_unreachable(monkeypatch):
         lambda *args, **kwargs: _FakeResponse(b"<html>not json</html>"),
     )
     assert settings_api._check_asr_health("http://localhost:8001") == "unreachable"
+
+
+def test_asr_health_strips_openai_v1_base_path(monkeypatch):
+    seen_urls = []
+
+    def fake_urlopen(url, timeout):
+        seen_urls.append(url)
+        return _FakeResponse(b'{"status":"ok"}')
+
+    monkeypatch.setattr(settings_api, "urlopen", fake_urlopen)
+
+    assert settings_api._check_asr_health("http://localhost:8001/v1") == "ok"
+    assert seen_urls == ["http://localhost:8001/health"]
 
 
 def test_get_api_key_returns_plaintext(client, monkeypatch):

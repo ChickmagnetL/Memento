@@ -4,6 +4,7 @@ import asyncio
 import json
 from pathlib import Path
 from typing import Literal
+from urllib.parse import urlparse
 from urllib.request import urlopen
 
 from fastapi import APIRouter
@@ -51,6 +52,7 @@ async def get_model_settings() -> dict:
             "endpoint": config.endpoint,
             "api_key": _mask_key(config.api_key),
             "model": config.model,
+            "protocol": config.protocol,
         }
         for name, config in (
             ("chat", models.chat),
@@ -79,8 +81,12 @@ async def update_model_settings(payload: ModelsUpdateRequest) -> dict:
 
 
 def _check_asr_health(endpoint: str) -> str:
+    health_base = endpoint.rstrip("/")
+    parsed = urlparse(health_base)
+    if parsed.path.rstrip("/") == "/v1":
+        health_base = health_base[: -len(parsed.path.rstrip("/"))].rstrip("/")
     try:
-        with urlopen(f"{endpoint.rstrip('/')}/health", timeout=3) as response:
+        with urlopen(f"{health_base}/health", timeout=3) as response:
             body = json.loads(response.read().decode("utf-8"))
         return "ok" if body.get("status") == "ok" else "unreachable"
     except (OSError, ValueError):

@@ -295,6 +295,7 @@ export interface ModelConfig {
   endpoint: string | null;
   api_key: string | null;
   model: string | null;
+  protocol: "transcriptions" | "chat_audio" | null;
 }
 
 export interface ModelsSettings {
@@ -354,4 +355,47 @@ export async function fetchApiKey(modelName: string): Promise<string | null> {
   }
   const data = await res.json();
   return data.api_key;
+}
+
+export interface AsrDeployStatus {
+  venv_exists: boolean;
+  models_installed: boolean;
+}
+
+export interface AsrDeployProgress {
+  stage: string;
+  detail: string;
+  percent: number | null;
+  done: boolean;
+  error: string | null;
+}
+
+export async function getAsrDeployStatus(): Promise<AsrDeployStatus> {
+  const res = await fetch(`${API_BASE_URL}/api/asr/deploy/status`, {
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`Get ASR deploy status failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function deployAsr(): Promise<AsrDeployProgress> {
+  const res = await fetch(`${API_BASE_URL}/api/asr/deploy`, {
+    method: "POST",
+  });
+  if (!res.ok) {
+    throw new Error(`Deploy ASR failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function getAsrDeployProgress(): Promise<AsrDeployProgress> {
+  const res = await fetch(`${API_BASE_URL}/api/asr/deploy/progress`, {
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`Get ASR deploy progress failed: ${res.status}`);
+  }
+  return res.json();
 }

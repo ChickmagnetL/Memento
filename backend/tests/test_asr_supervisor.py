@@ -38,6 +38,14 @@ def _fake_proc(pid: int = 999999) -> Mock:
     return proc
 
 
+def _exited_proc(stderr: bytes = b"missing dependency") -> Mock:
+    proc = Mock()
+    proc.pid = 999998
+    proc.poll = Mock(return_value=1)
+    proc.communicate = Mock(return_value=(b"", stderr))
+    return proc
+
+
 def test_healthy_service_does_not_spawn():
     spawn = Mock()
 
@@ -93,6 +101,33 @@ def test_missing_venv_skips_spawn_and_does_not_raise():
     spawn.assert_not_called()
 
 
+@pytest.mark.parametrize(
+    "endpoint",
+    [
+        "http://192.168.1.10:8001/v1",
+        "https://api.siliconflow.cn/v1",
+    ],
+)
+def test_remote_endpoint_returns_without_spawn_or_health_check(endpoint):
+    spawn = Mock()
+
+    def fail_health_check(_endpoint):
+        raise AssertionError("remote endpoint should not be checked")
+
+    def fail_venv_path():
+        raise AssertionError("remote endpoint should not inspect local venv")
+
+    ensure_asr_running(
+        endpoint,
+        is_healthy=fail_health_check,
+        venv_path=fail_venv_path,
+        spawn=spawn,
+        sleep=lambda _: None,
+    )
+
+    spawn.assert_not_called()
+
+
 def test_service_never_becomes_healthy_raises_asr_error(existing_venv):
     spawn = Mock(return_value=_fake_proc())
 
@@ -100,6 +135,20 @@ def test_service_never_becomes_healthy_raises_asr_error(existing_venv):
         ensure_asr_running(
             "http://localhost:8001",
             timeout=0.0,
+            is_healthy=lambda endpoint: False,
+            venv_path=lambda: existing_venv,
+            spawn=spawn,
+            sleep=lambda _: None,
+        )
+
+
+def test_spawn_exit_surfaces_startup_error(existing_venv):
+    spawn = Mock(return_value=_exited_proc(b"python-multipart missing"))
+
+    with pytest.raises(AsrError, match="python-multipart missing"):
+        ensure_asr_running(
+            "http://localhost:8001",
+            timeout=10.0,
             is_healthy=lambda endpoint: False,
             venv_path=lambda: existing_venv,
             spawn=spawn,
@@ -213,4 +262,3 @@ def test_shutdown_noop_when_nothing_spawned():
     asr_supervisor._spawned_proc = None
     shutdown()  # must not raise
     assert asr_supervisor._spawned_proc is None
-

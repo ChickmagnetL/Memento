@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 import json
 import re
+from urllib.error import HTTPError
 import urllib.request
 from pathlib import Path
 from typing import Callable
@@ -145,9 +146,18 @@ class DouyinAudioDownloader:
         mp4_path = self.temp_dir / f"{video['id']}.mp4"
         wav_path = self.temp_dir / f"{video['id']}.wav"
 
-        resolved = self.resolve_video_url(aweme_id, self.cookie)
-        video_url = resolved.video_url if isinstance(resolved, DouyinMetadata) else resolved
-        mp4_path.write_bytes(self.fetch_bytes(video_url))
+        def resolve_download_url() -> str:
+            resolved = self.resolve_video_url(aweme_id, self.cookie)
+            return resolved.video_url if isinstance(resolved, DouyinMetadata) else resolved
+
+        video_url = resolve_download_url()
+        try:
+            mp4_path.write_bytes(self.fetch_bytes(video_url))
+        except HTTPError as exc:
+            if exc.code != 403:
+                raise
+            video_url = resolve_download_url()
+            mp4_path.write_bytes(self.fetch_bytes(video_url))
         try:
             self.run_command(
                 [

@@ -182,8 +182,10 @@ async def process_video(
         except Exception as exc:
             await sqlite.update_video_status(video_id, "completed")
             raise HTTPException(status_code=500, detail=str(exc)) from exc
-    asr_endpoint = settings.models.asr.endpoint or "http://localhost:8001"
+    asr_endpoint = settings.models.asr.endpoint or "http://localhost:8001/v1"
     asr_model = settings.models.asr.model or "iic/SenseVoiceSmall"
+    asr_protocol = getattr(settings.models.asr, "protocol", None) or "transcriptions"
+    asr_api_key = getattr(settings.models.asr, "api_key", None)
     pipeline = VideoPipeline(
         sqlite=sqlite,
         data_dir=data_dir,
@@ -198,7 +200,11 @@ async def process_video(
             cookie=settings.video_processing.douyin_cookie,
             fetcher_endpoint=settings.video_processing.douyin_fetcher_endpoint,
         ),
-        asr_client=AsrServiceClient(endpoint=asr_endpoint),
+        asr_client=AsrServiceClient(
+            endpoint=asr_endpoint,
+            protocol=asr_protocol,
+            api_key=asr_api_key,
+        ),
         asr_model=asr_model,
     )
     try:
