@@ -144,7 +144,7 @@ async def test_migration_adds_author_id(tmp_path: Path):
         # PRAGMA user_version bumped to 2
         cursor = await conn.execute("PRAGMA user_version")
         row = await cursor.fetchone()
-        assert row[0] == 2
+        assert row[0] == 4  # Now at migration 4 (latest)
 
 
 @pytest.mark.asyncio

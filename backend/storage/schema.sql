@@ -34,6 +34,34 @@ CREATE TABLE IF NOT EXISTS config (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Model presets table
+-- Stores transcription model configurations grouped by model_name
+CREATE TABLE IF NOT EXISTS model_presets (
+    id TEXT PRIMARY KEY,
+    model_name TEXT NOT NULL,
+    name TEXT NOT NULL,
+    config TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(model_name, name)
+);
+
+-- Active preset table
+-- Tracks the currently active preset for each model
+CREATE TABLE IF NOT EXISTS active_preset (
+    model_name TEXT PRIMARY KEY,
+    preset_id TEXT NOT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (preset_id) REFERENCES model_presets(id) ON DELETE CASCADE
+);
+
+-- App config table
+-- General key-value configuration storage
+CREATE TABLE IF NOT EXISTS app_config (
+    key TEXT PRIMARY KEY,
+    value TEXT,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Create indexes for common queries
 CREATE INDEX IF NOT EXISTS idx_videos_status ON videos(status);
 CREATE INDEX IF NOT EXISTS idx_videos_platform ON videos(platform);

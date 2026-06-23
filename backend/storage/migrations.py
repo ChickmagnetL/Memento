@@ -51,10 +51,35 @@ async def _migrate_videos_add_author_id(conn: aiosqlite.Connection) -> None:
 async def _migrate_add_presets_and_app_config(conn: aiosqlite.Connection) -> None:
     """Migration 3: add transcription_presets, active_preset, and app_config tables.
 
-    - transcription_presets: stores provider-specific transcription configurations
-    - active_preset: singleton table tracking the currently active preset
-    - app_config: general key-value config storage (superset of old config table)
+    DEPRECATED: This migration is superseded by migration 4.
+    For databases that already ran this migration, migration 4 will convert the schema.
+    For fresh databases, this is a no-op and migration 4 creates the correct schema.
     """
+    # Check if migration 4 has already run (user_version >= 4)
+    cursor = await conn.execute("PRAGMA user_version")
+    row = await cursor.fetchone()
+    current_version = row[0] if row else 0
+
+    if current_version >= 4:
+        # Migration 4 already ran, skip this
+        return
+
+    # Check if tables already exist (fresh install path where migration 4 will handle it)
+    cursor = await conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('model_presets', 'transcription_presets')"
+    )
+    existing_tables = await cursor.fetchall()
+
+    if any(t[0] == 'model_presets' for t in existing_tables):
+        # New schema already exists, skip
+        return
+
+    if any(t[0] == 'transcription_presets' for t in existing_tables):
+        # Old schema exists, keep it for migration 4 to convert
+        return
+
+    # Only create old schema if this is an upgrade path (not fresh install)
+    # Fresh installs will skip this and go directly to migration 4
     await conn.executescript(
         """
         CREATE TABLE IF NOT EXISTS transcription_presets (
@@ -82,10 +107,124 @@ async def _migrate_add_presets_and_app_config(conn: aiosqlite.Connection) -> Non
     await conn.commit()
 
 
+async def _migrate_fix_spec_compliance(conn: aiosqlite.Connection) -> None:
+    """Migration 4: fix spec compliance issues.
+
+    Rebuilds tables to match specification:
+    - Rename transcription_presets -> model_presets (preset_id -> id, provider -> model_name)
+    - Add UNIQUE(model_name, name) constraint
+    - Rebuild active_preset with model_name as PK
+    - Fix app_config.value to allow NULL
+
+    Handles two scenarios:
+    1. Upgrade from migration 3: converts old schema to new schema
+    2. Fresh install: creates new schema directly
+    """
+    # Check if old tables exist (migration 3 was applied)
+    cursor = await conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='transcription_presets'"
+    )
+    has_old_table = await cursor.fetchone() is not None
+
+    # Check if new tables already exist
+    cursor = await conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='model_presets'"
+    )
+    has_new_table = await cursor.fetchone() is not None
+
+    if has_new_table and not has_old_table:
+        # Already migrated, skip
+        return
+
+    if has_old_table:
+        # Migrate data from old structure to new structure
+        await conn.executescript(
+            """
+            -- Create new model_presets table
+            CREATE TABLE model_presets (
+                id TEXT PRIMARY KEY,
+                model_name TEXT NOT NULL,
+                name TEXT NOT NULL,
+                config TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(model_name, name)
+            );
+
+            -- Migrate data: preset_id -> id, provider -> model_name
+            INSERT INTO model_presets (id, model_name, name, config, created_at)
+            SELECT preset_id, provider, name, config, created_at
+            FROM transcription_presets;
+
+            -- Create new active_preset table with model_name as PK
+            CREATE TABLE active_preset_new (
+                model_name TEXT PRIMARY KEY,
+                preset_id TEXT NOT NULL,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (preset_id) REFERENCES model_presets(id) ON DELETE CASCADE
+            );
+
+            -- Migrate active preset: lookup provider from old preset
+            INSERT INTO active_preset_new (model_name, preset_id, updated_at)
+            SELECT tp.provider, ap.preset_id, ap.updated_at
+            FROM active_preset ap
+            JOIN transcription_presets tp ON ap.preset_id = tp.preset_id
+            WHERE ap.id = 1 AND ap.preset_id IS NOT NULL;
+
+            -- Rebuild app_config with nullable value
+            CREATE TABLE app_config_new (
+                key TEXT PRIMARY KEY,
+                value TEXT,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+
+            INSERT INTO app_config_new (key, value, updated_at)
+            SELECT key, value, updated_at FROM app_config;
+
+            -- Drop old tables
+            DROP TABLE active_preset;
+            DROP TABLE transcription_presets;
+            DROP TABLE app_config;
+
+            -- Rename new tables
+            ALTER TABLE active_preset_new RENAME TO active_preset;
+            ALTER TABLE app_config_new RENAME TO app_config;
+            """
+        )
+    else:
+        # Fresh install: create tables with correct schema directly
+        await conn.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS model_presets (
+                id TEXT PRIMARY KEY,
+                model_name TEXT NOT NULL,
+                name TEXT NOT NULL,
+                config TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(model_name, name)
+            );
+
+            CREATE TABLE IF NOT EXISTS active_preset (
+                model_name TEXT PRIMARY KEY,
+                preset_id TEXT NOT NULL,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (preset_id) REFERENCES model_presets(id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS app_config (
+                key TEXT PRIMARY KEY,
+                value TEXT,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            """
+        )
+    await conn.commit()
+
+
 _MIGRATIONS = [
     _migrate_documents_video_id_nullable,
     _migrate_videos_add_author_id,
     _migrate_add_presets_and_app_config,
+    _migrate_fix_spec_compliance,
 ]
 
 
