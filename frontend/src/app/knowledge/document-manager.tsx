@@ -44,6 +44,9 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
   );
   const [scanning, setScanning] = useState(false);
 
+  const rawDocs = documents.filter((doc) => doc.status === "raw");
+  const indexedDocs = documents.filter((doc) => doc.status === "indexed");
+
   async function refresh() {
     setDocuments(await listDocuments());
   }
@@ -212,11 +215,47 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
           </ul>
       ) : null}
 
+      {/* 未整理 section */}
       <section className="space-y-3">
-        {documents.length === 0 ? (
-          <EmptyState icon={Database} title="No documents yet" description="Process a video first." />
+        <h2 className="text-lg font-semibold">未整理</h2>
+        {rawDocs.length === 0 ? (
+          <EmptyState icon={Database} title="还没有文档" description="导入视频后自动出现在这里" />
         ) : (
-          documents.map((doc) => (
+          rawDocs.map((doc) => (
+            <div
+              key={doc.id}
+              className="flex flex-col gap-2 rounded-md border border-border p-4 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div className="min-w-0">
+                <p className="truncate font-mono text-sm">{doc.file_path}</p>
+                <p className="text-xs text-muted-foreground">Not indexed</p>
+              </div>
+              <div className="flex shrink-0 gap-2">
+                <Button variant="outline" size="sm" className="w-[100px]" disabled={busyId === doc.id} onClick={() => handlePreview(doc.id)}>
+                  <Eye className="mr-1 h-4 w-4" /> 预览
+                </Button>
+                <Button variant="outline" size="sm" className="w-[110px]" disabled={busyId === doc.id} onClick={() => handleClean(doc.id)}>
+                  <Sparkles className="mr-1 h-4 w-4" /> 清理并入库
+                </Button>
+                <Button size="sm" className="w-[100px]" disabled={busyId === doc.id} onClick={() => handleIndex(doc.id)}>
+                  <Database className="mr-1 h-4 w-4" /> 直接入库
+                </Button>
+                <Button variant="outline" size="sm" className="w-[90px]" disabled={busyId === doc.id} onClick={() => { setDeleteSource(false); setDeleteTarget({ documentId: doc.id, fileName: doc.file_path }); }}>
+                  <Trash2 className="mr-1 h-4 w-4" /> 删除
+                </Button>
+              </div>
+            </div>
+          ))
+        )}
+      </section>
+
+      {/* 已索引 section */}
+      <section className="space-y-3">
+        <h2 className="text-lg font-semibold">已索引</h2>
+        {indexedDocs.length === 0 ? (
+          <EmptyState icon={Database} title="还没有已索引的文档" description="先去整理吧" />
+        ) : (
+          indexedDocs.map((doc) => (
             <div
               key={doc.id}
               className="flex flex-col gap-2 rounded-md border border-border p-4 sm:flex-row sm:items-center sm:justify-between"
@@ -224,53 +263,18 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
               <div className="min-w-0">
                 <p className="truncate font-mono text-sm">{doc.file_path}</p>
                 <p className="text-xs text-muted-foreground">
-                  {doc.is_indexed
-                    ? `Indexed (${doc.chunk_count} chunks, ${doc.indexed_at})`
-                    : "Not indexed"}
+                  Indexed ({doc.chunk_count} chunks, {doc.indexed_at})
                 </p>
               </div>
               <div className="flex shrink-0 gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-[100px]"
-                  disabled={busyId === doc.id}
-                  onClick={() => handlePreview(doc.id)}
-                >
-                  <Eye className="mr-1 h-4 w-4" /> Preview
+                <Button variant="outline" size="sm" className="w-[100px]" disabled={busyId === doc.id} onClick={() => handlePreview(doc.id)}>
+                  <Eye className="mr-1 h-4 w-4" /> 预览
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-[100px]"
-                  disabled={busyId === doc.id}
-                  onClick={() => handleClean(doc.id)}
-                >
-                  <Sparkles className="mr-1 h-4 w-4" /> Clean
+                <Button size="sm" className="w-[100px]" disabled={busyId === doc.id} onClick={() => handleIndex(doc.id)}>
+                  <Database className="mr-1 h-4 w-4" /> 重新索引
                 </Button>
-                <Button
-                  size="sm"
-                  className="w-[100px]"
-                  disabled={busyId === doc.id}
-                  onClick={() => handleIndex(doc.id)}
-                >
-                  <Database className="mr-1 h-4 w-4" />
-                  {doc.is_indexed ? "Re-index" : "Index"}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-[100px]"
-                  disabled={busyId === doc.id}
-                  onClick={() => {
-                    setDeleteSource(false);
-                    setDeleteTarget({
-                      documentId: doc.id,
-                      fileName: doc.file_path,
-                    });
-                  }}
-                >
-                  <Trash2 className="mr-1 h-4 w-4" /> Delete
+                <Button variant="outline" size="sm" className="w-[90px]" disabled={busyId === doc.id} onClick={() => { setDeleteSource(false); setDeleteTarget({ documentId: doc.id, fileName: doc.file_path }); }}>
+                  <Trash2 className="mr-1 h-4 w-4" /> 删除
                 </Button>
               </div>
             </div>
