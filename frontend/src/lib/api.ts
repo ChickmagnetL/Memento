@@ -116,7 +116,7 @@ export interface DocumentRecord {
   video_id: string | null;
   file_path: string;
   chunk_count: number;
-  is_indexed: boolean;
+  status: string;
   indexed_at: string | null;
 }
 
