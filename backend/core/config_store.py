@@ -34,8 +34,8 @@ class ConfigStore:
             logger.warning(f"DB not found at {self.db_path}, skipping model update")
             return
 
+        conn = sqlite3.connect(self.db_path)
         try:
-            conn = sqlite3.connect(self.db_path)
             conn.row_factory = sqlite3.Row
 
             for model_name, fields in models_update.items():
@@ -74,8 +74,9 @@ class ConfigStore:
                 )
 
             conn.commit()
-            conn.close()
 
         except Exception as e:
             logger.error(f"Failed to update models in DB: {e}")
             raise
+        finally:
+            conn.close()

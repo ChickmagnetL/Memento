@@ -202,8 +202,8 @@ def _load_db_config(db_path: Path) -> dict[str, Any]:
     if not db_path.exists():
         return {}
 
+    conn = sqlite3.connect(db_path)
     try:
-        conn = sqlite3.connect(db_path)
         conn.row_factory = sqlite3.Row
         db_config: dict[str, Any] = {}
 
@@ -238,18 +238,22 @@ def _load_db_config(db_path: Path) -> dict[str, Any]:
                 row = cursor.fetchone()
                 if row and row["config"]:
                     try:
-                        db_config["models"][model_name] = json.loads(row["config"])
+                        preset_config = json.loads(row["config"])
+                        # Only override if preset config is non-empty
+                        if preset_config:
+                            db_config["models"][model_name] = preset_config
                     except json.JSONDecodeError:
                         logger.warning(f"Invalid JSON in preset for {model_name}, skipping")
         except sqlite3.OperationalError as e:
             logger.debug(f"model_presets table read failed: {e}, skipping")
 
-        conn.close()
         return db_config
 
     except Exception as e:
         logger.warning(f"Failed to load DB config: {e}, using YAML only")
         return {}
+    finally:
+        conn.close()
 
 
 def get_settings() -> Settings:
