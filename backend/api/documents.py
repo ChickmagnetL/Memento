@@ -97,7 +97,6 @@ async def import_unimported_documents(
 ) -> list[dict]:
     """Create KB document records for the given markdown files.
 
-    Does not chunk/embed/index — is_indexed stays 0, matching a fresh import.
     Already-imported or missing files are skipped silently.
     """
     sqlite, _qdrant = get_state(request)
@@ -154,11 +153,10 @@ async def index_document(document_id: str, request: Request) -> dict:
 @router.post(
     "/{document_id}/clean",
     response_model=DocumentRecord,
-    status_code=status.HTTP_201_CREATED,
 )
 async def clean_document(document_id: str, request: Request) -> dict:
-    """AI-clean a draft document into a new sibling document."""
-    sqlite, _qdrant = get_state(request)
+    """AI-clean a draft document, update in-place, and auto-index."""
+    sqlite, qdrant = get_state(request)
     document = await sqlite.get_document(document_id)
     if document is None:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -188,11 +186,36 @@ async def clean_document(document_id: str, request: Request) -> dict:
     await asyncio.to_thread(
         cleaned_path.write_text, cleaned, encoding="utf-8"
     )
-    return await sqlite.create_document(
-        document_id=uuid4().hex,
-        video_id=document["video_id"],
-        file_path=str(cleaned_path),
+
+    # Update the document path in-place.
+    document = await sqlite.update_document_path(document_id, str(cleaned_path))
+
+    # Auto-index the cleaned document.
+    settings = get_settings()
+    try:
+        embedding_client = build_embedding_client()
+    except EmbeddingError as exc:
+        raise HTTPException(
+            status_code=500, detail=str(exc)
+        ) from exc
+
+    indexer = DocumentIndexer(
+        sqlite=sqlite,
+        qdrant=qdrant,
+        embedding_client=embedding_client,
+        chunk_size=settings.rag.chunk_size,
+        overlap=settings.rag.overlap,
     )
+    try:
+        return await indexer.index(document)
+    except EmbeddingError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Embedding API failed: {exc}",
+        ) from exc
+    except (OSError, ValueError, RuntimeError) as exc:
+        logger.exception("Indexing failed for document %s", document_id)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 @router.get("/{document_id}/chunks", response_model=list[ChunkPreview])

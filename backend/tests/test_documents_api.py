@@ -139,7 +139,7 @@ async def test_delete_missing_document_returns_404(client):
 
 
 @pytest.mark.asyncio
-async def test_clean_document_creates_cleaned_document(
+async def test_clean_document_updates_in_place_and_indexes(
     client, tmp_path: Path, monkeypatch
 ):
     test_client, sqlite = client
@@ -155,17 +155,17 @@ async def test_clean_document_creates_cleaned_document(
 
     response = test_client.post("/api/documents/d1/clean")
 
-    assert response.status_code == 201
+    assert response.status_code == 200
     record = response.json()
-    assert record["id"] != "d1"
+    assert record["id"] == "d1"
     assert record["video_id"] == "v1"
     assert record["file_path"].endswith("v1.clean.md")
-    assert record["is_indexed"] is False
+    assert record["status"] == "indexed"
     cleaned_text = Path(record["file_path"]).read_text(encoding="utf-8")
     assert "## 主题" in cleaned_text
     assert cleaned_text.startswith("# 示例视频")
-    # Raw draft is untouched.
-    raw = Path((await sqlite.get_document("d1"))["file_path"])
+    # Raw draft file is untouched.
+    raw = Path(tmp_path / "v1.md")
     assert "[00:01] 第一行内容" in raw.read_text(encoding="utf-8")
 
 
