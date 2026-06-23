@@ -10,7 +10,7 @@ class DocumentRecord(BaseModel):
     video_id: str | None
     file_path: str
     chunk_count: int
-    is_indexed: bool
+    status: str
     indexed_at: str | None = None
 
 
