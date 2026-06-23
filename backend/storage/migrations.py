@@ -13,20 +13,28 @@ async def _migrate_documents_video_id_nullable(conn: aiosqlite.Connection) -> No
     Rebuilds the documents table (SQLite cannot ALTER a column's NOT NULL or
     FK action in place). documents is only a child table, so dropping it does
     not violate any foreign keys.
+
+    Handles both old schema (is_indexed) and new schema (status) column names
+    so the migration works on databases at any schema version.
     """
+    cursor = await conn.execute("PRAGMA table_info(documents)")
+    rows = await cursor.fetchall()
+    columns = [r[1] for r in rows]
+    index_col = "is_indexed" if "is_indexed" in columns else "status"
+
     await conn.executescript(
-        """
+        f"""
         CREATE TABLE documents_new (
             id TEXT PRIMARY KEY,
             video_id TEXT,
             file_path TEXT NOT NULL,
             chunk_count INTEGER DEFAULT 0,
-            is_indexed BOOLEAN DEFAULT 0,
+            {index_col} {'BOOLEAN DEFAULT 0' if index_col == 'is_indexed' else "TEXT DEFAULT 'raw'"},
             indexed_at TIMESTAMP,
             FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE SET NULL
         );
-        INSERT INTO documents_new (id, video_id, file_path, chunk_count, is_indexed, indexed_at)
-        SELECT id, video_id, file_path, chunk_count, is_indexed, indexed_at FROM documents;
+        INSERT INTO documents_new (id, video_id, file_path, chunk_count, {index_col}, indexed_at)
+        SELECT id, video_id, file_path, chunk_count, {index_col}, indexed_at FROM documents;
         DROP TABLE documents;
         ALTER TABLE documents_new RENAME TO documents;
         CREATE INDEX IF NOT EXISTS idx_documents_video_id ON documents(video_id);
@@ -172,11 +180,64 @@ async def _migrate_fix_spec_compliance(conn: aiosqlite.Connection) -> None:
     await conn.commit()
 
 
+async def _migrate_documents_add_status(conn: aiosqlite.Connection) -> None:
+    """Migration 5: replace is_indexed BOOLEAN with status TEXT.
+
+    1. Add status TEXT DEFAULT 'raw' column
+    2. Convert is_indexed = 1 rows to status = 'indexed'
+    3. Deduplicate: for %.clean.md files, delete the matching raw document
+       (same video_id, file_path without .clean)
+    4. Drop the is_indexed column (SQLite 3.35+)
+    """
+    cursor = await conn.execute("PRAGMA table_info(documents)")
+    rows = await cursor.fetchall()
+    columns = [r[1] for r in rows]
+
+    if "status" in columns:
+        return  # Already migrated
+
+    if "is_indexed" not in columns:
+        # Fresh install with new schema — nothing to convert
+        return
+
+    # 1. Add status column
+    await conn.execute(
+        "ALTER TABLE documents ADD COLUMN status TEXT DEFAULT 'raw'"
+    )
+
+    # 2. Convert indexed flag
+    await conn.execute(
+        "UPDATE documents SET status = 'indexed' WHERE is_indexed = 1"
+    )
+
+    # 3. Deduplicate: when a .clean.md version exists, remove the raw version
+    await conn.execute(
+        """
+        DELETE FROM documents
+        WHERE id IN (
+            SELECT raw.id
+            FROM documents clean
+            JOIN documents raw
+                ON (raw.video_id = clean.video_id
+                    OR (raw.video_id IS NULL AND clean.video_id IS NULL))
+                AND raw.file_path = REPLACE(clean.file_path, '.clean.md', '.md')
+            WHERE clean.file_path LIKE '%.clean.md'
+        )
+        """
+    )
+
+    # 4. Drop the old column
+    await conn.execute("ALTER TABLE documents DROP COLUMN is_indexed")
+
+    await conn.commit()
+
+
 _MIGRATIONS = [
     _migrate_documents_video_id_nullable,
     _migrate_videos_add_author_id,
     _migrate_add_presets_and_app_config,
     _migrate_fix_spec_compliance,
+    _migrate_documents_add_status,
 ]
 
 

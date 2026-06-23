@@ -174,10 +174,10 @@ class SQLiteClient:
         conn = self._require_conn()
         await conn.execute(
             """
-            INSERT INTO documents (id, video_id, file_path, chunk_count, is_indexed)
+            INSERT INTO documents (id, video_id, file_path, chunk_count, status)
             VALUES (?, ?, ?, ?, ?)
             """,
-            (document_id, video_id, file_path, chunk_count, int(is_indexed)),
+            (document_id, video_id, file_path, chunk_count, 'indexed' if is_indexed else 'raw'),
         )
         await conn.commit()
 
@@ -191,7 +191,7 @@ class SQLiteClient:
         conn = self._require_conn()
         cursor = await conn.execute(
             """
-            SELECT id, video_id, file_path, chunk_count, is_indexed, indexed_at
+            SELECT id, video_id, file_path, chunk_count, status, indexed_at
             FROM documents
             WHERE id = ?
             """,
@@ -205,7 +205,7 @@ class SQLiteClient:
         conn = self._require_conn()
         cursor = await conn.execute(
             """
-            SELECT id, video_id, file_path, chunk_count, is_indexed, indexed_at
+            SELECT id, video_id, file_path, chunk_count, status, indexed_at
             FROM documents
             ORDER BY rowid DESC
             """
@@ -218,7 +218,7 @@ class SQLiteClient:
         conn = self._require_conn()
         cursor = await conn.execute(
             """
-            SELECT id, video_id, file_path, chunk_count, is_indexed, indexed_at
+            SELECT id, video_id, file_path, chunk_count, status, indexed_at
             FROM documents
             WHERE video_id = ?
             ORDER BY rowid DESC
@@ -235,7 +235,7 @@ class SQLiteClient:
         conn = self._require_conn()
         cursor = await conn.execute(
             """
-            SELECT id, video_id, file_path, chunk_count, is_indexed, indexed_at
+            SELECT id, video_id, file_path, chunk_count, status, indexed_at
             FROM documents
             WHERE video_id = ? AND file_path = ?
             ORDER BY rowid DESC
@@ -276,7 +276,7 @@ class SQLiteClient:
         await conn.execute(
             """
             UPDATE documents
-            SET chunk_count = ?, is_indexed = 1, indexed_at = CURRENT_TIMESTAMP
+            SET chunk_count = ?, status = 'indexed', indexed_at = CURRENT_TIMESTAMP
             WHERE id = ?
             """,
             (chunk_count, document_id),
@@ -290,7 +290,7 @@ class SQLiteClient:
         await conn.execute(
             """
             UPDATE documents
-            SET chunk_count = 0, is_indexed = 0, indexed_at = NULL
+            SET chunk_count = 0, status = 'raw', indexed_at = NULL
             WHERE id = ?
             """,
             (document_id,),
