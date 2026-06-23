@@ -18,6 +18,9 @@ from config.settings import _load_yaml_data, resolve_project_root
 
 logger = logging.getLogger(__name__)
 
+# Supported model types for migration
+SUPPORTED_MODELS = ["asr", "chat", "embedding"]
+
 
 async def migrate_config_to_db(sqlite: SQLiteClient) -> None:
     """
@@ -58,17 +61,14 @@ async def migrate_config_to_db(sqlite: SQLiteClient) -> None:
 
     # Step 3: Migrate models.* to model_presets + active_preset
     models_config = config_data.get("models", {})
-    for model_name in ["asr", "chat", "embedding"]:
+    for model_name in SUPPORTED_MODELS:
         if model_name not in models_config:
             continue
 
         model_config = models_config[model_name]
 
-        # Convert to dict format (handle both dict and object)
-        if hasattr(model_config, "dict"):
-            config_dict = model_config.dict()
-        else:
-            config_dict = dict(model_config)
+        # Convert to dict format (yaml.safe_load returns dict)
+        config_dict = dict(model_config)
 
         # Create preset with name "默认配置"
         preset = await sqlite.create_preset(
