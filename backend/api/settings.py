@@ -7,11 +7,17 @@ from typing import Literal
 from urllib.parse import urlparse
 from urllib.request import urlopen
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 from config.settings import get_settings, resolve_project_root
 from core.config_store import ConfigStore
-from schemas.settings import ModelsUpdateRequest
+from schemas.settings import (
+    ModelsUpdateRequest,
+    PresetCreateRequest,
+    PresetResponse,
+    PresetUpdateRequest,
+)
+from storage.sqlite_client import SQLiteClient
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
 
@@ -136,3 +142,247 @@ async def get_model_api_key(name: Literal["chat", "embedding", "asr"]) -> dict:
     models = get_settings().models
     config = getattr(models, name)
     return {"api_key": config.api_key}
+
+
+# ===== Preset Management =====
+
+
+def _get_sqlite_client() -> SQLiteClient:
+    """Get SQLiteClient instance for preset operations."""
+    return SQLiteClient(db_path())
+
+
+async def _generate_preset_name(model_name: str, sqlite: SQLiteClient) -> str:
+    """Generate auto-incremented preset name like '预设1', '预设2', etc."""
+    presets = await sqlite.list_presets(model_name)
+    max_n = 0
+    for preset in presets:
+        if preset["name"].startswith("预设"):
+            try:
+                n = int(preset["name"][2:])
+                max_n = max(max_n, n)
+            except ValueError:
+                pass
+    return f"预设{max_n + 1}"
+
+
+@router.get("/models/{model_name}/presets")
+async def list_presets(
+    model_name: Literal["chat", "embedding", "asr"]
+) -> list[PresetResponse]:
+    """List all presets for a model, with masked API keys."""
+    sqlite = _get_sqlite_client()
+    await sqlite.connect()
+    try:
+        presets = await sqlite.list_presets(model_name)
+        # Mask API keys in config
+        for preset in presets:
+            config = json.loads(preset["config"]) if isinstance(preset["config"], str) else preset["config"]
+            if "api_key" in config:
+                config["api_key"] = _mask_key(config["api_key"])
+            preset["config"] = config
+        return presets
+    finally:
+        await sqlite.close()
+
+
+@router.post("/models/{model_name}/presets", status_code=201)
+async def create_preset(
+    model_name: Literal["chat", "embedding", "asr"], payload: PresetCreateRequest
+) -> PresetResponse:
+    """Create a new preset for a model."""
+    sqlite = _get_sqlite_client()
+    await sqlite.connect()
+    try:
+        # Generate name if not provided
+        name = payload.name
+        if not name:
+            name = await _generate_preset_name(model_name, sqlite)
+
+        # Merge with current active preset config if available
+        base_config = {}
+        active = await sqlite.get_active_preset(model_name)
+        if active and active["preset_id"]:
+            preset = await sqlite.get_preset(active["preset_id"])
+            if preset:
+                base_config = json.loads(preset["config"]) if isinstance(preset["config"], str) else preset["config"]
+
+        # Merge new config over base
+        config = {**base_config, **payload.config.model_dump(exclude_none=True)}
+
+        # Create preset
+        preset = await sqlite.create_preset(
+            name=name, model_name=model_name, config=config
+        )
+
+        # Mask API key in response
+        preset_config = json.loads(preset["config"]) if isinstance(preset["config"], str) else preset["config"]
+        if "api_key" in preset_config:
+            preset_config["api_key"] = _mask_key(preset_config["api_key"])
+        preset["config"] = preset_config
+
+        return preset
+    finally:
+        await sqlite.close()
+
+
+@router.get("/models/{model_name}/presets/{preset_id}")
+async def get_preset(
+    model_name: Literal["chat", "embedding", "asr"], preset_id: str
+) -> PresetResponse:
+    """Get a specific preset by ID."""
+    sqlite = _get_sqlite_client()
+    await sqlite.connect()
+    try:
+        preset = await sqlite.get_preset(preset_id)
+        if not preset or preset["model_name"] != model_name:
+            raise HTTPException(status_code=404, detail="Preset not found")
+
+        # Mask API key
+        config = json.loads(preset["config"]) if isinstance(preset["config"], str) else preset["config"]
+        if "api_key" in config:
+            config["api_key"] = _mask_key(config["api_key"])
+        preset["config"] = config
+
+        return preset
+    finally:
+        await sqlite.close()
+
+
+@router.patch("/models/{model_name}/presets/{preset_id}")
+async def update_preset(
+    model_name: Literal["chat", "embedding", "asr"],
+    preset_id: str,
+    payload: PresetUpdateRequest,
+) -> PresetResponse:
+    """Update a preset. Masked API keys are preserved."""
+    sqlite = _get_sqlite_client()
+    await sqlite.connect()
+    try:
+        # Get current preset
+        current = await sqlite.get_preset(preset_id)
+        if not current or current["model_name"] != model_name:
+            raise HTTPException(status_code=404, detail="Preset not found")
+
+        # Parse current config
+        current_config = json.loads(current["config"]) if isinstance(current["config"], str) else current["config"]
+
+        # Merge updates
+        new_name = payload.name if payload.name is not None else current["name"]
+        new_model_name = (
+            payload.model_name if payload.model_name is not None else current["model_name"]
+        )
+
+        new_config = current_config.copy()
+        if payload.config is not None:
+            update_dict = payload.config.model_dump(exclude_none=True)
+            # If API key is masked, keep current value
+            if "api_key" in update_dict and _is_masked(update_dict["api_key"]):
+                update_dict["api_key"] = current_config.get("api_key")
+            new_config.update(update_dict)
+
+        # Update preset
+        updated = await sqlite.update_preset(
+            preset_id=preset_id,
+            name=new_name,
+            model_name=new_model_name,
+            config=new_config,
+        )
+
+        if not updated:
+            raise HTTPException(status_code=404, detail="Preset not found")
+
+        # Mask API key in response
+        response_config = json.loads(updated["config"]) if isinstance(updated["config"], str) else updated["config"]
+        if "api_key" in response_config:
+            response_config["api_key"] = _mask_key(response_config["api_key"])
+        updated["config"] = response_config
+
+        return updated
+    finally:
+        await sqlite.close()
+
+
+@router.delete("/models/{model_name}/presets/{preset_id}", status_code=204)
+async def delete_preset(
+    model_name: Literal["chat", "embedding", "asr"], preset_id: str
+) -> None:
+    """Delete a preset. If it was active, fallback to the first remaining preset."""
+    sqlite = _get_sqlite_client()
+    await sqlite.connect()
+    try:
+        # Check if preset exists and belongs to this model
+        preset = await sqlite.get_preset(preset_id)
+        if not preset or preset["model_name"] != model_name:
+            raise HTTPException(status_code=404, detail="Preset not found")
+
+        # Check if this was the active preset
+        active = await sqlite.get_active_preset(model_name)
+        was_active = active and active["preset_id"] == preset_id
+
+        # Delete the preset
+        deleted = await sqlite.delete_preset(preset_id)
+        if not deleted:
+            raise HTTPException(status_code=404, detail="Preset not found")
+
+        # If it was active, fallback to first remaining preset
+        if was_active:
+            remaining = await sqlite.list_presets(model_name)
+            if remaining:
+                await sqlite.set_active_preset(model_name, remaining[0]["id"])
+            else:
+                await sqlite.clear_active_preset(model_name)
+    finally:
+        await sqlite.close()
+
+
+@router.get("/models/{model_name}/active-preset")
+async def get_active_preset(
+    model_name: Literal["chat", "embedding", "asr"]
+) -> dict:
+    """Get the currently active preset for a model."""
+    sqlite = _get_sqlite_client()
+    await sqlite.connect()
+    try:
+        active = await sqlite.get_active_preset(model_name)
+        if not active or not active["preset_id"]:
+            return {"preset_id": None}
+
+        preset = await sqlite.get_preset(active["preset_id"])
+        if not preset:
+            return {"preset_id": None}
+
+        # Mask API key
+        config = json.loads(preset["config"]) if isinstance(preset["config"], str) else preset["config"]
+        if "api_key" in config:
+            config["api_key"] = _mask_key(config["api_key"])
+        preset["config"] = config
+
+        return {"preset_id": active["preset_id"], "preset": preset}
+    finally:
+        await sqlite.close()
+
+
+@router.put("/models/{model_name}/active-preset")
+async def set_active_preset(
+    model_name: Literal["chat", "embedding", "asr"], payload: dict
+) -> dict:
+    """Set the active preset for a model."""
+    preset_id = payload.get("preset_id")
+    if not preset_id:
+        raise HTTPException(status_code=400, detail="preset_id is required")
+
+    sqlite = _get_sqlite_client()
+    await sqlite.connect()
+    try:
+        # Verify preset exists and belongs to this model
+        preset = await sqlite.get_preset(preset_id)
+        if not preset or preset["model_name"] != model_name:
+            raise HTTPException(status_code=404, detail="Preset not found")
+
+        # Set as active
+        await sqlite.set_active_preset(model_name, preset_id)
+
+        return {"preset_id": preset_id}
+    finally:
+        await sqlite.close()
