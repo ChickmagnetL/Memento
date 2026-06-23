@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
-import { Eye, EyeOff, X } from "lucide-react";
+import { Eye, EyeOff, X, Plus, MoreVertical } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -15,14 +15,22 @@ import {
   selectLocalAsrModel,
   uninstallAllLocalAsr,
   uninstallLocalAsrModel,
-  updateModelSettings,
   fetchApiKey,
+  listPresets,
+  createPreset,
+  renamePreset,
+  deletePreset,
+  getActivePreset,
+  switchActivePreset,
+  updatePreset,
   type AsrDeployProgress,
   type AsrDeployStatus,
   type AsrManagerStatus,
   type ModelConfig,
   type ModelsSettings,
   type ServiceStatus,
+  type PresetResponse,
+  type PresetModelName,
 } from "@/lib/api";
 
 const MODEL_NAMES = ["chat", "embedding", "asr"] as const;
@@ -99,6 +107,13 @@ export function SettingsForm() {
   const [asrDeployProgress, setAsrDeployProgress] =
     useState<AsrDeployProgress | null>(null);
   const [isDeployingAsr, setIsDeployingAsr] = useState(false);
+
+  // ── Presets state ────────────────────────────────────────────────────────
+  const [presets, setPresets] = useState<Record<string, PresetResponse[]>>({});
+  const [activePresetIds, setActivePresetIds] = useState<Record<string, string | null>>({});
+  const [showPresetMenu, setShowPresetMenu] = useState<string | null>(null);
+  const [renamingPresetId, setRenamingPresetId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
 
   // ── Local ASR model shelf modal ──────────────────────────────────────────
   const [showLocalAsrModal, setShowLocalAsrModal] = useState(false);
@@ -214,10 +229,43 @@ export function SettingsForm() {
     };
   }, [pollIntervalId]);
 
+  // Close preset menu when clicking outside
+  useEffect(() => {
+    function handleClickOutside() {
+      setShowPresetMenu(null);
+    }
+    if (showPresetMenu) {
+      window.addEventListener("click", handleClickOutside);
+      return () => window.removeEventListener("click", handleClickOutside);
+    }
+  }, [showPresetMenu]);
+
   useEffect(() => {
     getModelSettings().then(setSettings).catch(() => setMessage("Load failed"));
     getServiceStatus().then(setStatus).catch(() => {});
     getAsrDeployStatus().then(setAsrDeployStatus).catch(() => {});
+
+    // Load presets and active preset for each model
+    MODEL_NAMES.forEach(async (name) => {
+      try {
+        const presetList = await listPresets(name as PresetModelName);
+        setPresets((prev) => ({ ...prev, [name]: presetList }));
+
+        const active = await getActivePreset(name as PresetModelName);
+        setActivePresetIds((prev) => ({ ...prev, [name]: active.preset_id }));
+
+        // If there's an active preset, load its config into settings
+        if (active.preset && active.preset.config) {
+          setSettings((current) =>
+            current
+              ? { ...current, [name]: { ...current[name], ...active.preset!.config } }
+              : current
+          );
+        }
+      } catch {
+        // Ignore preset load failures
+      }
+    });
   }, []);
 
   useEffect(() => {
@@ -285,14 +333,106 @@ export function SettingsForm() {
     setMessage("");
     setIsSaving(true);
     try {
-      const saved = await updateModelSettings(settings);
-      setSettings(saved);
+      // Save to the active preset
+      for (const name of MODEL_NAMES) {
+        const activeId = activePresetIds[name];
+        if (activeId) {
+          const config = settings[name];
+          await updatePreset(name as PresetModelName, activeId, config);
+        }
+      }
       setStatus(await getServiceStatus());
       setMessage("Saved.");
     } catch {
       setMessage("Save failed.");
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  // ── Preset operations ────────────────────────────────────────────────────
+
+  async function handleSwitchPreset(name: ModelName, presetId: string) {
+    try {
+      await switchActivePreset(name as PresetModelName, presetId);
+      setActivePresetIds((prev) => ({ ...prev, [name]: presetId }));
+
+      // Load the preset config into settings
+      const preset = presets[name]?.find((p) => p.id === presetId);
+      if (preset) {
+        setSettings((current) =>
+          current
+            ? { ...current, [name]: { ...current[name], ...preset.config } }
+            : current
+        );
+      }
+      setMessage("");
+    } catch {
+      setMessage("Switch preset failed.");
+    }
+  }
+
+  async function handleCreatePreset(name: ModelName) {
+    try {
+      const currentConfig = settings?.[name] || {};
+      const newPreset = await createPreset(name as PresetModelName, currentConfig);
+
+      // Refresh preset list
+      const presetList = await listPresets(name as PresetModelName);
+      setPresets((prev) => ({ ...prev, [name]: presetList }));
+
+      // Switch to the new preset
+      await handleSwitchPreset(name, newPreset.id);
+    } catch {
+      setMessage("Create preset failed.");
+    }
+  }
+
+  async function handleRenamePreset(name: ModelName, presetId: string, newName: string) {
+    try {
+      await renamePreset(name as PresetModelName, presetId, newName);
+
+      // Refresh preset list
+      const presetList = await listPresets(name as PresetModelName);
+      setPresets((prev) => ({ ...prev, [name]: presetList }));
+
+      setRenamingPresetId(null);
+      setRenameValue("");
+      setMessage("");
+    } catch {
+      setMessage("Rename preset failed.");
+    }
+  }
+
+  async function handleDeletePreset(name: ModelName, presetId: string) {
+    const presetList = presets[name] || [];
+    if (presetList.length <= 1) {
+      setMessage("Cannot delete the last preset.");
+      return;
+    }
+
+    try {
+      await deletePreset(name as PresetModelName, presetId);
+
+      // Refresh preset list and active preset
+      const updatedList = await listPresets(name as PresetModelName);
+      setPresets((prev) => ({ ...prev, [name]: updatedList }));
+
+      const active = await getActivePreset(name as PresetModelName);
+      setActivePresetIds((prev) => ({ ...prev, [name]: active.preset_id }));
+
+      // Load the new active preset config
+      if (active.preset) {
+        setSettings((current) =>
+          current
+            ? { ...current, [name]: { ...current[name], ...active.preset!.config } }
+            : current
+        );
+      }
+
+      setMessage("");
+    } catch {
+      setMessage("Delete preset failed.");
     }
   }
 
@@ -306,20 +446,140 @@ export function SettingsForm() {
 
       {settings ? (
         <form className="flex flex-col gap-6" onSubmit={handleSubmit}>
-          {MODEL_NAMES.map((name) => (
-            <section
-              key={name}
-              className="space-y-3 rounded-md border border-input p-4"
-            >
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold capitalize">{name}</h2>
-                {name !== "asr" ? (
-                  <span className="text-xs text-muted-foreground">
-                    {status[name]?.status ?? "unknown"}
-                  </span>
+          {MODEL_NAMES.map((name) => {
+            const modelPresets = presets[name] || [];
+            const activeId = activePresetIds[name];
+            const activePreset = modelPresets.find((p) => p.id === activeId);
+
+            return (
+              <section
+                key={name}
+                className="space-y-3 rounded-md border border-input p-4"
+              >
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold capitalize">{name}</h2>
+                  {name !== "asr" ? (
+                    <span className="text-xs text-muted-foreground">
+                      {status[name]?.status ?? "unknown"}
+                    </span>
+                  ) : null}
+                </div>
+
+                {/* Preset controls */}
+                <div className="flex items-center gap-2">
+                  <select
+                    className="h-9 flex-1 rounded-md border border-input bg-background px-3 text-sm"
+                    value={activeId ?? ""}
+                    onChange={(e) => handleSwitchPreset(name, e.target.value)}
+                  >
+                    {modelPresets.map((preset) => (
+                      <option key={preset.id} value={preset.id}>
+                        {preset.name}
+                      </option>
+                    ))}
+                  </select>
+
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleCreatePreset(name)}
+                    title="New preset"
+                  >
+                    <Plus size={16} />
+                  </Button>
+
+                  <div className="relative">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowPresetMenu(showPresetMenu === name ? null : name);
+                      }}
+                      title="Preset actions"
+                    >
+                      <MoreVertical size={16} />
+                    </Button>
+                    {showPresetMenu === name ? (
+                      <div className="absolute right-0 top-full z-10 mt-1 w-40 rounded-md border border-input bg-background shadow-lg">
+                        <button
+                          type="button"
+                          className="w-full px-3 py-2 text-left text-sm hover:bg-muted"
+                          onClick={() => {
+                            if (activePreset) {
+                              setRenamingPresetId(activePreset.id);
+                              setRenameValue(activePreset.name);
+                              setShowPresetMenu(null);
+                            }
+                          }}
+                        >
+                          Rename
+                        </button>
+                        <button
+                          type="button"
+                          className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-muted disabled:opacity-50"
+                          disabled={modelPresets.length <= 1}
+                          onClick={() => {
+                            if (activeId) {
+                              handleDeletePreset(name, activeId);
+                              setShowPresetMenu(null);
+                            }
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+
+                {/* Rename dialog */}
+                {renamingPresetId === activeId ? (
+                  <div className="flex items-center gap-2 rounded-md border border-input bg-muted/30 p-3">
+                    <input
+                      type="text"
+                      className="h-8 flex-1 rounded-md border border-input bg-background px-2 text-sm"
+                      value={renameValue}
+                      onChange={(e) => setRenameValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && renamingPresetId) {
+                          handleRenamePreset(name, renamingPresetId, renameValue);
+                        } else if (e.key === "Escape") {
+                          setRenamingPresetId(null);
+                          setRenameValue("");
+                        }
+                      }}
+                      autoFocus
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => {
+                        if (renamingPresetId) {
+                          handleRenamePreset(name, renamingPresetId, renameValue);
+                        }
+                      }}
+                    >
+                      OK
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setRenamingPresetId(null);
+                        setRenameValue("");
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
                 ) : null}
-              </div>
-              {FIELDS.map(({ key, label }) => (
+
+                {/* Config fields */}
+                {FIELDS.map(({ key, label }) => (
                 <label key={key} className="relative block text-sm">
                   <span className="mb-1 block text-muted-foreground">
                     {label}
@@ -418,7 +678,8 @@ export function SettingsForm() {
                 </div>
               ) : null}
             </section>
-          ))}
+          );
+          })}
           <Button type="submit" disabled={isSaving}>
             Save
           </Button>

@@ -517,3 +517,138 @@ export async function getLocalAsrProgress(): Promise<AsrManagerProgress> {
   }
   return res.json();
 }
+
+// ── Model Presets ────────────────────────────────────────────────────────────
+
+export interface PresetConfig {
+  provider?: string | null;
+  endpoint?: string | null;
+  api_key?: string | null;
+  model?: string | null;
+  protocol?: string | null;
+}
+
+export interface PresetResponse {
+  id: string;
+  model_name: string;
+  name: string;
+  config: PresetConfig;
+  created_at: string;
+  updated_at: string;
+}
+
+export type PresetModelName = "chat" | "embedding" | "asr";
+
+export async function listPresets(
+  modelName: PresetModelName
+): Promise<PresetResponse[]> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/settings/models/${modelName}/presets`,
+    { cache: "no-store" }
+  );
+  if (!res.ok) {
+    throw new Error(`List presets failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function createPreset(
+  modelName: PresetModelName,
+  config: PresetConfig,
+  name?: string
+): Promise<PresetResponse> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/settings/models/${modelName}/presets`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, config }),
+    }
+  );
+  if (!res.ok) {
+    throw new Error(`Create preset failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function renamePreset(
+  modelName: PresetModelName,
+  presetId: string,
+  newName: string
+): Promise<PresetResponse> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/settings/models/${modelName}/presets/${presetId}`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: newName }),
+    }
+  );
+  if (!res.ok) {
+    throw new Error(`Rename preset failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function deletePreset(
+  modelName: PresetModelName,
+  presetId: string
+): Promise<void> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/settings/models/${modelName}/presets/${presetId}`,
+    { method: "DELETE" }
+  );
+  if (!res.ok) {
+    throw new Error(`Delete preset failed: ${res.status}`);
+  }
+}
+
+export async function getActivePreset(
+  modelName: PresetModelName
+): Promise<{ preset_id: string | null; preset?: PresetResponse }> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/settings/models/${modelName}/active`,
+    { cache: "no-store" }
+  );
+  if (!res.ok) {
+    throw new Error(`Get active preset failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function switchActivePreset(
+  modelName: PresetModelName,
+  presetId: string
+): Promise<{ preset_id: string }> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/settings/models/${modelName}/active`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ preset_id: presetId }),
+    }
+  );
+  if (!res.ok) {
+    throw new Error(`Switch active preset failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function updatePreset(
+  modelName: PresetModelName,
+  presetId: string,
+  config: PresetConfig
+): Promise<PresetResponse> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/settings/models/${modelName}/presets/${presetId}`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ config }),
+    }
+  );
+  if (!res.ok) {
+    throw new Error(`Update preset failed: ${res.status}`);
+  }
+  return res.json();
+}
