@@ -58,7 +58,7 @@ def test_complete_preset_workflow(client):
     model_name = "chat"
 
     # 1. Initially no active preset
-    response = client.get(f"/api/settings/models/{model_name}/active-preset")
+    response = client.get(f"/api/settings/models/{model_name}/active")
     assert response.status_code == 200
     assert response.json()["preset_id"] is None
 
@@ -106,13 +106,13 @@ def test_complete_preset_workflow(client):
 
     # 5. Activate first preset
     response = client.put(
-        f"/api/settings/models/{model_name}/active-preset",
+        f"/api/settings/models/{model_name}/active",
         json={"preset_id": preset1_id},
     )
     assert response.status_code == 200
 
     # 6. Verify active preset
-    response = client.get(f"/api/settings/models/{model_name}/active-preset")
+    response = client.get(f"/api/settings/models/{model_name}/active")
     assert response.status_code == 200
     data = response.json()
     assert data["preset_id"] == preset1_id
@@ -139,25 +139,26 @@ def test_complete_preset_workflow(client):
     assert response.status_code == 204
 
     # 9. Verify fallback to second preset
-    response = client.get(f"/api/settings/models/{model_name}/active-preset")
+    response = client.get(f"/api/settings/models/{model_name}/active")
     assert response.status_code == 200
     data = response.json()
     assert data["preset_id"] == preset2_id
     assert data["preset"]["name"] == "Ollama本地"
 
-    # 10. Delete last preset (should clear active)
+    # 10. Try to delete last preset (should be rejected with 400)
     response = client.delete(f"/api/settings/models/{model_name}/presets/{preset2_id}")
-    assert response.status_code == 204
+    assert response.status_code == 400
+    assert "Cannot delete the last preset" in response.json()["detail"]
 
-    # 11. Verify no active preset
-    response = client.get(f"/api/settings/models/{model_name}/active-preset")
+    # 11. Verify preset still exists
+    response = client.get(f"/api/settings/models/{model_name}/active")
     assert response.status_code == 200
-    assert response.json()["preset_id"] is None
+    assert response.json()["preset_id"] == preset2_id
 
-    # 12. Verify no presets left
+    # 12. Verify preset is still in list
     response = client.get(f"/api/settings/models/{model_name}/presets")
     assert response.status_code == 200
-    assert len(response.json()) == 0
+    assert len(response.json()) == 1
 
 
 def test_auto_name_skips_gaps(client):

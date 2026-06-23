@@ -199,16 +199,8 @@ async def create_preset(
         if not name:
             name = await _generate_preset_name(model_name, sqlite)
 
-        # Merge with current active preset config if available
-        base_config = {}
-        active = await sqlite.get_active_preset(model_name)
-        if active and active["preset_id"]:
-            preset = await sqlite.get_preset(active["preset_id"])
-            if preset:
-                base_config = json.loads(preset["config"]) if isinstance(preset["config"], str) else preset["config"]
-
-        # Merge new config over base
-        config = {**base_config, **payload.config.model_dump(exclude_none=True)}
+        # Use the provided config directly
+        config = payload.config.model_dump(exclude_none=True)
 
         # Create preset
         preset = await sqlite.create_preset(
@@ -311,6 +303,11 @@ async def delete_preset(
     sqlite = _get_sqlite_client()
     await sqlite.connect()
     try:
+        # Check if this is the last preset
+        presets = await sqlite.list_presets(model_name)
+        if len(presets) == 1:
+            raise HTTPException(400, "Cannot delete the last preset")
+
         # Check if preset exists and belongs to this model
         preset = await sqlite.get_preset(preset_id)
         if not preset or preset["model_name"] != model_name:
@@ -336,7 +333,7 @@ async def delete_preset(
         await sqlite.close()
 
 
-@router.get("/models/{model_name}/active-preset")
+@router.get("/models/{model_name}/active")
 async def get_active_preset(
     model_name: Literal["chat", "embedding", "asr"]
 ) -> dict:
@@ -363,7 +360,7 @@ async def get_active_preset(
         await sqlite.close()
 
 
-@router.put("/models/{model_name}/active-preset")
+@router.put("/models/{model_name}/active")
 async def set_active_preset(
     model_name: Literal["chat", "embedding", "asr"], payload: dict
 ) -> dict:

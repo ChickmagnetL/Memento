@@ -213,10 +213,14 @@ def test_update_preset_masked_key_preserved(client):
 
 def test_delete_preset(client):
     """Test deleting a preset."""
-    # Create preset
+    # Create two presets (need at least two to delete one)
+    client.post(
+        "/api/settings/models/chat/presets",
+        json={"config": {"provider": "cloud", "model": "test1"}},
+    )
     create_response = client.post(
         "/api/settings/models/chat/presets",
-        json={"config": {"provider": "cloud", "model": "test"}},
+        json={"config": {"provider": "cloud", "model": "test2"}},
     )
     preset_id = create_response.json()["id"]
 
@@ -246,7 +250,7 @@ def test_delete_active_preset_fallback(client):
 
     # Set first preset as active
     client.put(
-        "/api/settings/models/chat/active-preset",
+        "/api/settings/models/chat/active",
         json={"preset_id": preset1_id},
     )
 
@@ -254,7 +258,7 @@ def test_delete_active_preset_fallback(client):
     client.delete(f"/api/settings/models/chat/presets/{preset1_id}")
 
     # Verify fallback to second preset (first in list after deletion)
-    response = client.get("/api/settings/models/chat/active-preset")
+    response = client.get("/api/settings/models/chat/active")
     assert response.status_code == 200
     data = response.json()
     assert data["preset_id"] == preset2_id
@@ -271,7 +275,7 @@ def test_set_active_preset(client):
 
     # Set as active
     response = client.put(
-        "/api/settings/models/chat/active-preset",
+        "/api/settings/models/chat/active",
         json={"preset_id": preset_id},
     )
     assert response.status_code == 200
@@ -287,12 +291,12 @@ def test_get_active_preset(client):
     )
     preset_id = create_response.json()["id"]
     client.put(
-        "/api/settings/models/chat/active-preset",
+        "/api/settings/models/chat/active",
         json={"preset_id": preset_id},
     )
 
     # Get active preset
-    response = client.get("/api/settings/models/chat/active-preset")
+    response = client.get("/api/settings/models/chat/active")
     assert response.status_code == 200
     data = response.json()
     assert data["preset_id"] == preset_id
@@ -301,6 +305,6 @@ def test_get_active_preset(client):
 
 def test_get_active_preset_none(client):
     """Test getting active preset when none is set."""
-    response = client.get("/api/settings/models/chat/active-preset")
+    response = client.get("/api/settings/models/chat/active")
     assert response.status_code == 200
     assert response.json()["preset_id"] is None

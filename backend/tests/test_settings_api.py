@@ -376,3 +376,177 @@ def test_get_api_key_returns_none_when_not_set(client):
     response = test_client.get("/api/settings/models/embedding/api_key")
     assert response.status_code == 200
     assert response.json()["api_key"] is None
+
+
+# ===== Preset Management Tests =====
+
+
+def test_list_presets(client):
+    test_client, _db_path = client
+
+    response = test_client.get("/api/settings/models/chat/presets")
+    assert response.status_code == 200
+    presets = response.json()
+    assert len(presets) >= 1
+    assert presets[0]["name"] == "默认配置"
+
+
+def test_create_preset_with_auto_name(client):
+    test_client, _db_path = client
+
+    response = test_client.post(
+        "/api/settings/models/chat/presets",
+        json={"config": {"provider": "cloud", "model": "claude-3-5-sonnet"}},
+    )
+    assert response.status_code == 201
+    preset = response.json()
+    assert preset["name"] == "预设1"
+    assert preset["model_name"] == "chat"
+    assert preset["config"]["model"] == "claude-3-5-sonnet"
+
+
+def test_create_preset_with_custom_name(client):
+    test_client, _db_path = client
+
+    response = test_client.post(
+        "/api/settings/models/chat/presets",
+        json={
+            "name": "我的预设",
+            "config": {"provider": "cloud", "model": "claude-3-5-sonnet"},
+        },
+    )
+    assert response.status_code == 201
+    preset = response.json()
+    assert preset["name"] == "我的预设"
+
+
+def test_create_preset_does_not_inherit_active_config(client):
+    test_client, db_path = client
+
+    # Update active preset to have specific config
+    test_client.put(
+        "/api/settings/models",
+        json={"chat": {"api_key": "sk-test-old"}},
+    )
+
+    # Create new preset with only model field
+    response = test_client.post(
+        "/api/settings/models/chat/presets",
+        json={"config": {"model": "claude-3-5-sonnet"}},
+    )
+    assert response.status_code == 201
+    preset = response.json()
+
+    # Should NOT inherit api_key from active preset
+    assert "api_key" not in preset["config"] or preset["config"]["api_key"] is None
+    assert preset["config"]["model"] == "claude-3-5-sonnet"
+
+
+def test_get_preset(client):
+    test_client, _db_path = client
+
+    # Create a preset
+    create_response = test_client.post(
+        "/api/settings/models/chat/presets",
+        json={"config": {"provider": "cloud", "model": "test-model"}},
+    )
+    preset_id = create_response.json()["id"]
+
+    # Get the preset
+    response = test_client.get(f"/api/settings/models/chat/presets/{preset_id}")
+    assert response.status_code == 200
+    preset = response.json()
+    assert preset["id"] == preset_id
+    assert preset["config"]["model"] == "test-model"
+
+
+def test_update_preset(client):
+    test_client, _db_path = client
+
+    # Create a preset
+    create_response = test_client.post(
+        "/api/settings/models/chat/presets",
+        json={"config": {"provider": "cloud", "model": "old-model"}},
+    )
+    preset_id = create_response.json()["id"]
+
+    # Update the preset
+    response = test_client.patch(
+        f"/api/settings/models/chat/presets/{preset_id}",
+        json={"name": "更新后的预设", "config": {"model": "new-model"}},
+    )
+    assert response.status_code == 200
+    preset = response.json()
+    assert preset["name"] == "更新后的预设"
+    assert preset["config"]["model"] == "new-model"
+
+
+def test_delete_preset(client):
+    test_client, _db_path = client
+
+    # Create a second preset (so we can delete one)
+    create_response = test_client.post(
+        "/api/settings/models/chat/presets",
+        json={"config": {"provider": "cloud", "model": "test-model"}},
+    )
+    preset_id = create_response.json()["id"]
+
+    # Delete the preset
+    response = test_client.delete(f"/api/settings/models/chat/presets/{preset_id}")
+    assert response.status_code == 204
+
+    # Verify it's gone
+    response = test_client.get(f"/api/settings/models/chat/presets/{preset_id}")
+    assert response.status_code == 404
+
+
+def test_cannot_delete_last_preset(client):
+    test_client, db_path = client
+
+    # Get the default preset ID
+    list_response = test_client.get("/api/settings/models/chat/presets")
+    presets = list_response.json()
+    assert len(presets) == 1
+    preset_id = presets[0]["id"]
+
+    # Try to delete the last preset
+    response = test_client.delete(f"/api/settings/models/chat/presets/{preset_id}")
+    assert response.status_code == 400
+    assert "Cannot delete the last preset" in response.json()["detail"]
+
+    # Verify the preset still exists
+    verify_response = test_client.get("/api/settings/models/chat/presets")
+    assert len(verify_response.json()) == 1
+
+
+def test_get_active_preset(client):
+    test_client, _db_path = client
+
+    response = test_client.get("/api/settings/models/chat/active")
+    assert response.status_code == 200
+    data = response.json()
+    assert "preset_id" in data
+    assert data["preset_id"] is not None
+
+
+def test_set_active_preset(client):
+    test_client, _db_path = client
+
+    # Create a new preset
+    create_response = test_client.post(
+        "/api/settings/models/chat/presets",
+        json={"config": {"provider": "cloud", "model": "test-model"}},
+    )
+    preset_id = create_response.json()["id"]
+
+    # Set it as active
+    response = test_client.put(
+        "/api/settings/models/chat/active",
+        json={"preset_id": preset_id},
+    )
+    assert response.status_code == 200
+    assert response.json()["preset_id"] == preset_id
+
+    # Verify it's active
+    verify_response = test_client.get("/api/settings/models/chat/active")
+    assert verify_response.json()["preset_id"] == preset_id

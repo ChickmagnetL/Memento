@@ -25,10 +25,10 @@ class ModelsUpdateRequest(BaseModel):
 class PresetConfig(BaseModel):
     """Complete preset configuration."""
 
-    provider: str
+    provider: str | None = None
     endpoint: str | None = None
     api_key: str | None = None
-    model: str
+    model: str | None = None
     protocol: str | None = None
 
 
