@@ -49,62 +49,12 @@ async def _migrate_videos_add_author_id(conn: aiosqlite.Connection) -> None:
 
 
 async def _migrate_add_presets_and_app_config(conn: aiosqlite.Connection) -> None:
-    """Migration 3: add transcription_presets, active_preset, and app_config tables.
+    """Migration 3: DEPRECATED, superseded by migration 4.
 
-    DEPRECATED: This migration is superseded by migration 4.
-    For databases that already ran this migration, migration 4 will convert the schema.
-    For fresh databases, this is a no-op and migration 4 creates the correct schema.
+    This migration is now a no-op. Migration 4 handles both fresh installs
+    and upgrades from any prior state.
     """
-    # Check if migration 4 has already run (user_version >= 4)
-    cursor = await conn.execute("PRAGMA user_version")
-    row = await cursor.fetchone()
-    current_version = row[0] if row else 0
-
-    if current_version >= 4:
-        # Migration 4 already ran, skip this
-        return
-
-    # Check if tables already exist (fresh install path where migration 4 will handle it)
-    cursor = await conn.execute(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('model_presets', 'transcription_presets')"
-    )
-    existing_tables = await cursor.fetchall()
-
-    if any(t[0] == 'model_presets' for t in existing_tables):
-        # New schema already exists, skip
-        return
-
-    if any(t[0] == 'transcription_presets' for t in existing_tables):
-        # Old schema exists, keep it for migration 4 to convert
-        return
-
-    # Only create old schema if this is an upgrade path (not fresh install)
-    # Fresh installs will skip this and go directly to migration 4
-    await conn.executescript(
-        """
-        CREATE TABLE IF NOT EXISTS transcription_presets (
-            preset_id TEXT PRIMARY KEY,
-            name TEXT NOT NULL,
-            provider TEXT NOT NULL,
-            config TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS active_preset (
-            id INTEGER PRIMARY KEY CHECK (id = 1),
-            preset_id TEXT,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (preset_id) REFERENCES transcription_presets(preset_id) ON DELETE SET NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS app_config (
-            key TEXT PRIMARY KEY,
-            value TEXT NOT NULL,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-        """
-    )
-    await conn.commit()
+    pass
 
 
 async def _migrate_fix_spec_compliance(conn: aiosqlite.Connection) -> None:
@@ -147,20 +97,21 @@ async def _migrate_fix_spec_compliance(conn: aiosqlite.Connection) -> None:
                 name TEXT NOT NULL,
                 config TEXT NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(model_name, name)
             );
 
             -- Migrate data: preset_id -> id, provider -> model_name
-            INSERT INTO model_presets (id, model_name, name, config, created_at)
-            SELECT preset_id, provider, name, config, created_at
+            INSERT INTO model_presets (id, model_name, name, config, created_at, updated_at)
+            SELECT preset_id, provider, name, config, created_at, created_at
             FROM transcription_presets;
 
             -- Create new active_preset table with model_name as PK
             CREATE TABLE active_preset_new (
                 model_name TEXT PRIMARY KEY,
-                preset_id TEXT NOT NULL,
+                preset_id TEXT,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (preset_id) REFERENCES model_presets(id) ON DELETE CASCADE
+                FOREIGN KEY (preset_id) REFERENCES model_presets(id) ON DELETE SET NULL
             );
 
             -- Migrate active preset: lookup provider from old preset
@@ -200,14 +151,15 @@ async def _migrate_fix_spec_compliance(conn: aiosqlite.Connection) -> None:
                 name TEXT NOT NULL,
                 config TEXT NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(model_name, name)
             );
 
             CREATE TABLE IF NOT EXISTS active_preset (
                 model_name TEXT PRIMARY KEY,
-                preset_id TEXT NOT NULL,
+                preset_id TEXT,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (preset_id) REFERENCES model_presets(id) ON DELETE CASCADE
+                FOREIGN KEY (preset_id) REFERENCES model_presets(id) ON DELETE SET NULL
             );
 
             CREATE TABLE IF NOT EXISTS app_config (

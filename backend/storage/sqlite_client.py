@@ -326,7 +326,7 @@ class SQLiteClient:
         conn = self._require_conn()
         cursor = await conn.execute(
             """
-            SELECT id, model_name, name, config, created_at
+            SELECT id, model_name, name, config, created_at, updated_at
             FROM model_presets
             WHERE id = ?
             """,
@@ -341,7 +341,7 @@ class SQLiteClient:
         if model_name:
             cursor = await conn.execute(
                 """
-                SELECT id, model_name, name, config, created_at
+                SELECT id, model_name, name, config, created_at, updated_at
                 FROM model_presets
                 WHERE model_name = ?
                 ORDER BY rowid DESC
@@ -351,7 +351,7 @@ class SQLiteClient:
         else:
             cursor = await conn.execute(
                 """
-                SELECT id, model_name, name, config, created_at
+                SELECT id, model_name, name, config, created_at, updated_at
                 FROM model_presets
                 ORDER BY rowid DESC
                 """
@@ -368,7 +368,7 @@ class SQLiteClient:
         cursor = await conn.execute(
             """
             UPDATE model_presets
-            SET name = ?, model_name = ?, config = ?
+            SET name = ?, model_name = ?, config = ?, updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
             """,
             (name, model_name, config_json, preset_id),
@@ -381,7 +381,7 @@ class SQLiteClient:
     async def delete_preset(self, preset_id: str) -> bool:
         """Delete a preset. Return True when a row was removed.
 
-        ON DELETE CASCADE ensures active_preset referencing this preset is also deleted.
+        ON DELETE SET NULL ensures active_preset.preset_id is set to NULL.
         """
         conn = self._require_conn()
         cursor = await conn.execute(

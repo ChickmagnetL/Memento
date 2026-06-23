@@ -137,8 +137,8 @@ async def test_delete_preset_returns_false_for_missing(sqlite: SQLiteClient):
 
 
 @pytest.mark.asyncio
-async def test_delete_preset_cascades_to_active_preset(sqlite: SQLiteClient):
-    """When preset is deleted, active_preset entry should also be deleted (CASCADE)."""
+async def test_delete_preset_sets_active_to_null(sqlite: SQLiteClient):
+    """When preset is deleted, active_preset.preset_id should be set to NULL."""
     created = await sqlite.create_preset(
         name="活跃预设", model_name="openai", config={}
     )
@@ -148,7 +148,8 @@ async def test_delete_preset_cascades_to_active_preset(sqlite: SQLiteClient):
     await sqlite.delete_preset(preset_id)
 
     active = await sqlite.get_active_preset("openai")
-    assert active is None
+    assert active is not None  # 记录仍存在
+    assert active["preset_id"] is None  # 但 preset_id 被设为 NULL
 
 
 @pytest.mark.asyncio

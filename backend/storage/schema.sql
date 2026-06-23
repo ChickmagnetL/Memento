@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS model_presets (
     name TEXT NOT NULL,
     config TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(model_name, name)
 );
 
@@ -49,9 +50,9 @@ CREATE TABLE IF NOT EXISTS model_presets (
 -- Tracks the currently active preset for each model
 CREATE TABLE IF NOT EXISTS active_preset (
     model_name TEXT PRIMARY KEY,
-    preset_id TEXT NOT NULL,
+    preset_id TEXT,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (preset_id) REFERENCES model_presets(id) ON DELETE CASCADE
+    FOREIGN KEY (preset_id) REFERENCES model_presets(id) ON DELETE SET NULL
 );
 
 -- App config table
