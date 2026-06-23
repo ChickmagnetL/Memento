@@ -1,6 +1,8 @@
 """Tests for application settings loading."""
 
+import json
 import os
+import sqlite3
 
 import pytest
 
@@ -184,3 +186,225 @@ video_processing:
     settings = get_settings()
 
     assert settings.video_processing.bilibili_cookie == "SESSDATA=env"
+
+
+def test_tilde_data_dir_expanded_to_home(tmp_path, monkeypatch):
+    """Test that ~ in data_dir is expanded to user home directory."""
+    backend_config_dir = _isolate_project_config(tmp_path, monkeypatch)
+    (backend_config_dir / "default.yaml").write_text(
+        """
+storage:
+  data_dir: "~/memento_data"
+""",
+        encoding="utf-8",
+    )
+
+    settings = get_settings()
+
+    assert settings.storage.data_dir.is_absolute()
+    assert "~" not in str(settings.storage.data_dir)
+    assert str(settings.storage.data_dir).startswith(str(settings_module.Path.home()))
+
+
+def test_db_overrides_yaml_model_config(tmp_path, monkeypatch):
+    """Test that DB model presets override YAML configuration."""
+    backend_config_dir = _isolate_project_config(tmp_path, monkeypatch)
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+
+    # Create YAML config
+    (backend_config_dir / "default.yaml").write_text(
+        f"""
+storage:
+  data_dir: "{data_dir}"
+models:
+  chat:
+    provider: cloud
+    model: claude-3-5-sonnet
+""",
+        encoding="utf-8",
+    )
+
+    # Create DB with different chat config
+    db_path = data_dir / "memento.db"
+    conn = sqlite3.connect(db_path)
+    conn.executescript(
+        """
+        CREATE TABLE model_presets (
+            id TEXT PRIMARY KEY,
+            model_name TEXT NOT NULL,
+            name TEXT NOT NULL,
+            config TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(model_name, name)
+        );
+        CREATE TABLE active_preset (
+            model_name TEXT PRIMARY KEY,
+            preset_id TEXT,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (preset_id) REFERENCES model_presets(id) ON DELETE SET NULL
+        );
+        """
+    )
+    chat_config = {
+        "provider": "openai",
+        "endpoint": "https://api.openai.com/v1",
+        "model": "gpt-4",
+        "api_key": "test_key",
+    }
+    conn.execute(
+        "INSERT INTO model_presets (id, model_name, name, config) VALUES (?, ?, ?, ?)",
+        ("preset_1", "chat", "OpenAI GPT-4", json.dumps(chat_config)),
+    )
+    conn.execute(
+        "INSERT INTO active_preset (model_name, preset_id) VALUES (?, ?)",
+        ("chat", "preset_1"),
+    )
+    conn.commit()
+    conn.close()
+
+    settings = get_settings()
+
+    # DB should override YAML
+    assert settings.models.chat.provider == "openai"
+    assert settings.models.chat.model == "gpt-4"
+    assert settings.models.chat.endpoint == "https://api.openai.com/v1"
+    assert settings.models.chat.api_key == "test_key"
+
+
+def test_db_overrides_yaml_app_config(tmp_path, monkeypatch):
+    """Test that DB app_config sections override YAML configuration."""
+    backend_config_dir = _isolate_project_config(tmp_path, monkeypatch)
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+
+    # Create YAML config
+    (backend_config_dir / "default.yaml").write_text(
+        f"""
+storage:
+  data_dir: "{data_dir}"
+rag:
+  chunk_size: 800
+  overlap: 80
+  top_k: 5
+""",
+        encoding="utf-8",
+    )
+
+    # Create DB with different rag config
+    db_path = data_dir / "memento.db"
+    conn = sqlite3.connect(db_path)
+    conn.executescript(
+        """
+        CREATE TABLE app_config (
+            key TEXT PRIMARY KEY,
+            value TEXT,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """
+    )
+    rag_config = {"chunk_size": 1200, "overlap": 100, "top_k": 10}
+    conn.execute(
+        "INSERT INTO app_config (key, value) VALUES (?, ?)",
+        ("rag", json.dumps(rag_config)),
+    )
+    conn.commit()
+    conn.close()
+
+    settings = get_settings()
+
+    # DB should override YAML
+    assert settings.rag.chunk_size == 1200
+    assert settings.rag.overlap == 100
+    assert settings.rag.top_k == 10
+
+
+def test_db_missing_falls_back_to_yaml(tmp_path, monkeypatch):
+    """Test that missing DB falls back to YAML configuration."""
+    backend_config_dir = _isolate_project_config(tmp_path, monkeypatch)
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+
+    # Create YAML config (no DB)
+    (backend_config_dir / "default.yaml").write_text(
+        f"""
+storage:
+  data_dir: "{data_dir}"
+models:
+  asr:
+    provider: local
+""",
+        encoding="utf-8",
+    )
+
+    settings = get_settings()
+
+    # Should use YAML values
+    assert settings.models.asr.provider == "local"
+
+
+def test_db_partial_override_preserves_yaml_values(tmp_path, monkeypatch):
+    """Test that DB only overrides models with active presets."""
+    backend_config_dir = _isolate_project_config(tmp_path, monkeypatch)
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+
+    # Create YAML config
+    (backend_config_dir / "default.yaml").write_text(
+        f"""
+storage:
+  data_dir: "{data_dir}"
+models:
+  asr:
+    provider: local
+  chat:
+    provider: cloud
+  embedding:
+    provider: ollama
+""",
+        encoding="utf-8",
+    )
+
+    # Create DB with only chat preset
+    db_path = data_dir / "memento.db"
+    conn = sqlite3.connect(db_path)
+    conn.executescript(
+        """
+        CREATE TABLE model_presets (
+            id TEXT PRIMARY KEY,
+            model_name TEXT NOT NULL,
+            name TEXT NOT NULL,
+            config TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(model_name, name)
+        );
+        CREATE TABLE active_preset (
+            model_name TEXT PRIMARY KEY,
+            preset_id TEXT,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (preset_id) REFERENCES model_presets(id) ON DELETE SET NULL
+        );
+        """
+    )
+    chat_config = {"provider": "openai", "model": "gpt-4"}
+    conn.execute(
+        "INSERT INTO model_presets (id, model_name, name, config) VALUES (?, ?, ?, ?)",
+        ("preset_1", "chat", "OpenAI", json.dumps(chat_config)),
+    )
+    conn.execute(
+        "INSERT INTO active_preset (model_name, preset_id) VALUES (?, ?)",
+        ("chat", "preset_1"),
+    )
+    conn.commit()
+    conn.close()
+
+    settings = get_settings()
+
+    # asr and embedding should use YAML values
+    assert settings.models.asr.provider == "local"
+    assert settings.models.embedding.provider == "ollama"
+    # chat should use DB value
+    assert settings.models.chat.provider == "openai"
+    assert settings.models.chat.model == "gpt-4"

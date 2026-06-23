@@ -16,9 +16,10 @@ from schemas.settings import ModelsUpdateRequest
 router = APIRouter(prefix="/api/settings", tags=["settings"])
 
 
-def local_config_path() -> Path:
-    """Path of config.local.yaml (project root). Overridable in tests."""
-    return resolve_project_root() / "config.local.yaml"
+def db_path() -> Path:
+    """Path of memento.db (data directory). Overridable in tests."""
+    settings = get_settings()
+    return settings.storage.data_dir / "memento.db"
 
 
 def _mask_key(api_key: str | None) -> str | None:
@@ -64,7 +65,7 @@ async def get_model_settings() -> dict:
 
 @router.put("/models")
 async def update_model_settings(payload: ModelsUpdateRequest) -> dict:
-    """Persist partial model config updates to config.local.yaml."""
+    """Persist partial model config updates to database."""
     update: dict = {}
     for name in ("chat", "embedding", "asr"):
         section = getattr(payload, name)
@@ -76,7 +77,7 @@ async def update_model_settings(payload: ModelsUpdateRequest) -> dict:
             fields["api_key"] = None
         update[name] = fields
     if update:
-        ConfigStore(local_config_path()).update_models(update)
+        ConfigStore(db_path()).update_models(update)
     return await get_model_settings()
 
 

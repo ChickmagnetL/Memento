@@ -6,15 +6,19 @@ Settings are validated using Pydantic models.
 
 Priority (highest to lowest):
 1. Environment variables
-2. config.local.yaml (git-ignored, for local overrides)
-3. config.yaml (user configuration)
-4. default.yaml (default configuration)
+2. Database (model presets + app_config)
+3. config.local.yaml (git-ignored, for local overrides)
+4. config.yaml (user configuration)
+5. default.yaml (default configuration)
 
 Author: Memento Team
-Last Updated: 2026-06-07
+Last Updated: 2026-06-23
 """
 
+import json
+import logging
 import os
+import sqlite3
 import sys
 from pathlib import Path
 from typing import Any, Literal
@@ -22,6 +26,8 @@ from typing import Any, Literal
 import yaml
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource
+
+logger = logging.getLogger(__name__)
 
 
 def resolve_backend_dir() -> Path:
@@ -182,6 +188,70 @@ class Settings(BaseSettings):
 # SECTION 6: Settings Factory
 # ============================================================
 
+def _load_db_config(db_path: Path) -> dict[str, Any]:
+    """
+    Load configuration from SQLite database.
+
+    Reads:
+    - app_config table: storage/video_processing/rag sections (JSON)
+    - active_preset + model_presets: asr/chat/embedding model configs
+
+    Returns:
+        Configuration dict with models and section overrides
+    """
+    if not db_path.exists():
+        return {}
+
+    try:
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+        db_config: dict[str, Any] = {}
+
+        # Load app_config sections
+        try:
+            cursor = conn.execute("SELECT key, value FROM app_config")
+            rows = cursor.fetchall()
+            for row in rows:
+                key = row["key"]
+                value = row["value"]
+                if value is not None:
+                    try:
+                        db_config[key] = json.loads(value)
+                    except json.JSONDecodeError:
+                        logger.warning(f"Invalid JSON in app_config.{key}, skipping")
+        except sqlite3.OperationalError as e:
+            logger.debug(f"app_config table read failed: {e}, skipping")
+
+        # Load active model presets
+        try:
+            db_config["models"] = {}
+            for model_name in ["asr", "chat", "embedding"]:
+                cursor = conn.execute(
+                    """
+                    SELECT mp.config
+                    FROM active_preset ap
+                    JOIN model_presets mp ON ap.preset_id = mp.id
+                    WHERE ap.model_name = ?
+                    """,
+                    (model_name,),
+                )
+                row = cursor.fetchone()
+                if row and row["config"]:
+                    try:
+                        db_config["models"][model_name] = json.loads(row["config"])
+                    except json.JSONDecodeError:
+                        logger.warning(f"Invalid JSON in preset for {model_name}, skipping")
+        except sqlite3.OperationalError as e:
+            logger.debug(f"model_presets table read failed: {e}, skipping")
+
+        conn.close()
+        return db_config
+
+    except Exception as e:
+        logger.warning(f"Failed to load DB config: {e}, using YAML only")
+        return {}
+
+
 def get_settings() -> Settings:
     """
     Get application settings with layered configuration.
@@ -190,7 +260,8 @@ def get_settings() -> Settings:
     1. default.yaml
     2. ../config.yaml (user config)
     3. ../config.local.yaml (local overrides, git-ignored)
-    4. Environment variables
+    4. Database (model presets + app_config)
+    5. Environment variables
 
     Returns:
         Settings instance
@@ -198,14 +269,26 @@ def get_settings() -> Settings:
     backend_dir = resolve_backend_dir()
     project_root = resolve_project_root(backend_dir)
 
-    default_config = backend_dir / "config" / "default.yaml"
-    user_config = project_root / "config.yaml"
-    local_config = project_root / "config.local.yaml"
-    config_data = _merge_dicts(_load_yaml_data(default_config), _load_yaml_data(user_config))
-    config_data = _merge_dicts(config_data, _load_yaml_data(local_config))
+    # Load YAML configs
+    default_config_path = backend_dir / "config" / "default.yaml"
+    user_config_path = project_root / "config.yaml"
+    local_config_path = project_root / "config.local.yaml"
 
-    data_dir = config_data.get("storage", {}).get("data_dir")
-    if data_dir and not Path(data_dir).is_absolute():
-        config_data.setdefault("storage", {})["data_dir"] = str(project_root / data_dir)
+    config_data = _load_yaml_data(default_config_path)
+    config_data = _merge_dicts(config_data, _load_yaml_data(user_config_path))
+    config_data = _merge_dicts(config_data, _load_yaml_data(local_config_path))
+
+    # Resolve data_dir (expand ~ and relative paths)
+    data_dir = config_data.get("storage", {}).get("data_dir", "~/memento_data")
+    data_dir_path = Path(data_dir).expanduser()
+    if not data_dir_path.is_absolute():
+        data_dir_path = project_root / data_dir_path
+
+    config_data.setdefault("storage", {})["data_dir"] = str(data_dir_path)
+
+    # Load DB config and merge (DB overrides YAML)
+    db_path = data_dir_path / "memento.db"
+    db_config = _load_db_config(db_path)
+    config_data = _merge_dicts(config_data, db_config)
 
     return Settings(**config_data)
