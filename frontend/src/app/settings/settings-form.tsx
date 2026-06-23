@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
-import { Eye, EyeOff, X, Plus, MoreVertical } from "lucide-react";
+import { Eye, EyeOff, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -111,7 +111,6 @@ export function SettingsForm() {
   // ── Presets state ────────────────────────────────────────────────────────
   const [presets, setPresets] = useState<Record<string, PresetResponse[]>>({});
   const [activePresetIds, setActivePresetIds] = useState<Record<string, string | null>>({});
-  const [showPresetMenu, setShowPresetMenu] = useState<string | null>(null);
   const [renamingPreset, setRenamingPreset] = useState<{ modelName: string; presetId: string } | null>(null);
   const [renameValue, setRenameValue] = useState("");
 
@@ -232,13 +231,13 @@ export function SettingsForm() {
   // Close preset menu when clicking outside
   useEffect(() => {
     function handleClickOutside() {
-      setShowPresetMenu(null);
+      setRenamingPreset(null);
     }
-    if (showPresetMenu) {
+    if (renamingPreset) {
       window.addEventListener("click", handleClickOutside);
       return () => window.removeEventListener("click", handleClickOutside);
     }
-  }, [showPresetMenu]);
+  }, [renamingPreset]);
 
   useEffect(() => {
     getModelSettings().then(setSettings).catch(() => setMessage("Load failed"));
@@ -258,7 +257,7 @@ export function SettingsForm() {
         if (active.preset && active.preset.config) {
           setSettings((current) =>
             current
-              ? { ...current, [name]: { ...current[name], ...active.preset!.config } }
+              ? { ...current, [name]: active.preset!.config }
               : current
           );
         }
@@ -360,9 +359,10 @@ export function SettingsForm() {
       // Load the preset config into settings
       const preset = presets[name]?.find((p) => p.id === presetId);
       if (preset) {
+        // Reset all fields to preset config (don't merge with old values)
         setSettings((current) =>
           current
-            ? { ...current, [name]: { ...current[name], ...preset.config } }
+            ? { ...current, [name]: preset.config }
             : current
         );
       }
@@ -425,7 +425,7 @@ export function SettingsForm() {
       if (active.preset) {
         setSettings((current) =>
           current
-            ? { ...current, [name]: { ...current[name], ...active.preset!.config } }
+            ? { ...current, [name]: active.preset!.config }
             : current
         );
       }
@@ -465,73 +465,49 @@ export function SettingsForm() {
                   ) : null}
                 </div>
 
-                {/* Preset controls */}
-                <div className="flex items-center gap-2">
-                  <select
-                    className="h-9 flex-1 rounded-md border border-input bg-background px-3 text-sm"
-                    value={activeId ?? ""}
-                    onChange={(e) => handleSwitchPreset(name, e.target.value)}
-                  >
-                    {modelPresets.map((preset) => (
-                      <option key={preset.id} value={preset.id}>
-                        {preset.name}
-                      </option>
-                    ))}
-                  </select>
-
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleCreatePreset(name)}
-                    title="New preset"
-                  >
-                    <Plus size={16} />
-                  </Button>
-
-                  <div className="relative">
+                {/* Preset management header */}
+                <div className="flex items-center justify-between border-b border-input pb-3">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Presets
+                  </span>
+                  <div className="flex items-center gap-2">
                     <Button
                       type="button"
                       size="sm"
                       variant="outline"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowPresetMenu(showPresetMenu === name ? null : name);
-                      }}
-                      title="Preset actions"
+                      onClick={() => handleCreatePreset(name)}
+                      className="h-7 text-xs"
                     >
-                      <MoreVertical size={16} />
+                      + New
                     </Button>
-                    {showPresetMenu === name ? (
-                      <div className="absolute right-0 top-full z-10 mt-1 w-40 rounded-md border border-input bg-background shadow-lg">
-                        <button
-                          type="button"
-                          className="w-full px-3 py-2 text-left text-sm hover:bg-muted"
-                          onClick={() => {
-                            if (activePreset) {
-                              setRenamingPreset({ modelName: name, presetId: activePreset.id });
-                              setRenameValue(activePreset.name);
-                              setShowPresetMenu(null);
-                            }
-                          }}
-                        >
-                          Rename
-                        </button>
-                        <button
-                          type="button"
-                          className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-muted disabled:opacity-50"
-                          disabled={modelPresets.length <= 1}
-                          onClick={() => {
-                            if (activeId) {
-                              handleDeletePreset(name, activeId);
-                              setShowPresetMenu(null);
-                            }
-                          }}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    ) : null}
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        if (activePreset) {
+                          setRenamingPreset({ modelName: name, presetId: activePreset.id });
+                          setRenameValue(activePreset.name);
+                        }
+                      }}
+                      className="h-7 text-xs"
+                    >
+                      Rename
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        if (activeId) {
+                          handleDeletePreset(name, activeId);
+                        }
+                      }}
+                      disabled={modelPresets.length <= 1}
+                      className="h-7 text-xs text-red-600 hover:text-red-700 disabled:opacity-50"
+                    >
+                      Delete
+                    </Button>
                   </div>
                 </div>
 
@@ -577,6 +553,24 @@ export function SettingsForm() {
                     </Button>
                   </div>
                 ) : null}
+
+                {/* Preset tabs */}
+                <div className="flex flex-wrap gap-2">
+                  {modelPresets.map((preset) => (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      onClick={() => handleSwitchPreset(name, preset.id)}
+                      className={`rounded-md border-2 px-4 py-2 text-sm font-medium transition-colors ${
+                        preset.id === activeId
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-input bg-background text-foreground hover:border-primary"
+                      }`}
+                    >
+                      {preset.name}
+                    </button>
+                  ))}
+                </div>
 
                 {/* Config fields */}
                 {FIELDS.map(({ key, label }) => (
