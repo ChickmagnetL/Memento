@@ -41,9 +41,11 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
     new Set()
   );
   const [scanning, setScanning] = useState(false);
+  const [activeTab, setActiveTab] = useState<"raw" | "indexed">("raw");
 
   const rawDocs = documents.filter((doc) => doc.status === "raw");
   const indexedDocs = documents.filter((doc) => doc.status === "indexed");
+  const activeDocs = activeTab === "raw" ? rawDocs : indexedDocs;
 
   async function refresh() {
     setDocuments(await listDocuments());
@@ -160,12 +162,12 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
     const isRaw = doc.status === "raw";
     return (
       <div key={doc.id}>
-        <div className="flex flex-col gap-2 rounded-md border border-border p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 rounded-md border border-border p-4">
           <div className="min-w-0">
-            <p className="truncate text-sm font-medium">
+            <p className="text-sm font-medium leading-snug">
               {doc.title ?? "Untitled"}
             </p>
-            <p className="text-xs text-muted-foreground">
+            <p className="mt-0.5 text-xs text-muted-foreground">
               {doc.author && doc.author !== "Unknown"
                 ? `${doc.author} · `
                 : ""}
@@ -174,11 +176,10 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
                 : `Indexed (${doc.chunk_count} chunks, ${doc.indexed_at})`}
             </p>
           </div>
-          <div className="flex shrink-0 gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
             <Button
               variant="outline"
               size="sm"
-              className="w-[90px]"
               disabled={busyId === doc.id}
               onClick={() => handlePreview(doc.id)}
             >
@@ -189,35 +190,23 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="w-[120px]"
                   disabled={busyId === doc.id}
                   onClick={() => handleClean(doc.id)}
                 >
-                  <Sparkles className="mr-1 h-4 w-4" /> Clean &amp; Index
+                  <Sparkles className="mr-1 h-4 w-4" /> Clean
                 </Button>
                 <Button
                   size="sm"
-                  className="w-[120px]"
                   disabled={busyId === doc.id}
                   onClick={() => handleIndex(doc.id)}
                 >
-                  <Database className="mr-1 h-4 w-4" /> Index Directly
+                  <Database className="mr-1 h-4 w-4" /> Index
                 </Button>
               </>
-            ) : (
-              <Button
-                size="sm"
-                className="w-[110px]"
-                disabled={busyId === doc.id}
-                onClick={() => handleIndex(doc.id)}
-              >
-                <Database className="mr-1 h-4 w-4" /> Re-index
-              </Button>
-            )}
+            ) : null}
             <Button
               variant="outline"
               size="sm"
-              className="w-[80px]"
               disabled={busyId === doc.id}
               onClick={() => {
                 setDeleteSource(false);
@@ -319,33 +308,60 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
         </ul>
       ) : null}
 
-      <div className="grid grid-cols-2 gap-6">
-        <section className="space-y-3">
-          <h2 className="text-lg font-semibold">Not Indexed</h2>
-          {rawDocs.length === 0 ? (
-            <EmptyState
-              icon={Database}
-              title="No documents yet"
-              description="Import a video to get started"
-            />
-          ) : (
-            rawDocs.map((doc) => renderDocCard(doc))
-          )}
-        </section>
-
-        <section className="space-y-3">
-          <h2 className="text-lg font-semibold">Indexed</h2>
-          {indexedDocs.length === 0 ? (
-            <EmptyState
-              icon={Database}
-              title="No indexed documents"
-              description="Index a document first"
-            />
-          ) : (
-            indexedDocs.map((doc) => renderDocCard(doc))
-          )}
-        </section>
+      <div className="inline-flex rounded-lg bg-muted p-1">
+        <button
+          type="button"
+          className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
+            activeTab === "raw"
+              ? "bg-background text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+          onClick={() => setActiveTab("raw")}
+        >
+          Not Indexed
+          {rawDocs.length > 0 ? (
+            <span className="ml-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-muted-foreground/15 px-1.5 text-xs text-muted-foreground">
+              {rawDocs.length}
+            </span>
+          ) : null}
+        </button>
+        <button
+          type="button"
+          className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
+            activeTab === "indexed"
+              ? "bg-background text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+          onClick={() => setActiveTab("indexed")}
+        >
+          Indexed
+          {indexedDocs.length > 0 ? (
+            <span className="ml-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-muted-foreground/15 px-1.5 text-xs text-muted-foreground">
+              {indexedDocs.length}
+            </span>
+          ) : null}
+        </button>
       </div>
+
+      <section className="space-y-2">
+        {activeDocs.length === 0 ? (
+          <EmptyState
+            icon={Database}
+            title={
+              activeTab === "raw"
+                ? "No documents yet"
+                : "No indexed documents"
+            }
+            description={
+              activeTab === "raw"
+                ? "Import a video to get started"
+                : "Index a document first"
+            }
+          />
+        ) : (
+          activeDocs.map((doc) => renderDocCard(doc))
+        )}
+      </section>
 
       {deleteTarget ? (
         <DeleteDocumentDialog

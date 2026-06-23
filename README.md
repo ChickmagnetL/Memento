@@ -41,15 +41,8 @@ instructions. Videos with soft subtitles skip ASR entirely.
 
 ### 4. Model Configuration
 
-Copy the example config and edit it:
-
-```bash
-cp config.example.yaml config.local.yaml
-```
-
-Configure both a **chat** model and an **embedding** model — both are required.
-Alternatively, use the in-app **Settings** page to configure them at runtime.
-See [Ollama (Local Models)](#ollama-local-models) below to use local models.
+Configure chat and embedding models through the in-app **Settings** page.
+Both a chat model and an embedding model are required.
 
 ### 5. First Video
 
@@ -114,10 +107,7 @@ environment variable for manual testing, then restart the backend:
 export VIDEO_PROCESSING__BILIBILI_COOKIE='SESSDATA=your-cookie; bili_jct=...'
 ```
 
-Do not commit real cookie values. Cookies carry account privileges; do not
-share them, and rotate or invalidate them if leaked. `config.local.yaml` is
-acceptable for local overrides, but environment variables are safer for
-sensitive cookies.
+Do not commit real cookie values.
 
 Unsupported records and Bilibili records without soft subtitles are marked as
 `failed` in this phase. Douyin, ASR, OCR, AI cleanup, chunking, and Qdrant
@@ -132,21 +122,8 @@ indexing are not part of Phase 2C.
 
 ## Ollama (Local Models)
 
-Set `provider: "ollama"` in `config.local.yaml` under `models.chat` and/or
-`models.embedding` to use local Ollama models instead of cloud APIs.
-
-Example `config.local.yaml`:
-
-```yaml
-models:
-  chat:
-    endpoint: "http://localhost:11434/v1"
-    api_key: "ollama"
-    model: "qwen3"
-  embedding:
-    provider: "ollama"
-    model: "qwen3-embedding:0.6b"
-```
+Set provider to "ollama" in the in-app **Settings** page under chat and/or
+embedding model configuration.
 
 Pull the models first:
 
@@ -156,7 +133,6 @@ ollama pull qwen3-embedding:0.6b
 ```
 
 **Switching embedding models:** Different embedding models output different
-vector dimensions. When switching models, you MUST update `rag.vector_size` in
-`config.local.yaml` to match (e.g. `qwen3-embedding:0.6b` outputs 1024-dim
-vectors), then delete `data/qdrant/` and re-index all documents. Restart the
-backend after making these changes.
+vector dimensions. When switching models, update `vector_size` in Settings to
+match (e.g. `qwen3-embedding:0.6b` outputs 1024-dim vectors), then delete
+`data/qdrant/` and re-index all documents.
