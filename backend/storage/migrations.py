@@ -232,12 +232,29 @@ async def _migrate_documents_add_status(conn: aiosqlite.Connection) -> None:
     await conn.commit()
 
 
+async def _migrate_documents_add_created_at(conn: aiosqlite.Connection) -> None:
+    """Migration 6: add created_at column to documents table."""
+    cursor = await conn.execute("PRAGMA table_info(documents)")
+    rows = await cursor.fetchall()
+    if any(r[1] == "created_at" for r in rows):
+        return  # Already migrated
+
+    await conn.execute(
+        "ALTER TABLE documents ADD COLUMN created_at TIMESTAMP"
+    )
+    await conn.execute(
+        "UPDATE documents SET created_at = COALESCE(indexed_at, CURRENT_TIMESTAMP)"
+    )
+    await conn.commit()
+
+
 _MIGRATIONS = [
     _migrate_documents_video_id_nullable,
     _migrate_videos_add_author_id,
     _migrate_add_presets_and_app_config,
     _migrate_fix_spec_compliance,
     _migrate_documents_add_status,
+    _migrate_documents_add_created_at,
 ]
 
 
