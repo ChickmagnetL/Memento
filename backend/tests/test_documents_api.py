@@ -69,7 +69,7 @@ async def test_list_documents_returns_records(client, tmp_path: Path):
     records = response.json()
     assert len(records) == 1
     assert records[0]["id"] == "d1"
-    assert records[0]["is_indexed"] is False
+    assert records[0]["status"] == "raw"
 
 
 @pytest.mark.asyncio
@@ -81,7 +81,7 @@ async def test_index_document_marks_indexed(client, tmp_path: Path):
 
     assert response.status_code == 200
     record = response.json()
-    assert record["is_indexed"] is True
+    assert record["status"] == "indexed"
     assert record["chunk_count"] == 1
 
 
@@ -107,7 +107,7 @@ async def test_preview_chunks_returns_chunks_without_indexing(client, tmp_path: 
     assert "[00:01] 第一行内容" in chunks[0]["text"]
     # Preview must not mark the document as indexed.
     document = await sqlite.get_document("d1")
-    assert document["is_indexed"] == 0
+    assert document["status"] == "raw"
 
 
 @pytest.mark.asyncio

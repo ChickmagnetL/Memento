@@ -28,7 +28,7 @@ CREATE TABLE documents (
     video_id TEXT NOT NULL,
     file_path TEXT NOT NULL,
     chunk_count INTEGER DEFAULT 0,
-    is_indexed BOOLEAN DEFAULT 0,
+    status TEXT DEFAULT 'raw',
     indexed_at TIMESTAMP,
     FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE
 );
@@ -55,7 +55,7 @@ CREATE TABLE documents (
     video_id TEXT,
     file_path TEXT NOT NULL,
     chunk_count INTEGER DEFAULT 0,
-    is_indexed BOOLEAN DEFAULT 0,
+    status TEXT DEFAULT 'raw',
     indexed_at TIMESTAMP,
     FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE SET NULL
 );

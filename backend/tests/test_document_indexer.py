@@ -72,7 +72,7 @@ async def test_index_writes_points_and_marks_document(
 
     updated = await indexer.index(document)
 
-    assert updated["is_indexed"] == 1
+    assert updated["status"] == "indexed"
     assert updated["chunk_count"] == 1
     assert qdrant.count_for_document("d1") == 1
     # Embedded texts are the chunk texts (title path + body).
@@ -109,4 +109,4 @@ async def test_index_missing_file_raises_oserror(
     with pytest.raises(OSError):
         await indexer.index(document)
     refreshed = await sqlite.get_document("d1")
-    assert refreshed["is_indexed"] == 0
+    assert refreshed["status"] == "raw"

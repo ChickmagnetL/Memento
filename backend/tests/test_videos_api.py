@@ -417,7 +417,7 @@ def test_process_completed_video_reprocesses_and_keeps_completed_status(
             video_id=created["id"],
             file_path=str(canonical_path),
             chunk_count=3,
-            is_indexed=True,
+            status='indexed',
         )
         await sqlite.mark_document_indexed("raw-doc", chunk_count=3)
         await sqlite.create_document(
@@ -425,7 +425,7 @@ def test_process_completed_video_reprocesses_and_keeps_completed_status(
             video_id=created["id"],
             file_path=str(cleaned_path),
             chunk_count=7,
-            is_indexed=True,
+            status='indexed',
         )
         await sqlite.mark_document_indexed("clean-doc", chunk_count=7)
 
@@ -468,13 +468,13 @@ def test_process_completed_video_reprocesses_and_keeps_completed_status(
     raw_document = asyncio.run(sqlite.get_document("raw-doc"))
     assert raw_document is not None
     assert raw_document["chunk_count"] == 0
-    assert raw_document["is_indexed"] == 0
+    assert raw_document["status"] == "raw"
     assert raw_document["indexed_at"] is None
 
     clean_document = asyncio.run(sqlite.get_document("clean-doc"))
     assert clean_document is not None
     assert clean_document["chunk_count"] == 7
-    assert clean_document["is_indexed"] == 1
+    assert clean_document["status"] == "indexed"
     assert clean_document["indexed_at"] is not None
 
 
@@ -516,7 +516,7 @@ def test_process_completed_video_reset_failure_restores_completed_status(
             video_id=created["id"],
             file_path=str(canonical_path),
             chunk_count=3,
-            is_indexed=True,
+            status='indexed',
         )
     )
     asyncio.run(sqlite.mark_document_indexed("raw-doc", chunk_count=3))

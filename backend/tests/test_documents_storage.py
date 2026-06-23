@@ -45,7 +45,7 @@ async def test_create_and_get_document(sqlite: SQLiteClient):
     assert loaded["video_id"] == "video-1"
     assert loaded["file_path"] == "/tmp/doc-1.md"
     assert loaded["chunk_count"] == 0
-    assert loaded["is_indexed"] == 0
+    assert loaded["status"] == "raw"
     assert loaded["indexed_at"] is None
 
 

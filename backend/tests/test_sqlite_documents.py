@@ -30,7 +30,7 @@ async def test_mark_document_indexed_updates_metadata(sqlite: SQLiteClient):
 
     assert updated is not None
     assert updated["chunk_count"] == 7
-    assert updated["is_indexed"] == 1
+    assert updated["status"] == "indexed"
     assert updated["indexed_at"] is not None
 
 
@@ -65,4 +65,4 @@ async def test_create_document_allows_null_video_id(sqlite: SQLiteClient):
         document_id="d9", video_id=None, file_path="/tmp/d9.md"
     )
     assert doc["video_id"] is None
-    assert doc["is_indexed"] == 0
+    assert doc["status"] == "raw"

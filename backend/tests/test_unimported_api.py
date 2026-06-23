@@ -124,7 +124,7 @@ async def test_import_unimported_creates_document_records(client, tmp_path: Path
     created = resp.json()
     assert len(created) == 1
     assert created[0]["file_path"] == str(target)
-    assert created[0]["is_indexed"] is False
+    assert created[0]["status"] == "raw"
     assert created[0]["video_id"] is None
     # now imported, no longer shows as unimported
     assert test_client.get("/api/documents/unimported").json() == []
@@ -176,5 +176,5 @@ async def test_index_unimported_document_with_null_video_id(
 
     assert resp.status_code == 200
     record = resp.json()
-    assert record["is_indexed"] is True
+    assert record["status"] == "indexed"
     assert record["chunk_count"] > 0

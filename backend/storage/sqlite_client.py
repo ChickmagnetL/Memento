@@ -169,15 +169,18 @@ class SQLiteClient:
         file_path: str,
         chunk_count: int = 0,
         is_indexed: bool = False,
+        status: str | None = None,
     ) -> dict:
         """Create a document record and return it."""
+        if status is None:
+            status = 'indexed' if is_indexed else 'raw'
         conn = self._require_conn()
         await conn.execute(
             """
             INSERT INTO documents (id, video_id, file_path, chunk_count, status)
             VALUES (?, ?, ?, ?, ?)
             """,
-            (document_id, video_id, file_path, chunk_count, 'indexed' if is_indexed else 'raw'),
+            (document_id, video_id, file_path, chunk_count, status),
         )
         await conn.commit()
 
