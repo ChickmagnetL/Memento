@@ -18,6 +18,7 @@ from config.settings import get_settings
 from core.video import asr_supervisor
 from storage.sqlite_client import SQLiteClient
 from storage.qdrant_client import QdrantStore
+from core.config_migration import migrate_config_to_db
 from api.health import router as health_router
 from api.videos import router as videos_router
 from api.documents import router as documents_router
@@ -40,6 +41,9 @@ async def lifespan(app: FastAPI):
     sqlite = SQLiteClient(data_dir / "metadata.db")
     await sqlite.connect()
     app.state.sqlite = sqlite
+
+    # Run config migration from config.local.yaml to DB
+    await migrate_config_to_db(sqlite)
 
     qdrant = QdrantStore(data_dir / "qdrant")
     qdrant.connect(vector_size=settings.rag.vector_size)

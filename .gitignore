@@ -62,4 +62,4 @@ services/funasr/.venv/
 services/asr/.venv
 services/asr/.venv/
 services/asr/model_cache
-services/asr/model_cache/
+services/asr/model_cache/config.local.yaml.bak
