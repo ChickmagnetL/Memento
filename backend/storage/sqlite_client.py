@@ -8,6 +8,8 @@ Author: Memento Team
 Last Updated: 2026-06-07
 """
 
+import json
+import uuid
 import aiosqlite
 from pathlib import Path
 
@@ -295,6 +297,168 @@ class SQLiteClient:
         )
         await conn.commit()
         return await self.get_document(document_id)
+
+    # ===== Transcription Preset CRUD =====
+
+    async def create_preset(
+        self, *, name: str, provider: str, config: dict
+    ) -> dict:
+        """Create a transcription preset and return it."""
+        conn = self._require_conn()
+        preset_id = str(uuid.uuid4())
+        config_json = json.dumps(config)
+        await conn.execute(
+            """
+            INSERT INTO transcription_presets (preset_id, name, provider, config)
+            VALUES (?, ?, ?, ?)
+            """,
+            (preset_id, name, provider, config_json),
+        )
+        await conn.commit()
+
+        preset = await self.get_preset(preset_id)
+        if preset is None:
+            raise RuntimeError("Created preset could not be loaded")
+        return preset
+
+    async def get_preset(self, preset_id: str) -> dict | None:
+        """Return a preset record by ID, or None when missing."""
+        conn = self._require_conn()
+        cursor = await conn.execute(
+            """
+            SELECT preset_id, name, provider, config, created_at
+            FROM transcription_presets
+            WHERE preset_id = ?
+            """,
+            (preset_id,),
+        )
+        row = await cursor.fetchone()
+        return self._row_to_dict(row) if row else None
+
+    async def list_presets(self) -> list[dict]:
+        """List all presets with newest records first."""
+        conn = self._require_conn()
+        cursor = await conn.execute(
+            """
+            SELECT preset_id, name, provider, config, created_at
+            FROM transcription_presets
+            ORDER BY rowid DESC
+            """
+        )
+        rows = await cursor.fetchall()
+        return [self._row_to_dict(row) for row in rows]
+
+    async def update_preset(
+        self, *, preset_id: str, name: str, provider: str, config: dict
+    ) -> dict | None:
+        """Update a preset and return the updated record."""
+        conn = self._require_conn()
+        config_json = json.dumps(config)
+        cursor = await conn.execute(
+            """
+            UPDATE transcription_presets
+            SET name = ?, provider = ?, config = ?
+            WHERE preset_id = ?
+            """,
+            (name, provider, config_json, preset_id),
+        )
+        await conn.commit()
+        if cursor.rowcount == 0:
+            return None
+        return await self.get_preset(preset_id)
+
+    async def delete_preset(self, preset_id: str) -> bool:
+        """Delete a preset. Return True when a row was removed.
+
+        ON DELETE SET NULL ensures active_preset.preset_id is cleared if referenced.
+        """
+        conn = self._require_conn()
+        cursor = await conn.execute(
+            "DELETE FROM transcription_presets WHERE preset_id = ?", (preset_id,)
+        )
+        await conn.commit()
+        return cursor.rowcount == 1
+
+    # ===== Active Preset =====
+
+    async def set_active_preset(self, preset_id: str) -> None:
+        """Set the active transcription preset (upsert singleton)."""
+        conn = self._require_conn()
+        await conn.execute(
+            """
+            INSERT INTO active_preset (id, preset_id, updated_at)
+            VALUES (1, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(id) DO UPDATE SET preset_id = excluded.preset_id, updated_at = CURRENT_TIMESTAMP
+            """,
+            (preset_id,),
+        )
+        await conn.commit()
+
+    async def get_active_preset(self) -> dict | None:
+        """Return the active preset record, or None if not set or preset deleted."""
+        conn = self._require_conn()
+        cursor = await conn.execute(
+            """
+            SELECT preset_id, updated_at
+            FROM active_preset
+            WHERE id = 1 AND preset_id IS NOT NULL
+            """
+        )
+        row = await cursor.fetchone()
+        return self._row_to_dict(row) if row else None
+
+    async def clear_active_preset(self) -> None:
+        """Clear the active preset (set preset_id to NULL)."""
+        conn = self._require_conn()
+        await conn.execute(
+            """
+            UPDATE active_preset
+            SET preset_id = NULL, updated_at = CURRENT_TIMESTAMP
+            WHERE id = 1
+            """
+        )
+        await conn.commit()
+
+    # ===== App Config =====
+
+    async def set_app_config(self, key: str, value: dict) -> None:
+        """Set an app config entry (upsert). Value is JSON-serialized."""
+        conn = self._require_conn()
+        value_json = json.dumps(value)
+        await conn.execute(
+            """
+            INSERT INTO app_config (key, value, updated_at)
+            VALUES (?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+            """,
+            (key, value_json),
+        )
+        await conn.commit()
+
+    async def get_app_config(self, key: str) -> dict | None:
+        """Return app config value as dict, or None if key missing."""
+        conn = self._require_conn()
+        cursor = await conn.execute(
+            """
+            SELECT value
+            FROM app_config
+            WHERE key = ?
+            """,
+            (key,),
+        )
+        row = await cursor.fetchone()
+        if not row:
+            return None
+        return json.loads(row[0])
+
+    async def delete_app_config(self, key: str) -> bool:
+        """Delete an app config entry. Return True when a row was removed."""
+        conn = self._require_conn()
+        cursor = await conn.execute(
+            "DELETE FROM app_config WHERE key = ?", (key,)
+        )
+        await conn.commit()
+        return cursor.rowcount == 1
 
     async def close(self) -> None:
         """Close database connection."""

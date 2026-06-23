@@ -48,7 +48,45 @@ async def _migrate_videos_add_author_id(conn: aiosqlite.Connection) -> None:
         await conn.commit()
 
 
-_MIGRATIONS = [_migrate_documents_video_id_nullable, _migrate_videos_add_author_id]
+async def _migrate_add_presets_and_app_config(conn: aiosqlite.Connection) -> None:
+    """Migration 3: add transcription_presets, active_preset, and app_config tables.
+
+    - transcription_presets: stores provider-specific transcription configurations
+    - active_preset: singleton table tracking the currently active preset
+    - app_config: general key-value config storage (superset of old config table)
+    """
+    await conn.executescript(
+        """
+        CREATE TABLE IF NOT EXISTS transcription_presets (
+            preset_id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            provider TEXT NOT NULL,
+            config TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS active_preset (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            preset_id TEXT,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (preset_id) REFERENCES transcription_presets(preset_id) ON DELETE SET NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS app_config (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """
+    )
+    await conn.commit()
+
+
+_MIGRATIONS = [
+    _migrate_documents_video_id_nullable,
+    _migrate_videos_add_author_id,
+    _migrate_add_presets_and_app_config,
+]
 
 
 async def run_migrations(conn: aiosqlite.Connection) -> None:
