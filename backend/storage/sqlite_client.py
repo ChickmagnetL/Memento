@@ -298,6 +298,16 @@ class SQLiteClient:
         await conn.commit()
         return await self.get_document(document_id)
 
+    async def update_document_path(self, document_id: str, file_path: str) -> dict | None:
+        """Update a document's file_path and return the updated record."""
+        conn = self._require_conn()
+        await conn.execute(
+            "UPDATE documents SET file_path = ? WHERE id = ?",
+            (file_path, document_id),
+        )
+        await conn.commit()
+        return await self.get_document(document_id)
+
     # ===== Model Preset CRUD =====
 
     async def create_preset(
