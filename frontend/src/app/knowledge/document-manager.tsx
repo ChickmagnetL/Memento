@@ -29,10 +29,8 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
     useState<DocumentRecord[]>(initialDocuments);
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [preview, setPreview] = useState<{
-    documentId: string;
-    chunks: ChunkPreview[];
-  } | null>(null);
+  const [expandedPreviewId, setExpandedPreviewId] = useState<string | null>(null);
+  const [previewChunksData, setPreviewChunksData] = useState<ChunkPreview[]>([]);
   const [deleteSource, setDeleteSource] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{
     documentId: string;
@@ -71,18 +69,25 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
   }
 
   async function handlePreview(documentId: string) {
+    if (expandedPreviewId === documentId) {
+      setExpandedPreviewId(null);
+      setPreviewChunksData([]);
+      return;
+    }
     await withBusy(documentId, async () => {
       const chunks = await previewChunks(documentId);
-      setPreview({ documentId, chunks });
+      setExpandedPreviewId(documentId);
+      setPreviewChunksData(chunks);
     });
   }
 
   async function handleDelete(documentId: string, deleteSourceFile: boolean) {
     await withBusy(documentId, async () => {
       await deleteDocument(documentId, deleteSourceFile);
-      setPreview((current) =>
-        current?.documentId === documentId ? null : current
-      );
+      if (expandedPreviewId === documentId) {
+        setExpandedPreviewId(null);
+        setPreviewChunksData([]);
+      }
       await refresh();
     });
     setDeleteTarget(null);
@@ -150,8 +155,111 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
     }
   }
 
+  function renderDocCard(doc: DocumentRecord) {
+    const isExpanded = expandedPreviewId === doc.id;
+    const isRaw = doc.status === "raw";
+    return (
+      <div key={doc.id}>
+        <div className="flex flex-col gap-2 rounded-md border border-border p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium">
+              {doc.title ?? "Untitled"}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {doc.author && doc.author !== "Unknown"
+                ? `${doc.author} · `
+                : ""}
+              {isRaw
+                ? "Not indexed"
+                : `Indexed (${doc.chunk_count} chunks, ${doc.indexed_at})`}
+            </p>
+          </div>
+          <div className="flex shrink-0 gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-[90px]"
+              disabled={busyId === doc.id}
+              onClick={() => handlePreview(doc.id)}
+            >
+              <Eye className="mr-1 h-4 w-4" /> Preview
+            </Button>
+            {isRaw ? (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-[120px]"
+                  disabled={busyId === doc.id}
+                  onClick={() => handleClean(doc.id)}
+                >
+                  <Sparkles className="mr-1 h-4 w-4" /> Clean &amp; Index
+                </Button>
+                <Button
+                  size="sm"
+                  className="w-[120px]"
+                  disabled={busyId === doc.id}
+                  onClick={() => handleIndex(doc.id)}
+                >
+                  <Database className="mr-1 h-4 w-4" /> Index Directly
+                </Button>
+              </>
+            ) : (
+              <Button
+                size="sm"
+                className="w-[110px]"
+                disabled={busyId === doc.id}
+                onClick={() => handleIndex(doc.id)}
+              >
+                <Database className="mr-1 h-4 w-4" /> Re-index
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-[80px]"
+              disabled={busyId === doc.id}
+              onClick={() => {
+                setDeleteSource(false);
+                setDeleteTarget({
+                  documentId: doc.id,
+                  fileName: doc.file_path,
+                });
+              }}
+            >
+              <Trash2 className="mr-1 h-4 w-4" /> Delete
+            </Button>
+          </div>
+        </div>
+        {isExpanded && previewChunksData.length > 0 ? (
+          <div className="mt-2 space-y-2 rounded-md border border-border bg-muted/30 p-3">
+            <p className="text-xs font-semibold text-muted-foreground">
+              Chunk preview ({previewChunksData.length})
+            </p>
+            {previewChunksData.map((chunk) => (
+              <div
+                key={chunk.chunk_index}
+                className="rounded-md bg-muted p-2 text-sm"
+              >
+                <p className="mb-1 text-xs text-muted-foreground">
+                  #{chunk.chunk_index} · {chunk.title_path}
+                  {chunk.start_timestamp
+                    ? ` · [${chunk.start_timestamp}]`
+                    : ""}
+                </p>
+                <pre className="whitespace-pre-wrap font-sans">
+                  {chunk.text}
+                </pre>
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-8 py-8">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-8 py-8">
       <header className="flex flex-wrap items-center gap-2">
         <h1 className="text-xl font-semibold">Knowledge Base</h1>
         <Button
@@ -172,11 +280,7 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
             >
               Import to knowledge base ({selectedUnimported.size})
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={toggleSelectAll}
-            >
+            <Button variant="outline" size="sm" onClick={toggleSelectAll}>
               {allUnimportedSelected ? "Deselect all" : "Select all"}
             </Button>
           </>
@@ -187,120 +291,61 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
 
       {unimported.length > 0 ? (
         <ul className="space-y-2">
-            {unimported.map((item) => (
-              <li
-                key={item.file_path}
-                className={`flex cursor-pointer items-center gap-2 rounded-md border p-3 text-sm transition-colors hover:bg-muted/50 ${
-                  selectedUnimported.has(item.file_path)
-                    ? "border-primary bg-primary/10"
-                    : "border-border"
-                }`}
-                onClick={() => toggleUnimported(item.file_path)}
-              >
-                <input
-                  type="checkbox"
-                  checked={selectedUnimported.has(item.file_path)}
-                  readOnly
-                />
-                <div className="min-w-0">
-                  <p className="truncate font-medium">
-                    {item.title ?? "(untitled)"}
-                  </p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {item.platform ?? "?"} · {item.file_path}
-                  </p>
-                </div>
-              </li>
-            ))}
-          </ul>
-      ) : null}
-
-      {/* 未整理 section */}
-      <section className="space-y-3">
-        <h2 className="text-lg font-semibold">未整理</h2>
-        {rawDocs.length === 0 ? (
-          <EmptyState icon={Database} title="还没有文档" description="导入视频后自动出现在这里" />
-        ) : (
-          rawDocs.map((doc) => (
-            <div
-              key={doc.id}
-              className="flex flex-col gap-2 rounded-md border border-border p-4 sm:flex-row sm:items-center sm:justify-between"
+          {unimported.map((item) => (
+            <li
+              key={item.file_path}
+              className={`flex cursor-pointer items-center gap-2 rounded-md border p-3 text-sm transition-colors hover:bg-muted/50 ${
+                selectedUnimported.has(item.file_path)
+                  ? "border-primary bg-primary/10"
+                  : "border-border"
+              }`}
+              onClick={() => toggleUnimported(item.file_path)}
             >
+              <input
+                type="checkbox"
+                checked={selectedUnimported.has(item.file_path)}
+                readOnly
+              />
               <div className="min-w-0">
-                <p className="truncate font-mono text-sm">{doc.file_path}</p>
-                <p className="text-xs text-muted-foreground">Not indexed</p>
-              </div>
-              <div className="flex shrink-0 gap-2">
-                <Button variant="outline" size="sm" className="w-[100px]" disabled={busyId === doc.id} onClick={() => handlePreview(doc.id)}>
-                  <Eye className="mr-1 h-4 w-4" /> 预览
-                </Button>
-                <Button variant="outline" size="sm" className="w-[110px]" disabled={busyId === doc.id} onClick={() => handleClean(doc.id)}>
-                  <Sparkles className="mr-1 h-4 w-4" /> 清理并入库
-                </Button>
-                <Button size="sm" className="w-[100px]" disabled={busyId === doc.id} onClick={() => handleIndex(doc.id)}>
-                  <Database className="mr-1 h-4 w-4" /> 直接入库
-                </Button>
-                <Button variant="outline" size="sm" className="w-[90px]" disabled={busyId === doc.id} onClick={() => { setDeleteSource(false); setDeleteTarget({ documentId: doc.id, fileName: doc.file_path }); }}>
-                  <Trash2 className="mr-1 h-4 w-4" /> 删除
-                </Button>
-              </div>
-            </div>
-          ))
-        )}
-      </section>
-
-      {/* 已索引 section */}
-      <section className="space-y-3">
-        <h2 className="text-lg font-semibold">已索引</h2>
-        {indexedDocs.length === 0 ? (
-          <EmptyState icon={Database} title="还没有已索引的文档" description="先去整理吧" />
-        ) : (
-          indexedDocs.map((doc) => (
-            <div
-              key={doc.id}
-              className="flex flex-col gap-2 rounded-md border border-border p-4 sm:flex-row sm:items-center sm:justify-between"
-            >
-              <div className="min-w-0">
-                <p className="truncate font-mono text-sm">{doc.file_path}</p>
-                <p className="text-xs text-muted-foreground">
-                  Indexed ({doc.chunk_count} chunks, {doc.indexed_at})
+                <p className="truncate font-medium">
+                  {item.title ?? "(untitled)"}
+                </p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {item.platform ?? "?"} · {item.file_path}
                 </p>
               </div>
-              <div className="flex shrink-0 gap-2">
-                <Button variant="outline" size="sm" className="w-[100px]" disabled={busyId === doc.id} onClick={() => handlePreview(doc.id)}>
-                  <Eye className="mr-1 h-4 w-4" /> 预览
-                </Button>
-                <Button size="sm" className="w-[100px]" disabled={busyId === doc.id} onClick={() => handleIndex(doc.id)}>
-                  <Database className="mr-1 h-4 w-4" /> 重新索引
-                </Button>
-                <Button variant="outline" size="sm" className="w-[90px]" disabled={busyId === doc.id} onClick={() => { setDeleteSource(false); setDeleteTarget({ documentId: doc.id, fileName: doc.file_path }); }}>
-                  <Trash2 className="mr-1 h-4 w-4" /> 删除
-                </Button>
-              </div>
-            </div>
-          ))
-        )}
-      </section>
-
-      {preview ? (
-        <section className="space-y-3 rounded-md border border-border p-4">
-          <h2 className="text-lg font-semibold">
-            Chunk preview ({preview.chunks.length})
-          </h2>
-          {preview.chunks.map((chunk) => (
-            <div
-              key={chunk.chunk_index}
-              className="rounded-md bg-muted p-3 text-sm"
-            >
-              <p className="mb-1 text-xs text-muted-foreground">
-                #{chunk.chunk_index} · {chunk.title_path}
-                {chunk.start_timestamp ? ` · [${chunk.start_timestamp}]` : ""}
-              </p>
-              <pre className="whitespace-pre-wrap font-sans">{chunk.text}</pre>
-            </div>
+            </li>
           ))}
-        </section>
+        </ul>
       ) : null}
+
+      <div className="grid grid-cols-2 gap-6">
+        <section className="space-y-3">
+          <h2 className="text-lg font-semibold">Not Indexed</h2>
+          {rawDocs.length === 0 ? (
+            <EmptyState
+              icon={Database}
+              title="No documents yet"
+              description="Import a video to get started"
+            />
+          ) : (
+            rawDocs.map((doc) => renderDocCard(doc))
+          )}
+        </section>
+
+        <section className="space-y-3">
+          <h2 className="text-lg font-semibold">Indexed</h2>
+          {indexedDocs.length === 0 ? (
+            <EmptyState
+              icon={Database}
+              title="No indexed documents"
+              description="Index a document first"
+            />
+          ) : (
+            indexedDocs.map((doc) => renderDocCard(doc))
+          )}
+        </section>
+      </div>
 
       {deleteTarget ? (
         <DeleteDocumentDialog

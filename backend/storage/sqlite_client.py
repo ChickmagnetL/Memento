@@ -194,7 +194,7 @@ class SQLiteClient:
         conn = self._require_conn()
         cursor = await conn.execute(
             """
-            SELECT id, video_id, file_path, chunk_count, status, indexed_at
+            SELECT id, video_id, file_path, chunk_count, status, indexed_at, created_at
             FROM documents
             WHERE id = ?
             """,
@@ -208,9 +208,13 @@ class SQLiteClient:
         conn = self._require_conn()
         cursor = await conn.execute(
             """
-            SELECT id, video_id, file_path, chunk_count, status, indexed_at
-            FROM documents
-            ORDER BY rowid DESC
+            SELECT d.id, d.video_id, d.file_path, d.chunk_count, d.status,
+                   d.indexed_at, d.created_at,
+                   COALESCE(v.title, 'Untitled') AS title,
+                   COALESCE(v.author, 'Unknown') AS author
+            FROM documents d
+            LEFT JOIN videos v ON d.video_id = v.id
+            ORDER BY d.rowid DESC
             """
         )
         rows = await cursor.fetchall()
@@ -221,7 +225,7 @@ class SQLiteClient:
         conn = self._require_conn()
         cursor = await conn.execute(
             """
-            SELECT id, video_id, file_path, chunk_count, status, indexed_at
+            SELECT id, video_id, file_path, chunk_count, status, indexed_at, created_at
             FROM documents
             WHERE video_id = ?
             ORDER BY rowid DESC
@@ -238,7 +242,7 @@ class SQLiteClient:
         conn = self._require_conn()
         cursor = await conn.execute(
             """
-            SELECT id, video_id, file_path, chunk_count, status, indexed_at
+            SELECT id, video_id, file_path, chunk_count, status, indexed_at, created_at
             FROM documents
             WHERE video_id = ? AND file_path = ?
             ORDER BY rowid DESC

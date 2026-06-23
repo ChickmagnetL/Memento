@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS documents (
     chunk_count INTEGER DEFAULT 0,   -- Number of chunks created
     status TEXT DEFAULT 'raw',        -- Processing status: raw/indexed
     indexed_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE SET NULL
 );
 

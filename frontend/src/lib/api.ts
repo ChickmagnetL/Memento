@@ -118,6 +118,9 @@ export interface DocumentRecord {
   chunk_count: number;
   status: string;
   indexed_at: string | null;
+  created_at: string | null;
+  title: string;
+  author: string;
 }
 
 export interface ChunkPreview {

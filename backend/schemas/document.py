@@ -12,6 +12,9 @@ class DocumentRecord(BaseModel):
     chunk_count: int
     status: str
     indexed_at: str | None = None
+    created_at: str | None = None
+    title: str = "Untitled"
+    author: str = "Unknown"
 
 
 class UnimportedDocument(BaseModel):

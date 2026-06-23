@@ -11,7 +11,7 @@ cors_origins:
 log_level: "INFO"
 
 storage:
-  data_dir: "~/memento_data"
+  data_dir: "data"
   keep_videos: false
 
 models:
