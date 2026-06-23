@@ -106,7 +106,7 @@ def _check_ollama_health(endpoint: str) -> str:
         with urlopen(f"{endpoint.rstrip('/')}/api/tags", timeout=3) as response:
             response.read()
         return "ok"
-    except OSError:
+    except (OSError, ValueError):
         return "unreachable"
 
 

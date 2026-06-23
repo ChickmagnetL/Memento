@@ -21,11 +21,7 @@ const NAV_ITEMS = [
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
-interface SidebarProps {
-  health: string;
-}
-
-export function Sidebar({ health }: SidebarProps) {
+export function Sidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
 
@@ -44,7 +40,6 @@ export function Sidebar({ health }: SidebarProps) {
     });
   }
 
-  const isConnected = health === "ok";
   const width = collapsed
     ? "var(--sidebar-collapsed-width)"
     : "var(--sidebar-width)";
@@ -120,23 +115,6 @@ export function Sidebar({ health }: SidebarProps) {
           );
         })()}
       </nav>
-
-      {/* Health indicator */}
-      <div className="border-t border-border px-3 py-3">
-        <div className="flex items-center gap-2">
-          <span
-            className={cn(
-              "h-2 w-2 rounded-full shrink-0",
-              isConnected ? "bg-[var(--color-success)]" : "bg-[var(--color-destructive)]"
-            )}
-          />
-          {!collapsed && (
-            <span className="text-xs text-[var(--color-text-muted)]">
-              {isConnected ? "Connected" : "Offline"}
-            </span>
-          )}
-        </div>
-      </div>
     </aside>
   );
 }

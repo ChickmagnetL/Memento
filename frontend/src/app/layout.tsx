@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { getHealth } from "@/lib/api";
 import { Sidebar } from "@/components/layout/sidebar";
 import "./globals.css";
 
@@ -19,29 +18,18 @@ export const metadata: Metadata = {
   description: "Video knowledge base assistant",
 };
 
-async function fetchHealth(): Promise<string> {
-  try {
-    const data = await getHealth();
-    return data.status;
-  } catch {
-    return "unreachable";
-  }
-}
-
 export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const health = await fetchHealth();
-
   return (
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="h-full flex bg-background text-foreground">
-        <Sidebar health={health} />
+        <Sidebar />
         <main className="flex-1 overflow-y-auto">{children}</main>
       </body>
     </html>
