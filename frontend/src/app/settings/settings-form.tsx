@@ -112,7 +112,7 @@ export function SettingsForm() {
   const [presets, setPresets] = useState<Record<string, PresetResponse[]>>({});
   const [activePresetIds, setActivePresetIds] = useState<Record<string, string | null>>({});
   const [showPresetMenu, setShowPresetMenu] = useState<string | null>(null);
-  const [renamingPresetId, setRenamingPresetId] = useState<string | null>(null);
+  const [renamingPreset, setRenamingPreset] = useState<{ modelName: string; presetId: string } | null>(null);
   const [renameValue, setRenameValue] = useState("");
 
   // ── Local ASR model shelf modal ──────────────────────────────────────────
@@ -396,7 +396,7 @@ export function SettingsForm() {
       const presetList = await listPresets(name as PresetModelName);
       setPresets((prev) => ({ ...prev, [name]: presetList }));
 
-      setRenamingPresetId(null);
+      setRenamingPreset(null);
       setRenameValue("");
       setMessage("");
     } catch {
@@ -509,7 +509,7 @@ export function SettingsForm() {
                           className="w-full px-3 py-2 text-left text-sm hover:bg-muted"
                           onClick={() => {
                             if (activePreset) {
-                              setRenamingPresetId(activePreset.id);
+                              setRenamingPreset({ modelName: name, presetId: activePreset.id });
                               setRenameValue(activePreset.name);
                               setShowPresetMenu(null);
                             }
@@ -536,7 +536,7 @@ export function SettingsForm() {
                 </div>
 
                 {/* Rename dialog */}
-                {renamingPresetId === activeId ? (
+                {renamingPreset?.modelName === name && renamingPreset?.presetId === activeId ? (
                   <div className="flex items-center gap-2 rounded-md border border-input bg-muted/30 p-3">
                     <input
                       type="text"
@@ -544,10 +544,10 @@ export function SettingsForm() {
                       value={renameValue}
                       onChange={(e) => setRenameValue(e.target.value)}
                       onKeyDown={(e) => {
-                        if (e.key === "Enter" && renamingPresetId) {
-                          handleRenamePreset(name, renamingPresetId, renameValue);
+                        if (e.key === "Enter" && renamingPreset) {
+                          handleRenamePreset(name, renamingPreset.presetId, renameValue);
                         } else if (e.key === "Escape") {
-                          setRenamingPresetId(null);
+                          setRenamingPreset(null);
                           setRenameValue("");
                         }
                       }}
@@ -557,8 +557,8 @@ export function SettingsForm() {
                       type="button"
                       size="sm"
                       onClick={() => {
-                        if (renamingPresetId) {
-                          handleRenamePreset(name, renamingPresetId, renameValue);
+                        if (renamingPreset) {
+                          handleRenamePreset(name, renamingPreset.presetId, renameValue);
                         }
                       }}
                     >
@@ -569,7 +569,7 @@ export function SettingsForm() {
                       size="sm"
                       variant="outline"
                       onClick={() => {
-                        setRenamingPresetId(null);
+                        setRenamingPreset(null);
                         setRenameValue("");
                       }}
                     >
