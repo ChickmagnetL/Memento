@@ -10,7 +10,9 @@ const { BrowserWindow, session } = require('electron');
 const VIDEO_URL_BUILDERS = {
   bilibili: ({ videoId, timestamp }) => {
     const url = `https://www.bilibili.com/video/${videoId}`;
-    return timestamp ? `${url}?t=${timestamp}` : url;
+    return (timestamp && Number.isInteger(Number(timestamp)))
+      ? `${url}?t=${timestamp}`
+      : url;
   },
   douyin: ({ videoId }) => {
     return `https://www.douyin.com/video/${videoId}`;
@@ -44,7 +46,6 @@ class VideoPlayerManager {
       height: 720,
       title: 'Video Player',
       webPreferences: {
-        partition: `persist:${platform}`,
         session: playerSession,
         contextIsolation: true,
         nodeIntegration: false,
@@ -53,7 +54,10 @@ class VideoPlayerManager {
     });
 
     const url = VIDEO_URL_BUILDERS[platform]({ videoId, timestamp });
-    playerWindow.loadURL(url);
+    playerWindow.loadURL(url).catch(err => {
+      console.error(`[video-player] Failed to load ${url}:`, err);
+      playerWindow.close();
+    });
 
     this.players.set(videoId, playerWindow);
 
@@ -67,8 +71,12 @@ class VideoPlayerManager {
 
   closeAll() {
     for (const [videoId, window] of this.players.entries()) {
-      if (!window.isDestroyed()) {
-        window.close();
+      try {
+        if (!window.isDestroyed()) {
+          window.close();
+        }
+      } catch (err) {
+        console.warn(`[video-player] Failed to close window for ${videoId}:`, err);
       }
     }
     this.players.clear();
