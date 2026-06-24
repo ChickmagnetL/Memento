@@ -7,6 +7,7 @@ import ReactMarkdown from "react-markdown";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorBanner } from "@/components/ui/error-banner";
+import { VideoTimestampLink } from "@/components/VideoTimestampLink";
 import { sendChatMessage } from "@/lib/api";
 
 interface ChatMessage {
@@ -94,7 +95,16 @@ export function ChatPanel() {
             >
               {message.role === "assistant" ? (
                 <div className="prose prose-sm max-w-none dark:prose-invert">
-                  <ReactMarkdown>
+                  <ReactMarkdown
+                    components={{
+                      a: ({ href, children }) => {
+                        if (href?.startsWith("memento://")) {
+                          return <VideoTimestampLink href={href}>{children}</VideoTimestampLink>;
+                        }
+                        return <a href={href}>{children}</a>;
+                      },
+                    }}
+                  >
                     {message.content || (isStreaming ? "…" : "")}
                   </ReactMarkdown>
                 </div>
