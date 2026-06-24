@@ -69,7 +69,8 @@ async def create_video(payload: VideoCreateRequest, request: Request) -> dict:
     if platform == "bilibili":
         bvid = extract_bvid(payload.url)
         if bvid is not None:
-            client = BilibiliSubtitleClient()
+            settings = get_settings()
+            client = BilibiliSubtitleClient(cookie=settings.video_processing.bilibili_cookie)
             try:
                 metadata = await asyncio.to_thread(client.fetch_metadata, bvid)
             except Exception as exc:

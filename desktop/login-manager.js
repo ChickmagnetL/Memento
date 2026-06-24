@@ -9,7 +9,9 @@ const { BrowserView, ipcMain } = require('electron');
 
 const LOGIN_URLS = {
   bilibili: 'https://passport.bilibili.com/login',
-  douyin: 'https://www.douyin.com/passport/web/login/'
+  // Douyin login requires mobile app scanning, web login has strict anti-bot measures
+  // For now, use the main douyin page which may redirect to login
+  douyin: 'https://www.douyin.com/'
 };
 
 const COOKIE_CHECKS = {
