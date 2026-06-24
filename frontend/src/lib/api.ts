@@ -656,3 +656,43 @@ export async function updatePreset(
   }
   return res.json();
 }
+
+// ── Video Processing (Login) ─────────────────────────────────────────────────
+
+export interface VideoProcessingSettings {
+  bilibili_cookie: string;
+  douyin_cookie: string;
+  bilibili_refresh_token: string;
+  bilibili_cookie_expires_at: number;
+}
+
+export interface VideoProcessingUpdate {
+  bilibili_cookie?: string;
+  douyin_cookie?: string;
+  bilibili_refresh_token?: string;
+  bilibili_cookie_expires_at?: number;
+}
+
+export async function getVideoProcessingSettings(): Promise<VideoProcessingSettings> {
+  const res = await fetch(`${API_BASE_URL}/api/video-processing`, {
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`Get video processing settings failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function updateVideoProcessingSettings(
+  payload: VideoProcessingUpdate
+): Promise<VideoProcessingSettings> {
+  const res = await fetch(`${API_BASE_URL}/api/video-processing`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    throw new Error(`Update video processing settings failed: ${res.status}`);
+  }
+  return res.json();
+}

@@ -11,6 +11,7 @@ import {
   HelpCircle,
   PanelLeftClose,
   PanelLeft,
+  LogIn,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -18,6 +19,7 @@ const NAV_ITEMS = [
   { href: "/", label: "Video Intake", icon: Video },
   { href: "/knowledge", label: "Knowledge Base", icon: Database },
   { href: "/chat", label: "Chat", icon: MessageSquare },
+  { href: "/login", label: "Login", icon: LogIn },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
