@@ -12,6 +12,7 @@ const fs = require("fs");
 const path = require("path");
 const { LoginWindowManager } = require("./login-manager");
 const { VideoPlayerManager } = require("./video-player");
+const { CookieRefreshScheduler } = require("./cookie-refresh");
 
 const FRONTEND_URL =
   process.env.MEMENTO_FRONTEND_URL || "http://localhost:3000";
@@ -21,6 +22,7 @@ const DOUYIN_FETCHER_HEALTH_URL = "http://127.0.0.1:8002/health";
 let backendProcess = null;
 let douyinFetcherProcess = null;
 let videoPlayerManager = null;
+let cookieRefreshScheduler = null;
 
 function resolveBackendEnv() {
   const projectRoot = process.env.MEMENTO_PROJECT_ROOT || path.join(__dirname, "..");
@@ -183,6 +185,8 @@ app.whenReady().then(async () => {
 
   const loginManager = new LoginWindowManager(window);
   videoPlayerManager = new VideoPlayerManager();
+  cookieRefreshScheduler = new CookieRefreshScheduler();
+  cookieRefreshScheduler.start();
 
   window.on('close', () => {
     if (loginManager) {
@@ -223,5 +227,8 @@ app.on("before-quit", () => {
   stopSidecars();
   if (videoPlayerManager) {
     videoPlayerManager.closeAll();
+  }
+  if (cookieRefreshScheduler) {
+    cookieRefreshScheduler.stop();
   }
 });
