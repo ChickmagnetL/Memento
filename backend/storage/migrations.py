@@ -248,6 +248,38 @@ async def _migrate_documents_add_created_at(conn: aiosqlite.Connection) -> None:
     await conn.commit()
 
 
+async def _migrate_documents_add_title_author(conn: aiosqlite.Connection) -> None:
+    """Migration 7: add title and author columns to documents table.
+
+    Populated from markdown header for standalone documents (video_id IS NULL).
+    Video-linked documents inherit title/author from the videos table via JOIN.
+    """
+    cursor = await conn.execute("PRAGMA table_info(documents)")
+    rows = await cursor.fetchall()
+    columns = [r[1] for r in rows]
+
+    if "title" not in columns:
+        await conn.execute("ALTER TABLE documents ADD COLUMN title TEXT")
+    if "author" not in columns:
+        await conn.execute("ALTER TABLE documents ADD COLUMN author TEXT")
+    await conn.commit()
+
+
+async def _migrate_documents_add_author_column(conn: aiosqlite.Connection) -> None:
+    """Migration 8: add author column if migration 7 only added title.
+
+    Migration 7 was deployed incrementally; some databases may have
+    user_version 7 with title but not author.
+    """
+    cursor = await conn.execute("PRAGMA table_info(documents)")
+    rows = await cursor.fetchall()
+    if any(r[1] == "author" for r in rows):
+        return
+
+    await conn.execute("ALTER TABLE documents ADD COLUMN author TEXT")
+    await conn.commit()
+
+
 _MIGRATIONS = [
     _migrate_documents_video_id_nullable,
     _migrate_videos_add_author_id,
@@ -255,6 +287,8 @@ _MIGRATIONS = [
     _migrate_fix_spec_compliance,
     _migrate_documents_add_status,
     _migrate_documents_add_created_at,
+    _migrate_documents_add_title_author,
+    _migrate_documents_add_author_column,
 ]
 
 

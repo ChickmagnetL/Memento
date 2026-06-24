@@ -282,17 +282,24 @@ def get_settings() -> Settings:
     config_data = _merge_dicts(config_data, _load_yaml_data(user_config_path))
     config_data = _merge_dicts(config_data, _load_yaml_data(local_config_path))
 
-    # Resolve data_dir (expand ~ and relative paths)
+    # Resolve data_dir to find the DB (in case YAML has relative/~/ paths)
+    data_dir = config_data.get("storage", {}).get("data_dir", "~/memento_data")
+    data_dir_path = Path(data_dir).expanduser()
+    if not data_dir_path.is_absolute():
+        data_dir_path = project_root / data_dir_path
+
+    # Load DB config and merge (DB overrides YAML values except data_dir)
+    db_path = data_dir_path / "memento.db"
+    db_config = _load_db_config(db_path)
+    config_data = _merge_dicts(config_data, db_config)
+
+    # Re-resolve data_dir after DB merge: DB may carry a stale relative
+    # data_dir that would overwrite the already-resolved absolute path.
     data_dir = config_data.get("storage", {}).get("data_dir", "~/memento_data")
     data_dir_path = Path(data_dir).expanduser()
     if not data_dir_path.is_absolute():
         data_dir_path = project_root / data_dir_path
 
     config_data.setdefault("storage", {})["data_dir"] = str(data_dir_path)
-
-    # Load DB config and merge (DB overrides YAML)
-    db_path = data_dir_path / "memento.db"
-    db_config = _load_db_config(db_path)
-    config_data = _merge_dicts(config_data, db_config)
 
     return Settings(**config_data)

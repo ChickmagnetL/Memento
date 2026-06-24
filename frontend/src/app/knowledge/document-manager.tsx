@@ -300,7 +300,7 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
                   {item.title ?? "(untitled)"}
                 </p>
                 <p className="truncate text-xs text-muted-foreground">
-                  {item.platform ?? "?"} · {item.file_path}
+                  {[item.author, item.platform].filter(Boolean).join(" · ") || "?"} · {item.file_path}
                 </p>
               </div>
             </li>

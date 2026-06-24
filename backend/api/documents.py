@@ -105,10 +105,21 @@ async def import_unimported_documents(
     for file_path in payload.file_paths:
         if file_path in existing or not Path(file_path).exists():
             continue
+        meta = parse_markdown_metadata(Path(file_path))
+
+        # Link to existing video when metadata has video_id that matches
+        video_id = None
+        if meta["video_id"]:
+            video = await sqlite.get_video(meta["video_id"])
+            if video:
+                video_id = meta["video_id"]
+
         document = await sqlite.create_document(
             document_id=uuid4().hex,
-            video_id=None,
+            video_id=video_id,
             file_path=file_path,
+            title=meta["title"] if not video_id else None,
+            author=meta["author"] if not video_id else None,
         )
         existing.add(file_path)
         created.append(document)

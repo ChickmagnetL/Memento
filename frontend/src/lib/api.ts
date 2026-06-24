@@ -198,6 +198,7 @@ export interface UnimportedDocument {
   platform: string | null;
   source_url: string | null;
   video_id: string | null;
+  author: string | null;
 }
 
 export async function listUnimportedDocuments(): Promise<UnimportedDocument[]> {

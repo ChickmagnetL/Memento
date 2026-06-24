@@ -38,6 +38,7 @@ def test_writer_writes_exact_bilibili_draft_content_and_path(tmp_path):
         "- Platform: bilibili\n"
         "- Video ID: BV1abcDEF234\n"
         "- Source URL: https://www.bilibili.com/video/BV1abcDEF234\n"
+        "- Author: Unknown\n"
         "\n"
         "## Transcript\n"
         "\n"

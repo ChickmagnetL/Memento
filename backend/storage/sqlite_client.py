@@ -170,6 +170,8 @@ class SQLiteClient:
         chunk_count: int = 0,
         is_indexed: bool = False,
         status: str | None = None,
+        title: str | None = None,
+        author: str | None = None,
     ) -> dict:
         """Create a document record and return it."""
         if status is None:
@@ -177,10 +179,10 @@ class SQLiteClient:
         conn = self._require_conn()
         await conn.execute(
             """
-            INSERT INTO documents (id, video_id, file_path, chunk_count, status)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO documents (id, video_id, file_path, chunk_count, status, title, author)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
-            (document_id, video_id, file_path, chunk_count, status),
+            (document_id, video_id, file_path, chunk_count, status, title, author),
         )
         await conn.commit()
 
@@ -194,7 +196,10 @@ class SQLiteClient:
         conn = self._require_conn()
         cursor = await conn.execute(
             """
-            SELECT id, video_id, file_path, chunk_count, status, indexed_at, created_at
+            SELECT id, video_id, file_path, chunk_count, status,
+                   indexed_at, created_at,
+                   COALESCE(title, 'Untitled') AS title,
+                   COALESCE(author, 'Unknown') AS author
             FROM documents
             WHERE id = ?
             """,
@@ -210,8 +215,8 @@ class SQLiteClient:
             """
             SELECT d.id, d.video_id, d.file_path, d.chunk_count, d.status,
                    d.indexed_at, d.created_at,
-                   COALESCE(v.title, 'Untitled') AS title,
-                   COALESCE(v.author, 'Unknown') AS author
+                   COALESCE(v.title, d.title, 'Untitled') AS title,
+                   COALESCE(v.author, d.author, 'Unknown') AS author
             FROM documents d
             LEFT JOIN videos v ON d.video_id = v.id
             ORDER BY d.rowid DESC
@@ -225,7 +230,10 @@ class SQLiteClient:
         conn = self._require_conn()
         cursor = await conn.execute(
             """
-            SELECT id, video_id, file_path, chunk_count, status, indexed_at, created_at
+            SELECT id, video_id, file_path, chunk_count, status,
+                   indexed_at, created_at,
+                   COALESCE(title, 'Untitled') AS title,
+                   COALESCE(author, 'Unknown') AS author
             FROM documents
             WHERE video_id = ?
             ORDER BY rowid DESC
@@ -242,7 +250,10 @@ class SQLiteClient:
         conn = self._require_conn()
         cursor = await conn.execute(
             """
-            SELECT id, video_id, file_path, chunk_count, status, indexed_at, created_at
+            SELECT id, video_id, file_path, chunk_count, status,
+                   indexed_at, created_at,
+                   COALESCE(title, 'Untitled') AS title,
+                   COALESCE(author, 'Unknown') AS author
             FROM documents
             WHERE video_id = ? AND file_path = ?
             ORDER BY rowid DESC

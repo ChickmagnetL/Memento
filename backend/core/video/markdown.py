@@ -42,6 +42,7 @@ class MarkdownDraftWriter:
                 f"- Platform: {video['platform']}",
                 f"- Video ID: {video['id']}",
                 f"- Source URL: {video['url']}",
+                f"- Author: {video.get('author', 'Unknown')}",
                 "",
                 "## Transcript",
                 "",

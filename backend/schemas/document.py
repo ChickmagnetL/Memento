@@ -25,3 +25,4 @@ class UnimportedDocument(BaseModel):
     platform: str | None = None
     source_url: str | None = None
     video_id: str | None = None
+    author: str | None = None

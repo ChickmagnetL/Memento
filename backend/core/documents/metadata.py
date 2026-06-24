@@ -18,15 +18,16 @@ _FIELDS = {
     "- Platform: ": "platform",
     "- Video ID: ": "video_id",
     "- Source URL: ": "source_url",
+    "- Author: ": "author",
 }
 
 
 def parse_markdown_metadata(path: Path) -> dict:
-    """Return {title, platform, source_url, video_id} from a markdown header.
+    """Return {title, platform, source_url, video_id, author} from a markdown header.
 
     Missing or unparseable fields are None. An unreadable file yields all-None.
     """
-    result = {"title": None, "platform": None, "source_url": None, "video_id": None}
+    result = {"title": None, "platform": None, "source_url": None, "video_id": None, "author": None}
     try:
         text = Path(path).read_text(encoding="utf-8")
     except OSError:
