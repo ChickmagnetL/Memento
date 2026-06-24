@@ -1,10 +1,14 @@
 """Video processing settings API."""
 
-from fastapi import APIRouter
+import logging
+
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from config.settings import get_settings
 from core.config_store import ConfigStore
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/video-processing", tags=["video-processing"])
 
@@ -58,6 +62,13 @@ async def update_video_processing_settings(payload: VideoProcessingUpdate) -> di
     # Only update fields that are provided (exclude None values)
     update_dict = payload.model_dump(exclude_none=True)
     if update_dict:
-        ConfigStore(db_path).update_video_processing(update_dict)
+        try:
+            ConfigStore(db_path).update_video_processing(update_dict)
+        except Exception as e:
+            logger.error(f"Failed to update video_processing config: {e}")
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to update video processing settings"
+            )
 
     return await get_video_processing_settings()

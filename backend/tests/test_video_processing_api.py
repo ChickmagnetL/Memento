@@ -203,3 +203,24 @@ def test_update_video_processing_partial(client):
     assert data["douyin_cookie"] == "initial_douyin"
     assert data["bilibili_refresh_token"] == "initial_token"
     assert data["bilibili_cookie_expires_at"] == 1000000
+
+
+def test_update_video_processing_database_error(client, monkeypatch):
+    """Test PUT /api/video-processing handles database errors gracefully."""
+    from core.config_store import ConfigStore
+
+    # Mock ConfigStore.update_video_processing to raise an exception
+    def mock_update_error(*args, **kwargs):
+        raise sqlite3.OperationalError("database is locked")
+
+    monkeypatch.setattr(ConfigStore, "update_video_processing", mock_update_error)
+
+    # Attempt to update
+    response = client.put(
+        "/api/video-processing",
+        json={"bilibili_cookie": "should_fail"},
+    )
+
+    # Should return 500 with error message
+    assert response.status_code == 500
+    assert "Failed to update video processing settings" in response.json()["detail"]
