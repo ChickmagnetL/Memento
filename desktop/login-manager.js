@@ -8,10 +8,11 @@
 const { BrowserView, ipcMain } = require('electron');
 
 const LOGIN_URLS = {
+  // Bilibili passport login page - supports both QR code and password login
   bilibili: 'https://passport.bilibili.com/login',
-  // Douyin login requires mobile app scanning, web login has strict anti-bot measures
-  // For now, use the main douyin page which may redirect to login
-  douyin: 'https://www.douyin.com/'
+  // Douyin SSO login page - supports QR code login
+  // Note: Douyin web login has anti-bot measures, may show captcha or error
+  douyin: 'https://sso.douyin.com/'
 };
 
 const COOKIE_CHECKS = {
