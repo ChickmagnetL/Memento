@@ -99,24 +99,14 @@ class LoginWindowManager {
   }
 
   onLoginSuccess(cookies, platform) {
-    const serializedCookies = cookies.map(c => ({
-      name: c.name,
-      value: c.value,
-      domain: c.domain,
-      path: c.path,
-      secure: c.secure,
-      httpOnly: c.httpOnly,
-      expirationDate: c.expirationDate
-    }));
+    const cookieString = cookies.map(c => `${c.name}=${c.value}`).join('; ');
 
     this.mainWindow.webContents.send('cookie-ready', {
       platform,
-      cookies: serializedCookies
+      cookies: cookieString
     });
 
-    setTimeout(() => {
-      this.close();
-    }, 2000);
+    this.close();
   }
 
   close() {
