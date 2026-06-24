@@ -6,10 +6,11 @@
  * (npm run dev) and the backend can be overridden via env vars.
  */
 
-const { app, BrowserWindow, dialog } = require("electron");
+const { app, BrowserWindow, dialog, ipcMain } = require("electron");
 const { spawn } = require("child_process");
 const fs = require("fs");
 const path = require("path");
+const { LoginWindowManager } = require("./login-manager");
 
 const FRONTEND_URL =
   process.env.MEMENTO_FRONTEND_URL || "http://localhost:3000";
@@ -177,6 +178,13 @@ app.whenReady().then(async () => {
     }
   });
   window.loadURL(FRONTEND_URL);
+
+  const loginManager = new LoginWindowManager(window);
+
+  ipcMain.on('open-login', (event, platform) => {
+    console.log(`[main] Received open-login request for ${platform}`);
+    loginManager.open(platform);
+  });
 });
 
 app.on("window-all-closed", () => {
