@@ -29,6 +29,8 @@ class LoginWindowManager {
     this.loginView = null;
     this.pollInterval = null;
     this.currentPlatform = null;
+    this.errorCount = 0;
+    this.MAX_ERRORS = 5;
   }
 
   async open(platform) {
@@ -86,6 +88,7 @@ class LoginWindowManager {
     this.pollInterval = setInterval(async () => {
       try {
         const cookies = await session.cookies.get({});
+        this.errorCount = 0; // Reset on success
 
         const checkFunc = COOKIE_CHECKS[platform];
         if (checkFunc && checkFunc(cookies)) {
@@ -94,6 +97,11 @@ class LoginWindowManager {
         }
       } catch (error) {
         console.error(`[login-manager] Cookie polling error:`, error);
+        this.errorCount++;
+        if (this.errorCount >= this.MAX_ERRORS) {
+          console.error(`[login-manager] Too many errors, stopping cookie polling`);
+          this.close();
+        }
       }
     }, 1000);
   }

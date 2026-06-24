@@ -11,8 +11,8 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('electron', {
   // Login management
   openLogin: (platform) => ipcRenderer.send('open-login', platform),
-  onCookieReady: (callback) => ipcRenderer.on('cookie-ready', (_, data) => callback(data)),
-  onCookieRefreshed: (callback) => ipcRenderer.on('cookie-refreshed', (_, data) => callback(data)),
+  onCookieReady: (callback) => ipcRenderer.once('cookie-ready', (_, data) => callback(data)),
+  onCookieRefreshed: (callback) => ipcRenderer.once('cookie-refreshed', (_, data) => callback(data)),
 
   // Video playback
   openVideoPlayer: (params) => ipcRenderer.send('open-video-player', params),

@@ -181,7 +181,17 @@ app.whenReady().then(async () => {
 
   const loginManager = new LoginWindowManager(window);
 
+  window.on('close', () => {
+    if (loginManager) {
+      loginManager.close();
+    }
+  });
+
   ipcMain.on('open-login', (event, platform) => {
+    if (platform !== 'bilibili' && platform !== 'douyin') {
+      console.error(`[main] Invalid platform: ${platform}`);
+      return;
+    }
     console.log(`[main] Received open-login request for ${platform}`);
     loginManager.open(platform);
   });
