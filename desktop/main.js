@@ -166,7 +166,16 @@ app.whenReady().then(async () => {
     app.quit();
     return;
   }
-  const window = new BrowserWindow({ width: 1280, height: 860, titleBarStyle: "hiddenInset" });
+  const window = new BrowserWindow({
+    width: 1280,
+    height: 860,
+    titleBarStyle: "hiddenInset",
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+    }
+  });
   window.loadURL(FRONTEND_URL);
 });
 
