@@ -70,6 +70,8 @@ models:
 video_processing:
   bilibili_cookie: ""
   douyin_cookie: ""
+  bilibili_refresh_token: ""
+  bilibili_cookie_expires_at: 0
 """,
         encoding="utf-8",
     )

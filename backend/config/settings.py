@@ -110,6 +110,8 @@ class VideoProcessingConfig(BaseModel):
     douyin_cookie: str = ""
     douyin_fetcher_endpoint: str = "http://localhost:8002"
     ocr_region: list[float] = [0.74, 0.94, 0.08, 0.92]  # y_min, y_max, x_min, x_max
+    bilibili_refresh_token: str = ""
+    bilibili_cookie_expires_at: int = 0
 
 
 # ============================================================

@@ -33,6 +33,8 @@ video_processing:
   auto_clean: true
   preserve_timestamp: true
   bilibili_cookie: ""
+  bilibili_refresh_token: ""
+  bilibili_cookie_expires_at: 0
   ocr_region: [0.74, 0.94, 0.08, 0.92]
 
 rag:
