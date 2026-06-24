@@ -11,6 +11,7 @@ const { spawn } = require("child_process");
 const fs = require("fs");
 const path = require("path");
 const { LoginWindowManager } = require("./login-manager");
+const { VideoPlayerManager } = require("./video-player");
 
 const FRONTEND_URL =
   process.env.MEMENTO_FRONTEND_URL || "http://localhost:3000";
@@ -19,6 +20,7 @@ const DOUYIN_FETCHER_HEALTH_URL = "http://127.0.0.1:8002/health";
 
 let backendProcess = null;
 let douyinFetcherProcess = null;
+let videoPlayerManager = null;
 
 function resolveBackendEnv() {
   const projectRoot = process.env.MEMENTO_PROJECT_ROOT || path.join(__dirname, "..");
@@ -180,6 +182,7 @@ app.whenReady().then(async () => {
   window.loadURL(FRONTEND_URL);
 
   const loginManager = new LoginWindowManager(window);
+  videoPlayerManager = new VideoPlayerManager();
 
   window.on('close', () => {
     if (loginManager) {
@@ -195,6 +198,20 @@ app.whenReady().then(async () => {
     console.log(`[main] Received open-login request for ${platform}`);
     loginManager.open(platform);
   });
+
+  ipcMain.on('open-video-player', (event, params) => {
+    const { platform, videoId, timestamp } = params;
+    if (platform !== 'bilibili' && platform !== 'douyin') {
+      console.error(`[main] Invalid platform: ${platform}`);
+      return;
+    }
+    if (!videoId) {
+      console.error(`[main] Missing videoId`);
+      return;
+    }
+    console.log(`[main] Opening video player: ${platform} ${videoId} ${timestamp || 'no timestamp'}`);
+    videoPlayerManager.open({ platform, videoId, timestamp });
+  });
 });
 
 app.on("window-all-closed", () => {
@@ -202,4 +219,9 @@ app.on("window-all-closed", () => {
   app.quit();
 });
 
-app.on("before-quit", stopSidecars);
+app.on("before-quit", () => {
+  stopSidecars();
+  if (videoPlayerManager) {
+    videoPlayerManager.closeAll();
+  }
+});
