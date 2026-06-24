@@ -1,8 +1,14 @@
+import React from "react";
+
 /**
  * VideoTimestampLink component for memento:// protocol URLs.
  *
  * Parses memento://play URLs and triggers video player via Electron IPC.
  * Falls back to no-op in non-Electron environments.
+ *
+ * Security: Relies on React's built-in XSS protection for children content.
+ * ReactMarkdown sanitizes markdown input before rendering, and React escapes
+ * text content by default. Do not use dangerouslySetInnerHTML with this component.
  */
 
 interface VideoTimestampLinkProps {
@@ -25,8 +31,18 @@ export function VideoTimestampLink({ href, children }: VideoTimestampLinkProps) 
       const videoId = url.searchParams.get("video_id");
       const timestamp = url.searchParams.get("t");
 
-      if (!platform || !videoId || !timestamp) {
-        console.error("VideoTimestampLink: missing required params", { platform, videoId, timestamp });
+      if (!platform || (platform !== "bilibili" && platform !== "douyin")) {
+        console.error(`VideoTimestampLink: invalid platform: ${platform}`);
+        return;
+      }
+
+      if (!videoId) {
+        console.error("VideoTimestampLink: missing video_id parameter");
+        return;
+      }
+
+      if (!timestamp) {
+        console.error("VideoTimestampLink: missing timestamp parameter");
         return;
       }
 
