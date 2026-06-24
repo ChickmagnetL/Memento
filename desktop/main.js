@@ -203,6 +203,18 @@ app.whenReady().then(async () => {
     loginManager.open(platform);
   });
 
+  ipcMain.on('clear-login-session', async (event, platform) => {
+    if (platform !== 'bilibili' && platform !== 'douyin') {
+      console.error(`[main] Invalid platform: ${platform}`);
+      return;
+    }
+    console.log(`[main] Clearing session for ${platform}`);
+    const { session } = require('electron');
+    const platformSession = session.fromPartition(`persist:${platform}`);
+    await platformSession.clearStorageData();
+    console.log(`[main] Session cleared for ${platform}`);
+  });
+
   ipcMain.on('open-video-player', (event, params) => {
     const { platform, videoId, timestamp } = params;
     if (platform !== 'bilibili' && platform !== 'douyin') {

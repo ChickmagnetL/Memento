@@ -15,9 +15,10 @@ interface PlatformCardProps {
   displayName: string;
   status: PlatformStatus;
   onLogin: () => void;
+  onRelogin: () => void;
 }
 
-function PlatformCard({ platform, displayName, status, onLogin }: PlatformCardProps) {
+function PlatformCard({ platform, displayName, status, onLogin, onRelogin }: PlatformCardProps) {
   const isLoggedIn = status === "logged_in";
 
   return (
@@ -35,9 +36,16 @@ function PlatformCard({ platform, displayName, status, onLogin }: PlatformCardPr
           </span>
         </div>
       </div>
-      <Button onClick={onLogin} variant="outline" className="w-full">
-        使用二维码登录
-      </Button>
+      <div className="flex gap-2">
+        <Button onClick={onLogin} variant="outline" className="flex-1">
+          {isLoggedIn ? "登录" : "使用二维码登录"}
+        </Button>
+        {isLoggedIn && (
+          <Button onClick={onRelogin} variant="outline" className="flex-1">
+            重新登录
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
@@ -105,6 +113,36 @@ export default function LoginPage() {
     window.electron.openLogin(platform);
   };
 
+  const handleRelogin = async (platform: "bilibili" | "douyin") => {
+    if (!window.electron) {
+      setMessage("此功能仅在 Electron 应用中可用");
+      return;
+    }
+    setMessage("正在清除登录状态...");
+
+    // Clear Electron session
+    window.electron.clearLoginSession(platform);
+
+    // Clear backend cookie
+    const updatePayload =
+      platform === "bilibili"
+        ? { bilibili_cookie: "" }
+        : { douyin_cookie: "" };
+
+    try {
+      const updated = await updateVideoProcessingSettings(updatePayload);
+      setSettings(updated);
+      setMessage("登录状态已清除，请重新登录");
+
+      // Open login window after a brief delay
+      setTimeout(() => {
+        window.electron!.openLogin(platform);
+      }, 500);
+    } catch {
+      setMessage("清除登录状态失败");
+    }
+  };
+
   const getBilibiliStatus = (): PlatformStatus => {
     return settings?.bilibili_cookie ? "logged_in" : "not_logged_in";
   };
@@ -146,12 +184,14 @@ export default function LoginPage() {
             displayName="Bilibili"
             status={getBilibiliStatus()}
             onLogin={() => handleLogin("bilibili")}
+            onRelogin={() => handleRelogin("bilibili")}
           />
           <PlatformCard
             platform="douyin"
             displayName="Douyin"
             status={getDouyinStatus()}
             onLogin={() => handleLogin("douyin")}
+            onRelogin={() => handleRelogin("douyin")}
           />
         </div>
       ) : (

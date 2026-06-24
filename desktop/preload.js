@@ -11,6 +11,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('electron', {
   // Login management
   openLogin: (platform) => ipcRenderer.send('open-login', platform),
+  clearLoginSession: (platform) => ipcRenderer.send('clear-login-session', platform),
   onCookieReady: (callback) => ipcRenderer.once('cookie-ready', (_, data) => callback(data)),
   onCookieRefreshed: (callback) => ipcRenderer.once('cookie-refreshed', (_, data) => callback(data)),
 

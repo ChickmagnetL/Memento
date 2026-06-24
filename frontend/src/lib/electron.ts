@@ -6,6 +6,7 @@
 
 export interface ElectronAPI {
   openLogin: (platform: 'bilibili' | 'douyin') => void;
+  clearLoginSession: (platform: 'bilibili' | 'douyin') => void;
   onCookieReady: (callback: (data: { platform: string; cookies: string }) => void) => void;
   onCookieRefreshed: (callback: (data: { platform: string; cookies: string }) => void) => void;
   openVideoPlayer: (params: { platform: string; videoId: string; timestamp: number }) => void;
