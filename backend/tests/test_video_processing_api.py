@@ -100,6 +100,11 @@ video_processing:
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (preset_id) REFERENCES model_presets(id) ON DELETE SET NULL
         );
+        CREATE TABLE app_config (
+            key TEXT PRIMARY KEY,
+            value TEXT,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
         """
     )
     # Create default presets
@@ -140,3 +145,61 @@ def test_get_video_processing_settings_default(client):
     assert data["douyin_cookie"] == ""
     assert data["bilibili_refresh_token"] == ""
     assert data["bilibili_cookie_expires_at"] == 0
+
+
+def test_update_video_processing_cookies(client):
+    """Test PUT /api/video-processing updates cookies in database."""
+    # Send PUT request with cookie updates
+    update_payload = {
+        "bilibili_cookie": "test_bili_cookie_value",
+        "douyin_cookie": "test_douyin_cookie_value",
+        "bilibili_refresh_token": "test_refresh_token",
+        "bilibili_cookie_expires_at": 1735689600,
+    }
+    response = client.put("/api/video-processing", json=update_payload)
+
+    assert response.status_code == 200
+    data = response.json()
+
+    # Verify response contains updated values
+    assert data["bilibili_cookie"] == "test_bili_cookie_value"
+    assert data["douyin_cookie"] == "test_douyin_cookie_value"
+    assert data["bilibili_refresh_token"] == "test_refresh_token"
+    assert data["bilibili_cookie_expires_at"] == 1735689600
+
+    # Verify persistence by reading again
+    response = client.get("/api/video-processing")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["bilibili_cookie"] == "test_bili_cookie_value"
+    assert data["douyin_cookie"] == "test_douyin_cookie_value"
+
+
+def test_update_video_processing_partial(client):
+    """Test PUT /api/video-processing supports partial updates."""
+    # First set all values
+    client.put(
+        "/api/video-processing",
+        json={
+            "bilibili_cookie": "initial_bili",
+            "douyin_cookie": "initial_douyin",
+            "bilibili_refresh_token": "initial_token",
+            "bilibili_cookie_expires_at": 1000000,
+        },
+    )
+
+    # Then update only bilibili_cookie
+    response = client.put(
+        "/api/video-processing",
+        json={"bilibili_cookie": "updated_bili"},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+
+    # bilibili_cookie should be updated
+    assert data["bilibili_cookie"] == "updated_bili"
+    # Other fields should remain unchanged
+    assert data["douyin_cookie"] == "initial_douyin"
+    assert data["bilibili_refresh_token"] == "initial_token"
+    assert data["bilibili_cookie_expires_at"] == 1000000
