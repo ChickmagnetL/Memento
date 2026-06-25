@@ -41,15 +41,14 @@ export function VideoTimestampLink({ href, children }: VideoTimestampLinkProps) 
         return;
       }
 
-      if (!timestamp) {
-        console.error("VideoTimestampLink: missing timestamp parameter");
-        return;
-      }
-
-      const timestampNum = parseInt(timestamp, 10);
-      if (isNaN(timestampNum)) {
-        console.error("VideoTimestampLink: invalid timestamp", timestamp);
-        return;
+      // timestamp is optional — Douyin links don't have it
+      let timestampNum: number | undefined;
+      if (timestamp) {
+        timestampNum = parseInt(timestamp, 10);
+        if (isNaN(timestampNum)) {
+          console.error("VideoTimestampLink: invalid timestamp", timestamp);
+          return;
+        }
       }
 
       window.electron.openVideoPlayer({
