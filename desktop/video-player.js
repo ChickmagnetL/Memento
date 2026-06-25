@@ -157,8 +157,25 @@ class VideoPlayerManager {
             }
 
             /* Ensure player fills available space */
-            .bpx-player-container, #bilibili-player, .player-wrap {
+            .bpx-player-container, #bilibili-player, .player-wrap,
+            .bpx-player-video-wrap {
               display: block !important;
+              width: 100% !important;
+              max-width: 100% !important;
+            }
+
+            /* Center the player container */
+            .video-container, .player-container, #app, .v-wrap {
+              margin: 0 !important;
+              padding: 0 !important;
+              max-width: 100% !important;
+              width: 100% !important;
+            }
+
+            /* Remove centering constraints that push content to one side */
+            .video-info-container, .left-container {
+              margin: 0 !important;
+              padding: 0 !important;
             }
           \`;
           document.head.appendChild(bilibiliStyle);
