@@ -2,8 +2,8 @@
  * Electron preload script - Secure IPC bridge
  *
  * Exposes safe IPC methods to the frontend via contextBridge.
- * This enables secure communication between the renderer process
- * and the main process without exposing Node.js APIs directly.
+ * Login events use repeatable listeners (not once) so re-login
+ * works within the same desktop session.
  */
 
 const { contextBridge, ipcRenderer } = require('electron');
@@ -11,9 +11,17 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('electron', {
   // Login management
   openLogin: (platform) => ipcRenderer.send('open-login', platform),
-  clearLoginSession: (platform) => ipcRenderer.send('clear-login-session', platform),
-  onCookieReady: (callback) => ipcRenderer.once('cookie-ready', (_, data) => callback(data)),
-  onCookieRefreshed: (callback) => ipcRenderer.once('cookie-refreshed', (_, data) => callback(data)),
+  clearLoginSession: (platform) => ipcRenderer.invoke('clear-login-session', platform),
+  onCookieReady: (callback) => {
+    const handler = (_, data) => callback(data);
+    ipcRenderer.on('cookie-ready', handler);
+    return () => ipcRenderer.removeListener('cookie-ready', handler);
+  },
+  onCookieRefreshed: (callback) => {
+    const handler = (_, data) => callback(data);
+    ipcRenderer.on('cookie-refreshed', handler);
+    return () => ipcRenderer.removeListener('cookie-refreshed', handler);
+  },
 
   // Video playback
   openVideoPlayer: (params) => ipcRenderer.send('open-video-player', params),

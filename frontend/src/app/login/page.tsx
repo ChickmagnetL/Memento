@@ -11,14 +11,13 @@ import {
 type PlatformStatus = "logged_in" | "not_logged_in";
 
 interface PlatformCardProps {
-  platform: "bilibili" | "douyin";
   displayName: string;
   status: PlatformStatus;
   onLogin: () => void;
   onRelogin: () => void;
 }
 
-function PlatformCard({ platform, displayName, status, onLogin, onRelogin }: PlatformCardProps) {
+function PlatformCard({ displayName, status, onLogin, onRelogin }: PlatformCardProps) {
   const isLoggedIn = status === "logged_in";
 
   return (
@@ -53,12 +52,9 @@ function PlatformCard({ platform, displayName, status, onLogin, onRelogin }: Pla
 export default function LoginPage() {
   const [settings, setSettings] = useState<VideoProcessingSettings | null>(null);
   const [message, setMessage] = useState("");
-  const [isElectronAvailable, setIsElectronAvailable] = useState(false);
+  const [isElectronAvailable] = useState(() => typeof window !== "undefined" && !!window.electron);
 
   useEffect(() => {
-    // Check if running in Electron
-    setIsElectronAvailable(typeof window !== "undefined" && !!window.electron);
-
     // Load initial settings
     getVideoProcessingSettings()
       .then(setSettings)
@@ -68,40 +64,38 @@ export default function LoginPage() {
   useEffect(() => {
     if (!window.electron) return;
 
-    // Listen for cookie-ready event
-    const handleCookieReady = async (data: { platform: string; cookies: string }) => {
+    const offCookieReady = window.electron.onCookieReady(async (data) => {
       try {
         const updatePayload =
           data.platform === "bilibili"
             ? { bilibili_cookie: data.cookies }
             : { douyin_cookie: data.cookies };
-
         const updated = await updateVideoProcessingSettings(updatePayload);
         setSettings(updated);
         setMessage(`${data.platform === "bilibili" ? "Bilibili" : "Douyin"} 登录成功`);
       } catch {
         setMessage("保存登录凭证失败");
       }
-    };
+    });
 
-    // Listen for cookie-refreshed event
-    const handleCookieRefreshed = async (data: { platform: string; cookies: string }) => {
+    const offCookieRefreshed = window.electron.onCookieRefreshed(async (data) => {
       try {
         const updatePayload =
           data.platform === "bilibili"
             ? { bilibili_cookie: data.cookies }
             : { douyin_cookie: data.cookies };
-
         const updated = await updateVideoProcessingSettings(updatePayload);
         setSettings(updated);
         setMessage(`${data.platform === "bilibili" ? "Bilibili" : "Douyin"} 凭证已刷新`);
       } catch {
         setMessage("保存刷新凭证失败");
       }
-    };
+    });
 
-    window.electron.onCookieReady(handleCookieReady);
-    window.electron.onCookieRefreshed(handleCookieRefreshed);
+    return () => {
+      offCookieReady();
+      offCookieRefreshed();
+    };
   }, []);
 
   const handleLogin = (platform: "bilibili" | "douyin") => {
@@ -120,24 +114,20 @@ export default function LoginPage() {
     }
     setMessage("正在清除登录状态...");
 
-    // Clear Electron session
-    window.electron.clearLoginSession(platform);
-
-    // Clear backend cookie
-    const updatePayload =
-      platform === "bilibili"
-        ? { bilibili_cookie: "" }
-        : { douyin_cookie: "" };
-
     try {
+      // Clear Electron session (await to ensure storage is wiped before reopening)
+      await window.electron.clearLoginSession(platform);
+
+      // Clear backend cookie
+      const updatePayload =
+        platform === "bilibili"
+          ? { bilibili_cookie: "" }
+          : { douyin_cookie: "" };
       const updated = await updateVideoProcessingSettings(updatePayload);
       setSettings(updated);
-      setMessage("登录状态已清除，请重新登录");
 
-      // Open login window after a brief delay
-      setTimeout(() => {
-        window.electron!.openLogin(platform);
-      }, 500);
+      // Open login window immediately (session is already cleared)
+      window.electron.openLogin(platform);
     } catch {
       setMessage("清除登录状态失败");
     }
@@ -180,14 +170,12 @@ export default function LoginPage() {
       {settings ? (
         <div className="grid gap-4 md:grid-cols-2">
           <PlatformCard
-            platform="bilibili"
             displayName="Bilibili"
             status={getBilibiliStatus()}
             onLogin={() => handleLogin("bilibili")}
             onRelogin={() => handleRelogin("bilibili")}
           />
           <PlatformCard
-            platform="douyin"
             displayName="Douyin"
             status={getDouyinStatus()}
             onLogin={() => handleLogin("douyin")}

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Memento 登录</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f9fafb;
+      color: #111827;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 16px;
+      background: #ffffff;
+      border-bottom: 1px solid #e5e7eb;
+      -webkit-app-region: drag;
+    }
+
+    .header h1 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #374151;
+    }
+
+    .close-btn {
+      width: 28px;
+      height: 28px;
+      border: none;
+      background: transparent;
+      color: #6b7280;
+      font-size: 18px;
+      cursor: pointer;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      -webkit-app-region: no-drag;
+    }
+
+    .close-btn:hover {
+      background: #f3f4f6;
+      color: #111827;
+    }
+
+    /* Auth surface — BrowserView is positioned here */
+    .auth-surface {
+      flex: 1;
+      position: relative;
+      background: #ffffff;
+      -webkit-app-region: no-drag;
+    }
+
+    /* Footer */
+    .footer {
+      padding: 6px 16px;
+      background: #ffffff;
+      border-top: 1px solid #e5e7eb;
+      text-align: center;
+      -webkit-app-region: no-drag;
+    }
+
+    .footer p {
+      font-size: 11px;
+      color: #9ca3af;
+      line-height: 1.4;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1 id="platform-title">登录</h1>
+    <button class="close-btn" id="close-btn" title="关闭">×</button>
+  </div>
+  <div class="auth-surface" id="auth-surface"></div>
+  <div class="footer">
+    <p>登录后可获取需要登录才能访问的视频字幕内容</p>
+  </div>
+  <script>
+    // Set platform-specific title
+    const params = new URLSearchParams(window.location.search);
+    const platform = params.get('platform');
+    const titleEl = document.getElementById('platform-title');
+    if (platform === 'bilibili') {
+      titleEl.textContent = 'Bilibili 登录';
+      document.title = 'Bilibili 登录 — Memento';
+    } else if (platform === 'douyin') {
+      titleEl.textContent = '抖音登录';
+      document.title = '抖音登录 — Memento';
+    }
+
+    // Close button sends IPC to main process
+    document.getElementById('close-btn').addEventListener('click', () => {
+      window.close();
+    });
+
+    // ESC key closes window
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') window.close();
+    });
+  </script>
+</body>
+</html>

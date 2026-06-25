@@ -23,6 +23,7 @@ let backendProcess = null;
 let douyinFetcherProcess = null;
 let videoPlayerManager = null;
 let cookieRefreshScheduler = null;
+let isQuitting = false;
 
 function resolveBackendEnv() {
   const projectRoot = process.env.MEMENTO_PROJECT_ROOT || path.join(__dirname, "..");
@@ -203,7 +204,7 @@ app.whenReady().then(async () => {
     loginManager.open(platform);
   });
 
-  ipcMain.on('clear-login-session', async (event, platform) => {
+  ipcMain.handle('clear-login-session', async (event, platform) => {
     if (platform !== 'bilibili' && platform !== 'douyin') {
       console.error(`[main] Invalid platform: ${platform}`);
       return;
@@ -231,11 +232,14 @@ app.whenReady().then(async () => {
 });
 
 app.on("window-all-closed", () => {
+  if (isQuitting) return;
+  isQuitting = true;
   stopSidecars();
   app.quit();
 });
 
 app.on("before-quit", () => {
+  isQuitting = true;
   stopSidecars();
   if (videoPlayerManager) {
     videoPlayerManager.closeAll();
