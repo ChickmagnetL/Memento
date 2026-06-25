@@ -9,9 +9,9 @@ const { BrowserWindow, session } = require('electron');
 
 const VIDEO_URL_BUILDERS = {
   bilibili: ({ videoId, timestamp }) => {
-    const url = `https://www.bilibili.com/video/${videoId}`;
+    const url = `https://player.bilibili.com/player.html?bvid=${videoId}&autoplay=1`;
     return (timestamp && Number.isInteger(Number(timestamp)))
-      ? `${url}?t=${timestamp}`
+      ? `${url}&t=${timestamp}`
       : url;
   },
   douyin: ({ videoId }) => {
