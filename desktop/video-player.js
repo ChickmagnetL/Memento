@@ -164,18 +164,25 @@ class VideoPlayerManager {
               max-width: 100% !important;
             }
 
-            /* Center the player container */
+            /* Force left-container to fill entire width */
+            .video-container-v1 {
+              justify-content: flex-start !important;
+              flex-wrap: wrap !important;
+            }
+            .left-container {
+              width: 100% !important;
+              max-width: 100% !important;
+              flex: 1 1 100% !important;
+              margin: 0 !important;
+              padding: 0 !important;
+            }
+
+            /* Center content containers */
             .video-container, .player-container, #app, .v-wrap {
               margin: 0 !important;
               padding: 0 !important;
               max-width: 100% !important;
               width: 100% !important;
-            }
-
-            /* Remove centering constraints that push content to one side */
-            .video-info-container, .left-container {
-              margin: 0 !important;
-              padding: 0 !important;
             }
           \`;
           document.head.appendChild(bilibiliStyle);
