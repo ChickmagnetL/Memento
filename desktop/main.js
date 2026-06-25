@@ -217,7 +217,7 @@ app.whenReady().then(async () => {
   });
 
   ipcMain.on('open-video-player', (event, params) => {
-    const { platform, videoId, timestamp } = params;
+    const { platform, videoId, timestamp, title } = params;
     if (platform !== 'bilibili' && platform !== 'douyin') {
       console.error(`[main] Invalid platform: ${platform}`);
       return;
@@ -227,7 +227,7 @@ app.whenReady().then(async () => {
       return;
     }
     console.log(`[main] Opening video player: ${platform} ${videoId} ${timestamp || 'no timestamp'}`);
-    videoPlayerManager.open({ platform, videoId, timestamp });
+    videoPlayerManager.open({ platform, videoId, timestamp, title });
   });
 });
 
