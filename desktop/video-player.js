@@ -156,12 +156,23 @@ class VideoPlayerManager {
               display: none !important;
             }
 
-            /* Ensure player fills available space */
-            .bpx-player-container, #bilibili-player, .player-wrap,
-            .bpx-player-video-wrap {
+            /* Ensure player fills available space with correct aspect ratio */
+            .bpx-player-container, #bilibili-player, .player-wrap {
               display: block !important;
               width: 100% !important;
               max-width: 100% !important;
+              height: auto !important;
+              aspect-ratio: 16/9 !important;
+            }
+            .bpx-player-video-wrap {
+              width: 100% !important;
+              max-width: 100% !important;
+              height: 100% !important;
+            }
+            video {
+              width: 100% !important;
+              height: 100% !important;
+              object-fit: contain !important;
             }
 
             /* Force left-container to fill entire width */
