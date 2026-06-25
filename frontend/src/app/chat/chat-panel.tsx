@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { SendHorizontal, MessageSquare } from "lucide-react";
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -96,6 +96,9 @@ export function ChatPanel() {
               {message.role === "assistant" ? (
                 <div className="prose prose-sm max-w-none dark:prose-invert">
                   <ReactMarkdown
+                    urlTransform={(value) =>
+                      value.startsWith("memento://") ? value : defaultUrlTransform(value)
+                    }
                     components={{
                       a: ({ href, children }) => {
                         if (href?.startsWith("memento://")) {
