@@ -63,75 +63,59 @@ class VideoPlayerManager {
 
     const url = VIDEO_URL_BUILDERS[platform]({ videoId, timestamp });
 
-    // Inject Memento title bar CSS after page loads
     playerWindow.webContents.on('did-finish-load', () => {
-      playerWindow.webContents.insertCSS(`
-        body {
-          margin-top: 36px !important;
-          overflow: auto !important;
-        }
-        #memento-titlebar {
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          height: 36px;
-          background: #1a1a2e;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 0 12px;
-          -webkit-app-region: drag;
-          z-index: 99999;
-          user-select: none;
-        }
-        #memento-titlebar .title-text {
-          color: #e0e0e0;
-          font-size: 13px;
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-          max-width: 60%;
-        }
-        #memento-titlebar .brand {
-          color: #a78bfa;
-          font-size: 13px;
-          font-weight: 600;
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-          -webkit-app-region: no-drag;
-        }
-        #memento-titlebar .close-btn {
-          -webkit-app-region: no-drag;
-          cursor: pointer;
-          color: #888;
-          font-size: 18px;
-          width: 28px;
-          height: 28px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border-radius: 4px;
-        }
-        #memento-titlebar .close-btn:hover {
-          color: #fff;
-          background: #e81123;
-        }
-      `);
-
       playerWindow.webContents.executeJavaScript(`
         if (!document.getElementById('memento-titlebar')) {
+          const style = document.createElement('style');
+          style.textContent = \`
+            body { margin-top: 36px !important; overflow: auto !important; }
+            #memento-titlebar {
+              position: fixed; top: 0; left: 0; right: 0; height: 36px;
+              background: #1a1a2e; display: flex; align-items: center;
+              justify-content: space-between; padding: 0 12px;
+              -webkit-app-region: drag; z-index: 99999; user-select: none;
+            }
+            #memento-titlebar .title-text {
+              color: #e0e0e0; font-size: 13px;
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+              overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60%;
+            }
+            #memento-titlebar .brand {
+              color: #a78bfa; font-size: 13px; font-weight: 600;
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+              -webkit-app-region: no-drag;
+            }
+            #memento-titlebar .close-btn {
+              -webkit-app-region: no-drag; cursor: pointer; color: #888;
+              font-size: 18px; width: 28px; height: 28px;
+              display: flex; align-items: center; justify-content: center; border-radius: 4px;
+            }
+            #memento-titlebar .close-btn:hover { color: #fff; background: #e81123; }
+          \`;
+          document.head.appendChild(style);
+
           const bar = document.createElement('div');
           bar.id = 'memento-titlebar';
-          bar.innerHTML = \`
-            <span class="brand">Memento</span>
-            <span class="title-text">${displayTitle.replace(/'/g, "\\'")}</span>
-            <span class="close-btn" id="memento-close-btn">×</span>
-          \`;
-          document.body.prepend(bar);
-          document.getElementById('memento-close-btn').addEventListener('click', () => {
+
+          const brand = document.createElement('span');
+          brand.className = 'brand';
+          brand.textContent = 'Memento';
+
+          const title = document.createElement('span');
+          title.className = 'title-text';
+          title.textContent = ${JSON.stringify(displayTitle)};
+
+          const closeBtn = document.createElement('span');
+          closeBtn.className = 'close-btn';
+          closeBtn.textContent = '\\u00d7';
+          closeBtn.addEventListener('click', () => {
             window.close();
           });
+
+          bar.appendChild(brand);
+          bar.appendChild(title);
+          bar.appendChild(closeBtn);
+          document.body.prepend(bar);
         }
       `);
     });
