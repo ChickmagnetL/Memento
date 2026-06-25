@@ -9,9 +9,9 @@ const { BrowserWindow, session } = require('electron');
 
 const VIDEO_URL_BUILDERS = {
   bilibili: ({ videoId, timestamp }) => {
-    const url = `https://player.bilibili.com/player.html?bvid=${videoId}&autoplay=1`;
+    const url = `https://www.bilibili.com/video/${videoId}`;
     return (timestamp && Number.isInteger(Number(timestamp)))
-      ? `${url}&t=${timestamp}`
+      ? `${url}?t=${timestamp}`
       : url;
   },
   douyin: ({ videoId }) => {
@@ -50,7 +50,7 @@ class VideoPlayerManager {
 
     const playerWindow = new BrowserWindow({
       width: 1280,
-      height: 800,
+      height: 900,
       frame: false,
       title: displayTitle,
       webPreferences: {
@@ -116,6 +116,52 @@ class VideoPlayerManager {
           bar.appendChild(title);
           bar.appendChild(closeBtn);
           document.body.prepend(bar);
+        }
+
+        // Bilibili: hide non-player elements
+        if ('${platform}' === 'bilibili' && !document.getElementById('memento-bilibili-style')) {
+          const bilibiliStyle = document.createElement('style');
+          bilibiliStyle.id = 'memento-bilibili-style';
+          bilibiliStyle.textContent = \`
+            /* Hide header/navigation */
+            .bili-header, #biliMainHeader, .mini-header,
+            .bili-header__bar, .v-wrap, .z-top-container {
+              display: none !important;
+            }
+
+            /* Hide comments section */
+            #comment, .comment-container, .reply-list,
+            .comment-list, .bili-comment-container {
+              display: none !important;
+            }
+
+            /* Hide recommended videos sidebar */
+            .video-card-box, .rec-list, .right-container,
+            .video-page-card-small, .rcmd-list {
+              display: none !important;
+            }
+
+            /* Hide user info area */
+            .upinfo, .member-info, .up-info,
+            .user-info, .author-info {
+              display: none !important;
+            }
+
+            /* Hide footer and other non-player chrome */
+            footer, .footer, .bili-footer,
+            .video-toolbar, .toolbar,
+            .video-desc, .desc-info,
+            .video-tag, .tag-container,
+            .video-state, .video-data {
+              display: none !important;
+            }
+
+            /* Ensure player fills available space */
+            .bpx-player-container, #bilibili-player, .player-wrap {
+              display: block !important;
+            }
+          \`;
+          document.head.appendChild(bilibiliStyle);
         }
       `);
     });
