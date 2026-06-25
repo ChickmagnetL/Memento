@@ -49,7 +49,7 @@ class VideoPlayerManager {
     const displayTitle = title || videoId;
 
     const playerWindow = new BrowserWindow({
-      width: 1280,
+      width: 960,
       height: 900,
       frame: false,
       title: displayTitle,
