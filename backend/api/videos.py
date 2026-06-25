@@ -66,9 +66,12 @@ async def create_video(payload: VideoCreateRequest, request: Request) -> dict:
     author_id = None
     duration = None
 
+    video_id = None
+
     if platform == "bilibili":
         bvid = extract_bvid(payload.url)
         if bvid is not None:
+            video_id = bvid
             settings = get_settings()
             client = BilibiliSubtitleClient(cookie=settings.video_processing.bilibili_cookie)
             try:
@@ -83,6 +86,8 @@ async def create_video(payload: VideoCreateRequest, request: Request) -> dict:
                     duration = metadata["duration"]
     elif platform == "douyin":
         aweme_id = direct_aweme_id(payload.url)
+        if aweme_id is not None:
+            video_id = aweme_id
         settings = get_settings()
         if aweme_id is not None and settings.video_processing.douyin_fetcher_endpoint:
             resolver = build_douyin_http_resolver(
@@ -100,8 +105,11 @@ async def create_video(payload: VideoCreateRequest, request: Request) -> dict:
                 author_id = metadata.author_id
                 duration = metadata.duration
 
+    if video_id is None:
+        video_id = uuid4().hex
+
     return await sqlite.create_video(
-        video_id=uuid4().hex,
+        video_id=video_id,
         platform=platform,
         title=title,
         url=payload.url,
