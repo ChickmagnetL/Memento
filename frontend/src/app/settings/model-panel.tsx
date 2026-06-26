@@ -24,8 +24,18 @@ export interface ModelPanelProps {
   modelName: PresetModelName;
   status?: ServiceStatus;
   fields: { key: keyof ModelConfig; label: string }[];
-  /** Passed only when modelName === "asr"; becomes the active PresetCard's children. */
-  asrExtras?: ReactNode;
+  /**
+   * Render-prop called only for the active card when modelName === "asr".
+   * ModelPanel injects the ASR preset's `protocol`/`endpoint` (which live in
+   * its own settings state, not the parent's) + the protocol setter; the
+   * parent owns the ASR-specific JSX (protocol select + asrRequestUrl + Local
+   * ASR management). A static ReactNode can't reach the protocol field.
+   */
+  asrExtras?: (ctx: {
+    protocol: ModelConfig["protocol"];
+    onProtocolChange: (value: string) => void;
+    endpoint: string | null;
+  }) => ReactNode;
 }
 
 const EMPTY_MODEL_CONFIG: ModelConfig = {
@@ -219,7 +229,13 @@ export function ModelPanel({
               setRenameValue("");
             }}
           >
-            {isActive ? asrExtras : undefined}
+            {isActive && asrExtras
+              ? asrExtras({
+                  protocol: settings.protocol,
+                  onProtocolChange: (v) => setField("protocol", v),
+                  endpoint: settings.endpoint,
+                })
+              : undefined}
           </PresetCard>
         );
       })}
