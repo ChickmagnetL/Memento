@@ -78,8 +78,7 @@ export function ModelPanel({
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState("");
 
-  // Load this model's preset list + active preset on mount (the
-  // single-model version of the MODEL_NAMES.forEach load in settings-form.tsx).
+  // Load this model's preset list + active preset on mount / model change.
   useEffect(() => {
     async function load() {
       try {
@@ -91,7 +90,7 @@ export function ModelPanel({
           setSettings(toModelConfig(active.preset.config));
         }
       } catch {
-        // Ignore preset load failures (mirrors settings-form.tsx).
+        // Ignore preset load failures.
       }
     }
     load();

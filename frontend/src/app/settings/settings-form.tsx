@@ -200,6 +200,7 @@ export function SettingsForm() {
       </nav>
 
       <ModelPanel
+        key={activeTab}
         modelName={activeTab}
         fields={FIELDS}
         status={status[activeTab]}

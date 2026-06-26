@@ -68,9 +68,8 @@ export function PresetCard({
 }: PresetCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // Close the ⋯ menu on click-outside (mirrors the renamingPreset handler in
-  // settings-form.tsx). stopPropagation on the trigger keeps the opening
-  // click from immediately closing it.
+  // Close the ⋯ menu on click-outside. stopPropagation on the trigger keeps
+  // the opening click from immediately closing it.
   useEffect(() => {
     if (!menuOpen) {
       return;
