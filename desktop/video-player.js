@@ -49,7 +49,7 @@ class VideoPlayerManager {
     const displayTitle = title || videoId;
 
     const playerWindow = new BrowserWindow({
-      width: 1080,
+      width: 1140,
       height: 900,
       frame: false,
       title: displayTitle,
@@ -194,6 +194,22 @@ class VideoPlayerManager {
               padding: 0 !important;
               max-width: 100% !important;
               width: 100% !important;
+            }
+
+            /* Thin scrollbar to match in-app style */
+            ::-webkit-scrollbar {
+              width: 6px !important;
+              height: 6px !important;
+            }
+            ::-webkit-scrollbar-track {
+              background: transparent !important;
+            }
+            ::-webkit-scrollbar-thumb {
+              background: rgba(130, 130, 150, 0.5) !important;
+              border-radius: 3px !important;
+            }
+            ::-webkit-scrollbar-thumb:hover {
+              background: rgba(130, 130, 150, 0.8) !important;
             }
           \`;
           document.head.appendChild(bilibiliStyle);
