@@ -46,10 +46,11 @@ const EMPTY_MODEL_CONFIG: ModelConfig = {
   protocol: null,
 };
 
-// Coerce a preset's stored config (all-optional PresetConfig) into the
-// all-required ModelConfig so it can feed PresetCard's `values` prop and the
-// scalar `settings` state. settings-form.tsx leans on spread+computed-key
-// leniency for the same conversion; the scalar state here cannot.
+// Adapt a preset's stored config into the shape ModelConfig requires.
+// PresetConfig has all-optional fields and `protocol?: string | null`;
+// ModelConfig has required fields and `protocol: "transcriptions" | "chat_audio" | null`.
+// Defaults the optionals to null and narrows protocol so the scalar
+// `useState<ModelConfig>` (and PresetCard's `values` prop) satisfies tsc.
 function toModelConfig(config: PresetConfig): ModelConfig {
   return {
     provider: config.provider ?? null,

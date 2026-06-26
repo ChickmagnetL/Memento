@@ -313,16 +313,6 @@ export interface ServiceStatus {
   endpoint?: string;
 }
 
-export async function getModelSettings(): Promise<ModelsSettings> {
-  const res = await fetch(`${API_BASE_URL}/api/settings/models`, {
-    cache: "no-store",
-  });
-  if (!res.ok) {
-    throw new Error(`Get settings failed: ${res.status}`);
-  }
-  return res.json();
-}
-
 export async function updateModelSettings(
   payload: Partial<Record<keyof ModelsSettings, Partial<ModelConfig>>>
 ): Promise<ModelsSettings> {
