@@ -71,7 +71,7 @@ def test_create_preset_with_auto_name(client):
     )
     assert response.status_code == 201
     data = response.json()
-    assert data["name"] == "预设1"
+    assert data["name"] == "Preset 1"
     assert data["model_name"] == "chat"
     assert data["config"]["provider"] == "cloud"
     assert data["config"]["api_key"] == "sk-t***"  # masked
@@ -108,7 +108,7 @@ def test_auto_name_increments(client):
         "/api/settings/models/chat/presets",
         json={"config": {"provider": "cloud", "model": "test2"}},
     )
-    assert response.json()["name"] == "预设2"
+    assert response.json()["name"] == "Preset 2"
 
 
 def test_list_presets(client):
@@ -128,8 +128,8 @@ def test_list_presets(client):
     data = response.json()
     assert len(data) == 2
     # Newest first
-    assert data[0]["name"] == "预设2"
-    assert data[1]["name"] == "预设1"
+    assert data[0]["name"] == "Preset 2"
+    assert data[1]["name"] == "Preset 1"
 
 
 def test_get_preset(client):

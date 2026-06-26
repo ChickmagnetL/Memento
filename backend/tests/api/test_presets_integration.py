@@ -75,7 +75,7 @@ def test_complete_preset_workflow(client):
     )
     assert response.status_code == 201
     preset1 = response.json()
-    assert preset1["name"] == "预设1"
+    assert preset1["name"] == "Preset 1"
     assert preset1["config"]["api_key"] == "sk-s***"
     preset1_id = preset1["id"]
 
@@ -116,7 +116,7 @@ def test_complete_preset_workflow(client):
     assert response.status_code == 200
     data = response.json()
     assert data["preset_id"] == preset1_id
-    assert data["preset"]["name"] == "预设1"
+    assert data["preset"]["name"] == "Preset 1"
 
     # 7. Update preset name and config
     response = client.patch(
@@ -171,7 +171,7 @@ def test_auto_name_skips_gaps(client):
         json={"config": {"provider": "cloud", "model": "test"}},
     )
     preset1_id = resp1.json()["id"]
-    assert resp1.json()["name"] == "预设1"
+    assert resp1.json()["name"] == "Preset 1"
 
     # Create preset 2 and 3
     resp2 = client.post(
@@ -182,20 +182,20 @@ def test_auto_name_skips_gaps(client):
         f"/api/settings/models/{model_name}/presets",
         json={"config": {"provider": "cloud", "model": "test"}},
     )
-    assert resp2.json()["name"] == "预设2"
-    assert resp3.json()["name"] == "预设3"
+    assert resp2.json()["name"] == "Preset 2"
+    assert resp3.json()["name"] == "Preset 3"
     preset3_id = resp3.json()["id"]
 
     # Delete preset 2 (creates gap)
     resp2_id = resp2.json()["id"]
     client.delete(f"/api/settings/models/{model_name}/presets/{resp2_id}")
 
-    # Create new preset - should be 预设4, not 预设2
+    # Create new preset - should be Preset 4, not Preset 2
     resp4 = client.post(
         f"/api/settings/models/{model_name}/presets",
         json={"config": {"provider": "cloud", "model": "test"}},
     )
-    assert resp4.json()["name"] == "预设4"
+    assert resp4.json()["name"] == "Preset 4"
 
 
 def test_cross_model_isolation(client):
@@ -215,8 +215,8 @@ def test_cross_model_isolation(client):
     emb_id = emb_resp.json()["id"]
 
     # Both should have same auto name (isolated counters)
-    assert chat_resp.json()["name"] == "预设1"
-    assert emb_resp.json()["name"] == "预设1"
+    assert chat_resp.json()["name"] == "Preset 1"
+    assert emb_resp.json()["name"] == "Preset 1"
 
     # Can't access chat preset via embedding endpoint
     response = client.get(f"/api/settings/models/embedding/presets/{chat_id}")

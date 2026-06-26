@@ -106,7 +106,7 @@ models:
         config = {}  # Empty config to test YAML fallback
         conn.execute(
             "INSERT INTO model_presets (id, model_name, name, config) VALUES (?, ?, ?, ?)",
-            (preset_id, model_name, "默认配置", json.dumps(config)),
+            (preset_id, model_name, "Default", json.dumps(config)),
         )
         conn.execute(
             "INSERT INTO active_preset (model_name, preset_id) VALUES (?, ?)",
@@ -388,7 +388,7 @@ def test_list_presets(client):
     assert response.status_code == 200
     presets = response.json()
     assert len(presets) >= 1
-    assert presets[0]["name"] == "默认配置"
+    assert presets[0]["name"] == "Default"
 
 
 def test_create_preset_with_auto_name(client):
@@ -400,7 +400,7 @@ def test_create_preset_with_auto_name(client):
     )
     assert response.status_code == 201
     preset = response.json()
-    assert preset["name"] == "预设1"
+    assert preset["name"] == "Preset 1"
     assert preset["model_name"] == "chat"
     assert preset["config"]["model"] == "claude-3-5-sonnet"
 

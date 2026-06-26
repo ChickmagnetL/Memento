@@ -48,7 +48,7 @@ def db_path(tmp_path: Path) -> Path:
         }
         conn.execute(
             "INSERT INTO model_presets (id, model_name, name, config) VALUES (?, ?, ?, ?)",
-            (preset_id, model_name, "默认配置", json.dumps(config)),
+            (preset_id, model_name, "Default", json.dumps(config)),
         )
         conn.execute(
             "INSERT INTO active_preset (model_name, preset_id) VALUES (?, ?)",

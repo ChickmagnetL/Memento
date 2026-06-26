@@ -147,7 +147,7 @@ export function PresetCard({
               {preset.name}
             </span>
             {isActive ? (
-              <span className="shrink-0 text-xs text-primary">● 激活</span>
+              <span className="shrink-0 text-xs text-primary">● Active</span>
             ) : (
               <span className="shrink-0 text-xs text-muted-foreground">○</span>
             )}

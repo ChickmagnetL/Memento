@@ -70,9 +70,9 @@ async def migrate_config_to_db(sqlite: SQLiteClient) -> None:
         # Convert to dict format (yaml.safe_load returns dict)
         config_dict = dict(model_config)
 
-        # Create preset with name "默认配置"
+        # Create preset with name "Default"
         preset = await sqlite.create_preset(
-            name="默认配置",
+            name="Default",
             model_name=model_name,
             config=config_dict
         )

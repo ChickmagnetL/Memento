@@ -153,17 +153,25 @@ def _get_sqlite_client() -> SQLiteClient:
 
 
 async def _generate_preset_name(model_name: str, sqlite: SQLiteClient) -> str:
-    """Generate auto-incremented preset name like '预设1', '预设2', etc."""
+    """Generate auto-incremented preset name like 'Preset 1', 'Preset 2', etc."""
     presets = await sqlite.list_presets(model_name)
     max_n = 0
     for preset in presets:
-        if preset["name"].startswith("预设"):
+        # Match both the current English "Preset N" and the legacy Chinese "预设N"
+        # so existing databases keep incrementing correctly after the rename.
+        name = preset["name"]
+        num_str = ""
+        if name.startswith("Preset "):
+            num_str = name[len("Preset "):]
+        elif name.startswith("预设"):
+            num_str = name[len("预设"):]
+        if num_str:
             try:
-                n = int(preset["name"][2:])
+                n = int(num_str)
                 max_n = max(max_n, n)
             except ValueError:
                 pass
-    return f"预设{max_n + 1}"
+    return f"Preset {max_n + 1}"
 
 
 @router.get("/models/{model_name}/presets")

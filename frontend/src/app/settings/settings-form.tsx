@@ -131,7 +131,7 @@ export function SettingsForm() {
           <option value="chat_audio">chat_audio</option>
         </select>
         <p className="mt-1 text-xs text-muted-foreground">
-          当前协议将请求 {asrRequestUrl(ctx.endpoint, ctx.protocol)}
+          Requests {asrRequestUrl(ctx.endpoint, ctx.protocol)}
         </p>
       </label>
       {asrDeployStatus && asrDeployStatus.venv_exists ? (

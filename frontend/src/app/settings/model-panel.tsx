@@ -204,7 +204,7 @@ export function ModelPanel({
             key={preset.id}
             preset={preset}
             isActive={isActive}
-            status={status}
+            status={modelName === "asr" ? undefined : status}
             fields={fields}
             values={isActive ? settings : toModelConfig(preset.config)}
             onFieldChange={setField}
@@ -244,7 +244,7 @@ export function ModelPanel({
         onClick={handleCreatePreset}
         className="cursor-pointer rounded-xl border border-dashed border-border p-4 text-center text-sm text-muted-foreground transition-colors hover:border-primary/50"
       >
-        + 新建预设
+        + New preset
       </div>
     </div>
   );

@@ -44,7 +44,7 @@ async def test_create_preset_generates_uuid(sqlite: SQLiteClient):
 @pytest.mark.asyncio
 async def test_get_preset_returns_record(sqlite: SQLiteClient):
     created = await sqlite.create_preset(
-        name="预设1", model_name="local_asr", config={"model": "moonshine-tiny"}
+        name="Preset 1", model_name="local_asr", config={"model": "moonshine-tiny"}
     )
     preset_id = created["id"]
 
@@ -52,7 +52,7 @@ async def test_get_preset_returns_record(sqlite: SQLiteClient):
 
     assert fetched is not None
     assert fetched["id"] == preset_id
-    assert fetched["name"] == "预设1"
+    assert fetched["name"] == "Preset 1"
 
 
 @pytest.mark.asyncio
@@ -196,8 +196,8 @@ async def test_set_active_preset_creates_record(sqlite: SQLiteClient):
 
 @pytest.mark.asyncio
 async def test_set_active_preset_updates_existing_record(sqlite: SQLiteClient):
-    preset1 = await sqlite.create_preset(name="预设1", model_name="openai", config={})
-    preset2 = await sqlite.create_preset(name="预设2", model_name="openai", config={})
+    preset1 = await sqlite.create_preset(name="Preset 1", model_name="openai", config={})
+    preset2 = await sqlite.create_preset(name="Preset 2", model_name="openai", config={})
 
     await sqlite.set_active_preset("openai", preset1["id"])
     await sqlite.set_active_preset("openai", preset2["id"])
@@ -376,13 +376,13 @@ async def test_migration_creates_presets_and_sets_active(sqlite: SQLiteClient, m
     # Run migration
     await migrate_config_to_db(sqlite)
 
-    # Verify: 3 presets created, all named "默认配置"
+    # Verify: 3 presets created, all named "Default"
     presets = await sqlite.list_presets()
     assert len(presets) == 3
 
     asr_presets = await sqlite.list_presets(model_name="asr")
     assert len(asr_presets) == 1
-    assert asr_presets[0]["name"] == "默认配置"
+    assert asr_presets[0]["name"] == "Default"
     asr_config = json.loads(asr_presets[0]["config"])
     assert asr_config["provider"] == "local"
     assert asr_config["model"] == "whisper-large-v3"
@@ -548,7 +548,7 @@ async def test_migration_full_workflow(sqlite: SQLiteClient, mock_project_root: 
 
     asr_presets = await sqlite.list_presets(model_name="asr")
     assert len(asr_presets) == 1
-    assert asr_presets[0]["name"] == "默认配置"
+    assert asr_presets[0]["name"] == "Default"
     asr_config = json.loads(asr_presets[0]["config"])
     assert asr_config["model"] == "whisper-large-v3"
 
