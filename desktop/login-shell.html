@@ -9,8 +9,8 @@
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: #f9fafb;
-      color: #111827;
+      background: hsl(240, 10%, 4%);
+      color: hsl(240, 5%, 96%);
       display: flex;
       flex-direction: column;
       height: 100vh;
@@ -23,15 +23,25 @@
       align-items: center;
       justify-content: space-between;
       padding: 8px 16px;
-      background: #ffffff;
-      border-bottom: 1px solid #e5e7eb;
+      background: hsl(240, 10%, 4%);
+      border-bottom: 1px solid hsl(240, 4%, 16%);
       -webkit-app-region: drag;
+      gap: 16px;
     }
 
     .header h1 {
       font-size: 14px;
       font-weight: 600;
-      color: #374151;
+      color: hsl(240, 5%, 96%);
+      white-space: nowrap;
+    }
+
+    .header .purpose {
+      flex: 1;
+      font-size: 11px;
+      color: hsl(240, 5%, 65%);
+      text-align: left;
+      -webkit-app-region: no-drag;
     }
 
     .close-btn {
@@ -39,7 +49,7 @@
       height: 28px;
       border: none;
       background: transparent;
-      color: #6b7280;
+      color: hsl(240, 5%, 65%);
       font-size: 18px;
       cursor: pointer;
       border-radius: 4px;
@@ -47,33 +57,34 @@
       align-items: center;
       justify-content: center;
       -webkit-app-region: no-drag;
+      flex-shrink: 0;
     }
 
     .close-btn:hover {
-      background: #f3f4f6;
-      color: #111827;
+      background: hsl(0, 84%, 60%);
+      color: hsl(0, 0%, 100%);
     }
 
     /* Auth surface — BrowserView is positioned here */
     .auth-surface {
       flex: 1;
       position: relative;
-      background: #ffffff;
+      background: hsl(240, 10%, 4%);
       -webkit-app-region: no-drag;
     }
 
     /* Footer */
     .footer {
       padding: 6px 16px;
-      background: #ffffff;
-      border-top: 1px solid #e5e7eb;
+      background: hsl(240, 10%, 4%);
+      border-top: 1px solid hsl(240, 4%, 16%);
       text-align: center;
       -webkit-app-region: no-drag;
     }
 
     .footer p {
       font-size: 11px;
-      color: #9ca3af;
+      color: hsl(240, 5%, 65%);
       line-height: 1.4;
     }
   </style>
@@ -81,23 +92,28 @@
 <body>
   <div class="header">
     <h1 id="platform-title">登录</h1>
+    <span class="purpose" id="purpose-text">登录后可获取需要登录才能访问的内容</span>
     <button class="close-btn" id="close-btn" title="关闭">×</button>
   </div>
   <div class="auth-surface" id="auth-surface"></div>
   <div class="footer">
-    <p>登录后可获取需要登录才能访问的视频字幕内容</p>
+    <p>登录信息仅存储在本地，用于视频内容获取</p>
   </div>
   <script>
-    // Set platform-specific title
+    // Set platform-specific title and purpose description
     const params = new URLSearchParams(window.location.search);
     const platform = params.get('platform');
     const titleEl = document.getElementById('platform-title');
+    const purposeTextEl = document.getElementById('purpose-text');
+
     if (platform === 'bilibili') {
       titleEl.textContent = 'Bilibili 登录';
       document.title = 'Bilibili 登录 — Memento';
+      purposeTextEl.textContent = '登录后可获取：官方提供的字幕，免去ASR转录的等待，拥有更细致的时间戳、可调播放视频的清晰度';
     } else if (platform === 'douyin') {
       titleEl.textContent = '抖音登录';
       document.title = '抖音登录 — Memento';
+      purposeTextEl.textContent = '登录后可获取：作者主页全部视频列表、规避部分访问限制';
     }
 
     // Close button sends IPC to main process
