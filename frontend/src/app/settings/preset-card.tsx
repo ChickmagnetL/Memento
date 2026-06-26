@@ -105,7 +105,10 @@ export function PresetCard({
       {/* Top row: preset name + active marker + status + ⋯ menu */}
       <div className="flex items-center justify-between gap-3">
         {isRenaming ? (
-          <div className="flex flex-1 items-center gap-2 rounded-md border border-input bg-muted/30 p-2">
+          <div
+            onClick={(event) => event.stopPropagation()}
+            className="flex flex-1 items-center gap-2 rounded-md border border-input bg-muted/30 p-2"
+          >
             <input
               type="text"
               className="h-8 flex-1 rounded-md border border-input bg-background px-2 text-sm"
