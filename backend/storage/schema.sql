@@ -68,3 +68,25 @@ CREATE TABLE IF NOT EXISTS app_config (
 CREATE INDEX IF NOT EXISTS idx_videos_status ON videos(status);
 CREATE INDEX IF NOT EXISTS idx_videos_platform ON videos(platform);
 CREATE INDEX IF NOT EXISTS idx_documents_video_id ON documents(video_id);
+
+-- Chat sessions table
+-- Stores persisted chat conversations
+CREATE TABLE IF NOT EXISTS chat_sessions (
+    id TEXT PRIMARY KEY,                       -- uuid hex
+    title TEXT NOT NULL DEFAULT 'New Chat',    -- first user message truncated (<=48 chars)
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP   -- bumped on each message append; list sorted by this
+);
+
+-- Chat messages table
+-- One row per message, stored verbatim (no summarization in P1)
+CREATE TABLE IF NOT EXISTS chat_messages (
+    id TEXT PRIMARY KEY,                       -- uuid hex
+    session_id TEXT NOT NULL,
+    role TEXT NOT NULL,                        -- 'user' | 'assistant'
+    content TEXT NOT NULL,                     -- raw full text
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (session_id) REFERENCES chat_sessions(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_chat_messages_session_id ON chat_messages(session_id);
