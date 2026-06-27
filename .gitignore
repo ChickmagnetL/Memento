@@ -8,7 +8,7 @@
 archive/
 
 # Design specs & plans (local dev reference only)
-docs/
+docs/superpowers/
 
 #AI Engineer
 .claude
