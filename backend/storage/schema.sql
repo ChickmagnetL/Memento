@@ -26,8 +26,8 @@ CREATE TABLE IF NOT EXISTS documents (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     title TEXT,                          -- document title (video title or parsed header)
     author TEXT,                         -- document author (video author or parsed header)
-    summary TEXT,                        -- L2 paragraph summary (generated at clean time)
-    brief TEXT,                          -- L3 one-sentence description (generated at clean time)
+    summary TEXT,                       -- L2 paragraph summary (generated at clean time)
+    brief TEXT,                         -- L3 one-sentence description (generated at clean time)
     FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE SET NULL
 );
 
