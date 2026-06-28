@@ -310,6 +310,23 @@ async def _migrate_add_chat_tables(conn: aiosqlite.Connection) -> None:
     await conn.commit()
 
 
+async def _migrate_documents_add_summary_brief(conn: aiosqlite.Connection) -> None:
+    """Migration 10: add summary and brief columns to documents table.
+
+    summary stores the L2 paragraph summary and brief stores the L3
+    one-sentence description, both generated when a document is cleaned.
+    """
+    cursor = await conn.execute("PRAGMA table_info(documents)")
+    rows = await cursor.fetchall()
+    columns = [r[1] for r in rows]
+
+    if "summary" not in columns:
+        await conn.execute("ALTER TABLE documents ADD COLUMN summary TEXT")
+    if "brief" not in columns:
+        await conn.execute("ALTER TABLE documents ADD COLUMN brief TEXT")
+    await conn.commit()
+
+
 _MIGRATIONS = [
     _migrate_documents_video_id_nullable,
     _migrate_videos_add_author_id,
@@ -320,6 +337,7 @@ _MIGRATIONS = [
     _migrate_documents_add_title_author,
     _migrate_documents_add_author_column,
     _migrate_add_chat_tables,
+    _migrate_documents_add_summary_brief,
 ]
 
 

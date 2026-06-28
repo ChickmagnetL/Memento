@@ -144,7 +144,7 @@ async def test_migration_adds_author_id(tmp_path: Path):
         # PRAGMA user_version bumped to 2
         cursor = await conn.execute("PRAGMA user_version")
         row = await cursor.fetchone()
-        assert row[0] == 9  # Now at migration 9 (latest)
+        assert row[0] == 10  # Now at migration 10 (latest)
 
 
 @pytest.mark.asyncio
@@ -191,7 +191,27 @@ async def test_migration_creates_chat_tables(tmp_path: Path):
         await conn.commit()
 
         cursor = await conn.execute("PRAGMA user_version")
-        assert (await cursor.fetchone())[0] == 9
+        assert (await cursor.fetchone())[0] == 10
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_migration_adds_summary_brief_columns(tmp_path: Path):
+    """Migration 10: adds summary and brief TEXT columns to documents table."""
+    db_path = tmp_path / "metadata.db"
+    client = SQLiteClient(db_path)
+    await client.connect()
+    try:
+        conn = client._conn
+        cursor = await conn.execute("PRAGMA table_info(documents)")
+        rows = await cursor.fetchall()
+        columns = [r[1] for r in rows]
+        assert "summary" in columns
+        assert "brief" in columns
+
+        cursor = await conn.execute("PRAGMA user_version")
+        assert (await cursor.fetchone())[0] == 10
     finally:
         await client.close()
 
@@ -209,6 +229,6 @@ async def test_migration_chat_tables_idempotent(tmp_path: Path):
     try:
         conn = client._conn
         cursor = await conn.execute("PRAGMA user_version")
-        assert (await cursor.fetchone())[0] == 9
+        assert (await cursor.fetchone())[0] == 10
     finally:
         await client.close()
