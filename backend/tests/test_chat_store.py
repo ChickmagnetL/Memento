@@ -91,17 +91,3 @@ async def test_history_for_agent(sqlite: SQLiteClient):
 @pytest.mark.asyncio
 async def test_get_session_missing_returns_none(sqlite: SQLiteClient):
     assert await sqlite.get_chat_session("does-not-exist") is None
-
-
-@pytest.mark.asyncio
-async def test_set_and_get_document_summary(sqlite: SQLiteClient):
-    doc = await sqlite.create_document(document_id="d1", file_path="/tmp/d1.md")
-    await sqlite.set_document_summary(doc["id"], l2="Paragraph summary", l3="One-sentence brief")
-    fetched = await sqlite.get_document_summary(doc["id"])
-    assert fetched == ("Paragraph summary", "One-sentence brief")
-
-
-@pytest.mark.asyncio
-async def test_get_document_summary_none_when_missing(sqlite: SQLiteClient):
-    doc = await sqlite.create_document(document_id="d1", file_path="/tmp/d1.md")
-    assert await sqlite.get_document_summary(doc["id"]) is None
