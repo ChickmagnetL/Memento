@@ -66,3 +66,21 @@ async def test_search_tool_handles_empty_results():
     )
 
     assert isinstance(result.output, str)
+
+
+def test_history_from_pairs_builds_request_response_pairs():
+    from core.agent.chat_agent import history_from_pairs
+
+    history = history_from_pairs(
+        [("user", "hello"), ("assistant", "hi there")]
+    )
+    # Alternating: user -> ModelRequest, assistant -> ModelResponse
+    assert len(history) == 2
+    from pydantic_ai.messages import ModelRequest, ModelResponse
+    assert isinstance(history[0], ModelRequest)
+    assert isinstance(history[1], ModelResponse)
+
+
+def test_history_from_pairs_empty():
+    from core.agent.chat_agent import history_from_pairs
+    assert history_from_pairs([]) == []

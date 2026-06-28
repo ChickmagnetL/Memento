@@ -8,6 +8,12 @@ can use TestModel and the API layer can build a cloud model from settings.
 from dataclasses import dataclass
 
 from pydantic_ai import Agent, RunContext
+from pydantic_ai.messages import (
+    ModelRequest,
+    ModelResponse,
+    TextPart,
+    UserPromptPart,
+)
 
 SYSTEM_PROMPT = (
     "You are Memento, an assistant for a personal video knowledge base. "
@@ -42,6 +48,22 @@ SYSTEM_PROMPT = (
 class ChatDeps:
     retriever: object  # HybridRetriever-compatible: async search(query, *, top_k)
     top_k: int
+
+
+def history_from_pairs(pairs: list[tuple[str, str]]) -> list:
+    """Rebuild pydantic-ai message_history from (role, content) text pairs.
+
+    'user' -> ModelRequest with a UserPromptPart.
+    'assistant' -> ModelResponse with a TextPart.
+    Any other role is skipped (defensive — only user/assistant stored in P1).
+    """
+    history: list = []
+    for role, content in pairs:
+        if role == "user":
+            history.append(ModelRequest(parts=[UserPromptPart(content=content)]))
+        elif role == "assistant":
+            history.append(ModelResponse(parts=[TextPart(content=content)]))
+    return history
 
 
 def build_agent(model) -> Agent:
