@@ -86,3 +86,8 @@ async def test_history_for_agent(sqlite: SQLiteClient):
     )
     history = await sqlite.get_chat_history(session["id"])
     assert history == [("user", "q"), ("assistant", "a")]
+
+
+@pytest.mark.asyncio
+async def test_get_session_missing_returns_none(sqlite: SQLiteClient):
+    assert await sqlite.get_chat_session("does-not-exist") is None

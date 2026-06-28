@@ -493,13 +493,22 @@ class SQLiteClient:
         return self._row_to_dict(row) if row else None
 
     async def list_chat_sessions(self) -> list[dict]:
-        """List chat sessions with most-recently-active first."""
+        """List chat sessions with most-recently-active first.
+
+        Tie-break on the last message's insert order (chat_messages.rowid) so
+        ordering is deterministic even when several sessions share a
+        second-precision updated_at. A session with no messages yields NULL,
+        which sorts after non-NULL in DESC, so a touched session outranks an
+        untouched one in a same-second tie.
+        """
         conn = self._require_conn()
         cursor = await conn.execute(
             """
             SELECT id, title, created_at, updated_at
             FROM chat_sessions
-            ORDER BY updated_at DESC, id DESC
+            ORDER BY updated_at DESC,
+                     (SELECT MAX(rowid) FROM chat_messages WHERE session_id = chat_sessions.id) DESC,
+                     id DESC
             """
         )
         rows = await cursor.fetchall()
@@ -559,14 +568,18 @@ class SQLiteClient:
         return self._row_to_dict(row)
 
     async def list_chat_messages(self, session_id: str) -> list[dict]:
-        """List messages for a session, oldest first."""
+        """List messages for a session, oldest first.
+
+        Tie-break on rowid (insert order) so ordering is deterministic even
+        when several messages share a second-precision created_at.
+        """
         conn = self._require_conn()
         cursor = await conn.execute(
             """
             SELECT id, session_id, role, content, created_at
             FROM chat_messages
             WHERE session_id = ?
-            ORDER BY created_at ASC, id ASC
+            ORDER BY created_at ASC, rowid ASC
             """,
             (session_id,),
         )
@@ -580,7 +593,7 @@ class SQLiteClient:
             """
             SELECT role, content FROM chat_messages
             WHERE session_id = ?
-            ORDER BY created_at ASC, id ASC
+            ORDER BY created_at ASC, rowid ASC
             """,
             (session_id,),
         )
