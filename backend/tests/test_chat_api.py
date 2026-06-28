@@ -94,3 +94,90 @@ def test_chat_rejects_blank_message(client: TestClient):
     assert (
         client.post("/api/chat", json={"message": "   "}).status_code == 422
     )
+
+
+class _RunResult:
+    """Minimal stand-in for a pydantic-ai agent run result."""
+
+    def __init__(self, output: str):
+        self.output = output
+
+
+class _FakeAgent:
+    """Duck-typed agent: run_stream raises (forces fallback); run succeeds.
+
+    Mirrors how chat.py uses the agent: ``async with agent.run_stream(...)``
+    then ``result.stream_text(delta=True)``, and the non-streaming
+    ``agent.run(...).output``.
+    """
+
+    def __init__(self, *, stream_error: Exception, run_output: str | None):
+        self._stream_error = stream_error
+        self._run_output = run_output
+
+    async def run_stream(self, *args, **kwargs):
+        raise self._stream_error
+
+    async def run(self, *args, **kwargs):
+        if self._run_output is None:
+            raise self._stream_error
+        return _RunResult(self._run_output)
+
+
+def test_chat_falls_back_to_non_streaming_run(client: TestClient, monkeypatch):
+    """run_stream raising falls back to agent.run; output is still persisted."""
+    monkeypatch.setattr(
+        chat_api,
+        "build_agent",
+        lambda model: _FakeAgent(
+            stream_error=RuntimeError("stream blew up"),
+            run_output="fallback reply",
+        ),
+    )
+
+    events = _parse_sse(
+        client.post("/api/chat", json={"message": "hi"}).text
+    )
+
+    text = "".join(e["delta"] for e in events if e["type"] == "text")
+    assert text == "fallback reply"
+    done = [e for e in events if e["type"] == "done"]
+    assert len(done) == 1
+    session_id = done[0]["session_id"]
+
+    # The fallback output IS persisted as the assistant message.
+    messages = client.get(f"/api/sessions/{session_id}/messages").json()
+    assert any(m["role"] == "assistant" and m["content"] == "fallback reply"
+               for m in messages)
+
+
+def test_chat_does_not_persist_assistant_on_failure(client: TestClient, monkeypatch):
+    """When generation fully fails, no assistant message is written."""
+    monkeypatch.setattr(chat_api, "_RETRY_BACKOFF_S", 0)
+    monkeypatch.setattr(
+        chat_api,
+        "build_agent",
+        lambda model: _FakeAgent(
+            stream_error=RuntimeError("generation unavailable"),
+            run_output=None,
+        ),
+    )
+
+    # Pre-create the session so we know its id even though streaming fails
+    # (the error event carries no session_id).
+    session_id = client.post(
+        "/api/sessions", json={"title": "failed turn"}
+    ).json()["id"]
+
+    events = _parse_sse(
+        client.post(
+            "/api/chat", json={"message": "hi", "session_id": session_id}
+        ).text
+    )
+
+    assert any(e["type"] == "error" for e in events)
+    assert not any(e["type"] in ("text", "done") for e in events)
+
+    # Only the user message exists; the assistant was NOT persisted.
+    messages = client.get(f"/api/sessions/{session_id}/messages").json()
+    assert [m["role"] for m in messages] == ["user"]

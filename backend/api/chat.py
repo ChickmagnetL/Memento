@@ -146,6 +146,8 @@ async def _run_stream(agent, message, history, deps) -> str:
         )
     except asyncio.TimeoutError:
         if parts:
+            # Partial output from a timed-out stream is kept as-is; the caller
+            # persists it as the assistant message (truncated > missing reply).
             return "".join(parts)
         raise
 
