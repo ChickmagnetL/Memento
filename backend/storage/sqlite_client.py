@@ -459,6 +459,134 @@ class SQLiteClient:
         )
         await conn.commit()
 
+    # ===== Chat Sessions / Messages =====
+
+    async def create_chat_session(self, title: str | None = None) -> dict:
+        """Create a chat session and return it. Default title 'New Chat'."""
+        conn = self._require_conn()
+        session_id = uuid.uuid4().hex
+        await conn.execute(
+            """
+            INSERT INTO chat_sessions (id, title)
+            VALUES (?, COALESCE(?, 'New Chat'))
+            """,
+            (session_id, title),
+        )
+        await conn.commit()
+        session = await self.get_chat_session(session_id)
+        if session is None:
+            raise RuntimeError("Created chat session could not be loaded")
+        return session
+
+    async def get_chat_session(self, session_id: str) -> dict | None:
+        """Return a chat session by ID, or None when missing."""
+        conn = self._require_conn()
+        cursor = await conn.execute(
+            """
+            SELECT id, title, created_at, updated_at
+            FROM chat_sessions
+            WHERE id = ?
+            """,
+            (session_id,),
+        )
+        row = await cursor.fetchone()
+        return self._row_to_dict(row) if row else None
+
+    async def list_chat_sessions(self) -> list[dict]:
+        """List chat sessions with most-recently-active first."""
+        conn = self._require_conn()
+        cursor = await conn.execute(
+            """
+            SELECT id, title, created_at, updated_at
+            FROM chat_sessions
+            ORDER BY updated_at DESC, id DESC
+            """
+        )
+        rows = await cursor.fetchall()
+        return [self._row_to_dict(row) for row in rows]
+
+    async def rename_chat_session(self, session_id: str, title: str) -> dict | None:
+        """Rename a chat session and return the updated record."""
+        conn = self._require_conn()
+        cursor = await conn.execute(
+            """
+            UPDATE chat_sessions
+            SET title = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            """,
+            (title, session_id),
+        )
+        await conn.commit()
+        if cursor.rowcount == 0:
+            return None
+        return await self.get_chat_session(session_id)
+
+    async def delete_chat_session(self, session_id: str) -> bool:
+        """Delete a chat session. Messages cascade-deleted by FK. Return True when removed."""
+        conn = self._require_conn()
+        cursor = await conn.execute(
+            "DELETE FROM chat_sessions WHERE id = ?", (session_id,)
+        )
+        await conn.commit()
+        return cursor.rowcount == 1
+
+    async def add_chat_message(
+        self, *, session_id: str, role: str, content: str
+    ) -> dict:
+        """Append a message to a session, bump session.updated_at, return the message row."""
+        conn = self._require_conn()
+        message_id = uuid.uuid4().hex
+        await conn.execute(
+            """
+            INSERT INTO chat_messages (id, session_id, role, content)
+            VALUES (?, ?, ?, ?)
+            """,
+            (message_id, session_id, role, content),
+        )
+        await conn.execute(
+            "UPDATE chat_sessions SET updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (session_id,),
+        )
+        await conn.commit()
+        cursor = await conn.execute(
+            """
+            SELECT id, session_id, role, content, created_at
+            FROM chat_messages WHERE id = ?
+            """,
+            (message_id,),
+        )
+        row = await cursor.fetchone()
+        return self._row_to_dict(row)
+
+    async def list_chat_messages(self, session_id: str) -> list[dict]:
+        """List messages for a session, oldest first."""
+        conn = self._require_conn()
+        cursor = await conn.execute(
+            """
+            SELECT id, session_id, role, content, created_at
+            FROM chat_messages
+            WHERE session_id = ?
+            ORDER BY created_at ASC, id ASC
+            """,
+            (session_id,),
+        )
+        rows = await cursor.fetchall()
+        return [self._row_to_dict(row) for row in rows]
+
+    async def get_chat_history(self, session_id: str) -> list[tuple[str, str]]:
+        """Return prior messages as (role, content) tuples for agent message_history rebuild."""
+        conn = self._require_conn()
+        cursor = await conn.execute(
+            """
+            SELECT role, content FROM chat_messages
+            WHERE session_id = ?
+            ORDER BY created_at ASC, id ASC
+            """,
+            (session_id,),
+        )
+        rows = await cursor.fetchall()
+        return [(row["role"], row["content"]) for row in rows]
+
     # ===== App Config =====
 
     async def set_app_config(self, key: str, value: str | None) -> None:
