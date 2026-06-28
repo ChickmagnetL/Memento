@@ -69,8 +69,7 @@ def test_delete_session_returns_404_for_missing(client: TestClient):
 def test_delete_session_removes_it(client: TestClient):
     created = client.post("/api/sessions", json={"title": "x"}).json()
     resp = client.delete(f"/api/sessions/{created['id']}")
-    assert resp.status_code == 200
-    assert resp.json() is True
+    assert resp.status_code == 204
     # gone from list
     body = client.get("/api/sessions").json()
     assert all(s["id"] != created["id"] for s in body)

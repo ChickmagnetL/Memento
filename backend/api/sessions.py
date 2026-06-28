@@ -1,6 +1,6 @@
 """Chat sessions REST API: list / create / get-messages / delete."""
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, status
 
 from schemas.sessions import (
     MessageResponse,
@@ -41,10 +41,9 @@ async def get_session_messages(session_id: str, request: Request):
     return [MessageResponse(**m) for m in messages]
 
 
-@router.delete("/{session_id}")
-async def delete_session(session_id: str, request: Request):
+@router.delete("/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_session(session_id: str, request: Request) -> None:
     sqlite = _get_sqlite(request)
     deleted = await sqlite.delete_chat_session(session_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Session not found")
-    return True
