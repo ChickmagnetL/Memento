@@ -12,6 +12,7 @@ Author: Memento Team
 Last Updated: 2026-06-07
 """
 
+import uuid
 from pathlib import Path
 
 from qdrant_client import QdrantClient
@@ -39,6 +40,8 @@ class QdrantStore:
         collection_name (str): Name of the vector collection
         _client (QdrantClient): Underlying qdrant-client instance
     """
+
+    SUMMARY_COLLECTION = "document_summaries"
 
     def __init__(self, storage_path: Path | str, collection_name: str = "documents"):
         """
@@ -134,6 +137,59 @@ class QdrantStore:
             exact=True,
         )
         return result.count
+
+    def ensure_summary_collection(self, vector_size: int) -> None:
+        """Create the document summary collection if it does not exist."""
+        client = self._require_client()
+        existing = {c.name for c in client.get_collections().collections}
+        if self.SUMMARY_COLLECTION not in existing:
+            client.create_collection(
+                collection_name=self.SUMMARY_COLLECTION,
+                vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE),
+            )
+
+    def upsert_summary(
+        self,
+        *,
+        doc_id: str,
+        vector: list[float],
+        title: str,
+        brief: str,
+    ) -> None:
+        """Insert or update a single document summary point."""
+        client = self._require_client()
+        point_id = str(uuid.uuid5(uuid.NAMESPACE_OID, doc_id))
+        client.upsert(
+            collection_name=self.SUMMARY_COLLECTION,
+            points=[
+                PointStruct(
+                    id=point_id,
+                    vector=vector,
+                    payload={"doc_id": doc_id, "title": title, "brief": brief},
+                )
+            ],
+        )
+
+    def search_summaries(
+        self, query_vector: list[float], *, top_k: int
+    ) -> list[dict]:
+        """Search document summaries by vector similarity."""
+        client = self._require_client()
+        response = client.query_points(
+            collection_name=self.SUMMARY_COLLECTION,
+            query=query_vector,
+            limit=top_k,
+            with_payload=True,
+        )
+        return [
+            {
+                "doc_id": point.payload.get("doc_id") if point.payload else None,
+                "title": point.payload.get("title") if point.payload else None,
+                "brief": point.payload.get("brief") if point.payload else None,
+                "score": point.score,
+            }
+            for point in response.points
+        ]
 
     def search_points(
         self, *, vector: list[float], top_k: int

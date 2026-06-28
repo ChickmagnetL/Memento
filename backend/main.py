@@ -49,6 +49,7 @@ async def lifespan(app: FastAPI):
 
     qdrant = QdrantStore(data_dir / "qdrant")
     qdrant.connect(vector_size=settings.rag.vector_size)
+    qdrant.ensure_summary_collection(vector_size=settings.rag.vector_size)
     app.state.qdrant = qdrant
 
     logger.info("Databases initialized at %s", data_dir)
