@@ -144,7 +144,7 @@ async def test_migration_adds_author_id(tmp_path: Path):
         # PRAGMA user_version bumped to 2
         cursor = await conn.execute("PRAGMA user_version")
         row = await cursor.fetchone()
-        assert row[0] == 8  # Now at migration 8 (latest)
+        assert row[0] == 9  # Now at migration 9 (latest)
 
 
 @pytest.mark.asyncio
@@ -160,5 +160,55 @@ async def test_migration_is_idempotent(tmp_path: Path):
         assert await client.create_document(
             document_id="d1", video_id=None, file_path="/tmp/d1.md"
         ) is not None
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_migration_creates_chat_tables(tmp_path: Path):
+    """Migration 9: creates chat_sessions and chat_messages tables (idempotent)."""
+    db_path = tmp_path / "metadata.db"
+    client = SQLiteClient(db_path)
+    await client.connect()
+    try:
+        conn = client._conn
+        for table in ("chat_sessions", "chat_messages"):
+            cursor = await conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+                (table,),
+            )
+            assert await cursor.fetchone() is not None, f"{table} missing"
+
+        # chat session + message round-trip works
+        await conn.execute(
+            "INSERT INTO chat_sessions (id, title) VALUES (?, ?)",
+            ("s1", "hello"),
+        )
+        await conn.execute(
+            "INSERT INTO chat_messages (id, session_id, role, content) VALUES (?, ?, ?, ?)",
+            ("m1", "s1", "user", "hi"),
+        )
+        await conn.commit()
+
+        cursor = await conn.execute("PRAGMA user_version")
+        assert (await cursor.fetchone())[0] == 9
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_migration_chat_tables_idempotent(tmp_path: Path):
+    """Re-running migrations does not error on existing chat tables."""
+    db_path = tmp_path / "metadata.db"
+    client = SQLiteClient(db_path)
+    await client.connect()
+    await client.close()
+
+    client = SQLiteClient(db_path)
+    await client.connect()
+    try:
+        conn = client._conn
+        cursor = await conn.execute("PRAGMA user_version")
+        assert (await cursor.fetchone())[0] == 9
     finally:
         await client.close()

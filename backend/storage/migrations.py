@@ -280,6 +280,36 @@ async def _migrate_documents_add_author_column(conn: aiosqlite.Connection) -> No
     await conn.commit()
 
 
+async def _migrate_add_chat_tables(conn: aiosqlite.Connection) -> None:
+    """Migration 9: create chat_sessions and chat_messages tables.
+
+    Idempotent (CREATE TABLE IF NOT EXISTS) — safe for both fresh installs
+    (tables created by schema.sql) and upgrades from older databases.
+    """
+    await conn.executescript(
+        """
+        CREATE TABLE IF NOT EXISTS chat_sessions (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL DEFAULT 'New Chat',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS chat_messages (
+            id TEXT PRIMARY KEY,
+            session_id TEXT NOT NULL,
+            role TEXT NOT NULL,
+            content TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (session_id) REFERENCES chat_sessions(id) ON DELETE CASCADE
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_chat_messages_session_id ON chat_messages(session_id);
+        """
+    )
+    await conn.commit()
+
+
 _MIGRATIONS = [
     _migrate_documents_video_id_nullable,
     _migrate_videos_add_author_id,
@@ -289,6 +319,7 @@ _MIGRATIONS = [
     _migrate_documents_add_created_at,
     _migrate_documents_add_title_author,
     _migrate_documents_add_author_column,
+    _migrate_add_chat_tables,
 ]
 
 
