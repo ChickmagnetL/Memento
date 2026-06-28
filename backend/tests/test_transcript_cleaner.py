@@ -116,6 +116,12 @@ def test_clean_with_summary_produces_summary_and_brief():
 
     cleaned, l2_summary, l3_brief = cleaner.clean_with_summary(RAW_DRAFT)
 
+    assert l2_summary
+    assert l3_brief
+    assert len(l2_summary) >= 10
+    assert len(l3_brief) <= 60
+    assert "<summary>" not in cleaned.lower()
+    assert "<brief>" not in cleaned.lower()
     assert "青蒿素" in l2_summary
     assert "青蒿素" in l3_brief
     assert "<summary>" not in cleaned

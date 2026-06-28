@@ -21,12 +21,12 @@ CLEANING_SYSTEM_PROMPT = (
     "6. After the cleaned transcript, append two blocks on separate lines: "
     "first <summary>...</summary> with a 150-300 character paragraph summarizing "
     "what the video covers, then <brief>...</brief> with a single sentence "
-    "(<=60 chars) describing the video's topic. Output both tags exactly once."
+    "(<=60 chars) describing the video's topic. Output both tags exactly once in lowercase."
 )
 
 TIMESTAMP_PATTERN = re.compile(r"\[(\d{1,2}:\d{2}(?::\d{2})?)\]")
-SUMMARY_PATTERN = re.compile(r"<summary>\s*(.*?)\s*</summary>", re.DOTALL)
-BRIEF_PATTERN = re.compile(r"<brief>\s*(.*?)\s*</brief>", re.DOTALL)
+SUMMARY_PATTERN = re.compile(r"<summary>\s*(.*?)\s*</summary>", re.DOTALL | re.IGNORECASE)
+BRIEF_PATTERN = re.compile(r"<brief>\s*(.*?)\s*</brief>", re.DOTALL | re.IGNORECASE)
 
 
 class CleaningError(Exception):
