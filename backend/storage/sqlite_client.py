@@ -326,6 +326,29 @@ class SQLiteClient:
         await conn.commit()
         return await self.get_document(document_id)
 
+    async def set_document_summary(
+        self, document_id: str, *, l2: str, l3: str
+    ) -> None:
+        """Set the L2 summary and L3 brief for a document (clean-time write)."""
+        conn = self._require_conn()
+        await conn.execute(
+            "UPDATE documents SET summary = ?, brief = ? WHERE id = ?",
+            (l2, l3, document_id),
+        )
+        await conn.commit()
+
+    async def get_document_summary(self, document_id: str) -> tuple[str, str] | None:
+        """Return (summary, brief) for a document, or None when not yet generated."""
+        conn = self._require_conn()
+        cursor = await conn.execute(
+            "SELECT summary, brief FROM documents WHERE id = ?",
+            (document_id,),
+        )
+        row = await cursor.fetchone()
+        if row is None or row["summary"] is None:
+            return None
+        return (row["summary"], row["brief"])
+
     # ===== Model Preset CRUD =====
 
     async def create_preset(
