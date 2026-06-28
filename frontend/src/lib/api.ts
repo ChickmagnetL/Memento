@@ -294,6 +294,65 @@ export async function sendChatMessage(
   }
 }
 
+// ===== Chat sessions =====
+
+export interface ChatSession {
+  id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ChatSessionMessage {
+  id: string;
+  session_id: string;
+  role: "user" | "assistant";
+  content: string;
+  created_at: string;
+}
+
+export async function listSessions(): Promise<ChatSession[]> {
+  const res = await fetch(`${API_BASE_URL}/api/sessions`);
+  if (!res.ok) {
+    throw new Error(`List sessions failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function createSession(title?: string): Promise<ChatSession> {
+  const res = await fetch(`${API_BASE_URL}/api/sessions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(title ? { title } : {}),
+  });
+  if (!res.ok) {
+    throw new Error(`Create session failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function getSessionMessages(
+  sessionId: string
+): Promise<ChatSessionMessage[]> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/sessions/${sessionId}/messages`
+  );
+  if (!res.ok) {
+    throw new Error(`Get session messages failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function deleteSession(sessionId: string): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}/api/sessions/${sessionId}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) {
+    throw new Error(`Delete session failed: ${res.status}`);
+  }
+  // 204 No Content — no body to parse.
+}
+
 export interface ModelConfig {
   provider: string | null;
   endpoint: string | null;
