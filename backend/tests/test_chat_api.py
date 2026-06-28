@@ -36,7 +36,6 @@ async def client(tmp_path: Path, monkeypatch):
         # Override lifespan's state with our test stores.
         app.state.sqlite = sqlite
         app.state.qdrant = qdrant
-        app.state.chat_sessions = {}
         yield test_client
     await sqlite.close()
     qdrant.close()
@@ -63,17 +62,32 @@ def test_chat_streams_text_and_done(client: TestClient):
     assert done_events[0]["session_id"]
 
 
-def test_chat_session_keeps_history(client: TestClient):
+def test_chat_session_persists_history(client: TestClient):
+    """Conversation persists to SQLite; two turns leave four messages."""
     first = _parse_sse(client.post("/api/chat", json={"message": "第一句"}).text)
     session_id = next(e for e in first if e["type"] == "done")["session_id"]
 
-    client.post(
-        "/api/chat", json={"message": "第二句", "session_id": session_id}
-    )
+    client.post("/api/chat", json={"message": "第二句", "session_id": session_id})
 
-    history = app.state.chat_sessions[session_id]
-    # Two turns of user+assistant messages accumulated.
-    assert len(history) >= 4
+    # Messages persisted in DB (queried via the sessions REST API).
+    messages = client.get(f"/api/sessions/{session_id}/messages").json()
+    # Two turns of user + assistant messages accumulated.
+    assert len(messages) >= 4
+    roles = [m["role"] for m in messages]
+    assert roles.count("user") >= 2
+    assert roles.count("assistant") >= 2
+
+    # Session title = first user message (set at create time, truncated).
+    sessions = client.get("/api/sessions").json()
+    target = next(s for s in sessions if s["id"] == session_id)
+    assert target["title"] == "第一句"
+
+
+def test_chat_404_on_unknown_session(client: TestClient):
+    response = client.post(
+        "/api/chat", json={"message": "hi", "session_id": "does-not-exist"}
+    )
+    assert response.status_code == 404
 
 
 def test_chat_rejects_blank_message(client: TestClient):

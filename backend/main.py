@@ -51,8 +51,6 @@ async def lifespan(app: FastAPI):
     qdrant.connect(vector_size=settings.rag.vector_size)
     app.state.qdrant = qdrant
 
-    app.state.chat_sessions = {}
-
     logger.info("Databases initialized at %s", data_dir)
     yield
 
