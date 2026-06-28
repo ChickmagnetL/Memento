@@ -10,7 +10,6 @@ Last Updated: 2026-06-07
 
 import json
 import uuid
-from typing import Any
 
 import aiosqlite
 from pathlib import Path
@@ -330,8 +329,8 @@ class SQLiteClient:
 
     async def set_document_summary(
         self, document_id: str, *, l2: str, l3: str
-    ) -> dict[str, Any] | None:
-        """Set the L2 summary and L3 brief for a document and return the updated record."""
+    ) -> dict | None:
+        """Set the L2 summary and L3 brief for a document and return the updated document record."""
         conn = self._require_conn()
         await conn.execute(
             "UPDATE documents SET summary = ?, brief = ? WHERE id = ?",

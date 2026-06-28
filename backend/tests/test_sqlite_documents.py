@@ -1,4 +1,4 @@
-"""Tests for document indexing metadata updates."""
+"""Tests for document CRUD and metadata updates (status, indexing, summary/brief)."""
 
 from pathlib import Path
 
@@ -71,12 +71,14 @@ async def test_create_document_allows_null_video_id(sqlite: SQLiteClient):
 @pytest.mark.asyncio
 async def test_set_and_get_document_summary(sqlite: SQLiteClient):
     doc = await sqlite.create_document(document_id="d1", file_path="/tmp/d1.md")
-    await sqlite.set_document_summary(doc["id"], l2="Paragraph summary", l3="One-sentence brief")
+    updated = await sqlite.set_document_summary(doc["id"], l2="Paragraph summary", l3="One-sentence brief")
+    assert updated is not None
+    assert updated["id"] == doc["id"]
     fetched = await sqlite.get_document_summary(doc["id"])
     assert fetched == ("Paragraph summary", "One-sentence brief")
 
 
 @pytest.mark.asyncio
-async def test_get_document_summary_none_when_missing(sqlite: SQLiteClient):
+async def test_get_document_summary_none_when_not_generated(sqlite: SQLiteClient):
     doc = await sqlite.create_document(document_id="d1", file_path="/tmp/d1.md")
     assert await sqlite.get_document_summary(doc["id"]) is None
