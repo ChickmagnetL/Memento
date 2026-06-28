@@ -68,14 +68,7 @@ class QdrantStore:
         # Initialize embedded Qdrant client
         self._client = QdrantClient(path=str(self.storage_path))
 
-        # Check if collection exists
-        existing = {c.name for c in self._client.get_collections().collections}
-        if self.collection_name not in existing:
-            # Create collection with cosine distance
-            self._client.create_collection(
-                collection_name=self.collection_name,
-                vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE),
-            )
+        self._ensure_collection(self.collection_name, vector_size)
 
     def close(self) -> None:
         """Close the embedded Qdrant client."""
@@ -138,56 +131,58 @@ class QdrantStore:
         )
         return result.count
 
-    def ensure_summary_collection(self, vector_size: int) -> None:
-        """Create the document summary collection if it does not exist."""
+    def _ensure_collection(self, name: str, vector_size: int) -> None:
         client = self._require_client()
         existing = {c.name for c in client.get_collections().collections}
-        if self.SUMMARY_COLLECTION not in existing:
+        if name not in existing:
             client.create_collection(
-                collection_name=self.SUMMARY_COLLECTION,
+                collection_name=name,
                 vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE),
             )
+
+    def ensure_summary_collection(self, vector_size: int) -> None:
+        """Create the document summary collection if it does not exist."""
+        self._ensure_collection(self.SUMMARY_COLLECTION, vector_size)
+
+    @staticmethod
+    def _document_point_id(document_id: str) -> str:
+        return str(uuid.uuid5(uuid.NAMESPACE_OID, document_id))
 
     def upsert_summary(
         self,
         *,
-        doc_id: str,
+        document_id: str,
         vector: list[float],
         title: str,
         brief: str,
     ) -> None:
         """Insert or update a single document summary point."""
         client = self._require_client()
-        point_id = str(uuid.uuid5(uuid.NAMESPACE_OID, doc_id))
+        point_id = self._document_point_id(document_id)
         client.upsert(
             collection_name=self.SUMMARY_COLLECTION,
             points=[
                 PointStruct(
                     id=point_id,
                     vector=vector,
-                    payload={"doc_id": doc_id, "title": title, "brief": brief},
+                    payload={"document_id": document_id, "title": title, "brief": brief},
                 )
             ],
         )
 
     def search_summaries(
-        self, query_vector: list[float], *, top_k: int
+        self, *, vector: list[float], top_k: int
     ) -> list[dict]:
         """Search document summaries by vector similarity."""
         client = self._require_client()
         response = client.query_points(
             collection_name=self.SUMMARY_COLLECTION,
-            query=query_vector,
+            query=vector,
             limit=top_k,
             with_payload=True,
         )
         return [
-            {
-                "doc_id": point.payload.get("doc_id") if point.payload else None,
-                "title": point.payload.get("title") if point.payload else None,
-                "brief": point.payload.get("brief") if point.payload else None,
-                "score": point.score,
-            }
+            {"score": point.score, "payload": dict(point.payload or {})}
             for point in response.points
         ]
 

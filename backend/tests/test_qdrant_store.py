@@ -123,10 +123,15 @@ def test_scroll_all_points_empty_collection(store: QdrantStore):
 def test_summary_collection_upsert_and_search(store: QdrantStore):
     store.ensure_summary_collection(vector_size=8)
     store.upsert_summary(
-        doc_id="d1", vector=[0.1] * 8, title="React Hooks", brief="useState 入门"
+        document_id="d1",
+        vector=[0.1] * 8,
+        title="React Hooks",
+        brief="useState introduction",
     )
-    results = store.search_summaries([0.1] * 8, top_k=5)
-    assert any(r["doc_id"] == "d1" for r in results)
-    match = next(r for r in results if r["doc_id"] == "d1")
-    assert match["title"] == "React Hooks"
-    assert match["brief"] == "useState 入门"
+    results = store.search_summaries(vector=[0.1] * 8, top_k=5)
+    assert len(results) >= 1
+    assert len(results) <= 5
+    assert any(r["payload"]["document_id"] == "d1" for r in results)
+    match = next(r for r in results if r["payload"]["document_id"] == "d1")
+    assert match["payload"]["title"] == "React Hooks"
+    assert match["payload"]["brief"] == "useState introduction"
