@@ -183,7 +183,9 @@ async def clean_document(document_id: str, request: Request) -> dict:
     cleaner = TranscriptCleaner(chat_client=chat_client)
     try:
         draft = await asyncio.to_thread(source_path.read_text, encoding="utf-8")
-        cleaned = await asyncio.to_thread(cleaner.clean, draft)
+        cleaned_md, l2_summary, l3_brief = await asyncio.to_thread(
+            cleaner.clean_with_summary, draft
+        )
     except ChatCompletionError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
@@ -195,11 +197,49 @@ async def clean_document(document_id: str, request: Request) -> dict:
 
     cleaned_path = source_path.parent / f"{source_path.stem}.clean.md"
     await asyncio.to_thread(
-        cleaned_path.write_text, cleaned, encoding="utf-8"
+        cleaned_path.write_text, cleaned_md, encoding="utf-8"
     )
 
     # Update the document path in-place.
     document = await sqlite.update_document_path(document_id, str(cleaned_path))
+
+    # Persist L2/L3 summaries and the L3 vector for semantic retrieval.
+    document = await sqlite.set_document_summary(
+        document_id, l2=l2_summary, l3=l3_brief
+    )
+
+    try:
+        summary_embedding_client = build_embedding_client()
+    except EmbeddingError as exc:
+        raise HTTPException(
+            status_code=500, detail=str(exc)
+        ) from exc
+    try:
+        l3_vector = await asyncio.to_thread(
+            summary_embedding_client.embed, [l3_brief]
+        )
+        qdrant.ensure_summary_collection(
+            vector_size=len(l3_vector[0])
+        )
+        title = document.get("title") or "Untitled"
+        if title == "Untitled" and document.get("video_id"):
+            video = await sqlite.get_video(document["video_id"])
+            if video:
+                title = video.get("title") or title
+        qdrant.upsert_summary(
+            document_id=document_id,
+            vector=l3_vector[0],
+            title=title,
+            brief=l3_brief,
+        )
+    except EmbeddingError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Embedding API failed: {exc}",
+        ) from exc
+    except (OSError, ValueError, RuntimeError) as exc:
+        logger.exception("Summary persistence failed for document %s", document_id)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
     # Auto-index the cleaned document.
     settings = get_settings()

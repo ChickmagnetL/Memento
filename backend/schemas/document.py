@@ -15,6 +15,8 @@ class DocumentRecord(BaseModel):
     created_at: str | None = None
     title: str = "Untitled"
     author: str = "Unknown"
+    summary: str | None = None
+    brief: str | None = None
 
 
 class UnimportedDocument(BaseModel):

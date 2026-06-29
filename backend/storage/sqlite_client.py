@@ -200,7 +200,8 @@ class SQLiteClient:
             SELECT id, video_id, file_path, chunk_count, status,
                    indexed_at, created_at,
                    COALESCE(title, 'Untitled') AS title,
-                   COALESCE(author, 'Unknown') AS author
+                   COALESCE(author, 'Unknown') AS author,
+                   summary, brief
             FROM documents
             WHERE id = ?
             """,
@@ -217,7 +218,8 @@ class SQLiteClient:
             SELECT d.id, d.video_id, d.file_path, d.chunk_count, d.status,
                    d.indexed_at, d.created_at,
                    COALESCE(v.title, d.title, 'Untitled') AS title,
-                   COALESCE(v.author, d.author, 'Unknown') AS author
+                   COALESCE(v.author, d.author, 'Unknown') AS author,
+                   d.summary, d.brief
             FROM documents d
             LEFT JOIN videos v ON d.video_id = v.id
             ORDER BY d.rowid DESC
@@ -234,7 +236,8 @@ class SQLiteClient:
             SELECT id, video_id, file_path, chunk_count, status,
                    indexed_at, created_at,
                    COALESCE(title, 'Untitled') AS title,
-                   COALESCE(author, 'Unknown') AS author
+                   COALESCE(author, 'Unknown') AS author,
+                   summary, brief
             FROM documents
             WHERE video_id = ?
             ORDER BY rowid DESC
@@ -254,7 +257,8 @@ class SQLiteClient:
             SELECT id, video_id, file_path, chunk_count, status,
                    indexed_at, created_at,
                    COALESCE(title, 'Untitled') AS title,
-                   COALESCE(author, 'Unknown') AS author
+                   COALESCE(author, 'Unknown') AS author,
+                   summary, brief
             FROM documents
             WHERE video_id = ? AND file_path = ?
             ORDER BY rowid DESC
