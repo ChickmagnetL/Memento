@@ -102,7 +102,7 @@ def build_agent(model) -> Agent:
         lines with [doc_id, title, brief]."""
         vectors = await asyncio.to_thread(ctx.deps.embedder.embed, [query])
         briefs = await ctx.deps.summary_store.search_briefs(
-            query_vector=vectors[0], top_k=5
+            query_vector=vectors[0], top_k=ctx.deps.top_k
         )
         if not briefs:
             return "No matching documents found."

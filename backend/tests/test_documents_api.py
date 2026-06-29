@@ -212,6 +212,15 @@ async def test_clean_document_persists_summary_and_vector(
     tmp_path: Path, monkeypatch
 ):
     """Cleaning persists L2/L3 in SQLite and the L3 vector in Qdrant."""
+    # DocumentSummaryStore.save_summary routes the Qdrant upsert through
+    # asyncio.to_thread. Qdrant local mode stores points in SQLite, which on
+    # macOS (THREADSAFE=2) refuses cross-thread access. Production runs on
+    # Linux (THREADSAFE=1, check_same_thread=False); mirror that here so the
+    # real upsert/search can run from the worker thread.
+    from qdrant_client.local.persistence import CollectionPersistence
+
+    monkeypatch.setattr(CollectionPersistence, "CHECK_SAME_THREAD", False)
+
     sqlite = SQLiteClient(tmp_path / "metadata.db")
     await sqlite.connect()
     qdrant = QdrantStore(tmp_path / "qdrant")

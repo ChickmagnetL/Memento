@@ -98,6 +98,19 @@ class DocumentSummaryStore:
             brief=l3,
         )
 
+    async def _resolve_title(self, document: dict) -> str:
+        """Return the effective title for a document.
+
+        Falls back to the linked video's title when the document title is
+        missing or "Untitled", and finally to "Untitled".
+        """
+        title = document.get("title") or "Untitled"
+        if title == "Untitled" and document.get("video_id"):
+            video = await self.sqlite.get_video(document["video_id"])
+            if video:
+                title = video.get("title") or title
+        return title
+
     async def get_summary(self, document_id: str) -> tuple[str, str] | None:
         return await self.sqlite.get_document_summary(document_id)
 
@@ -122,7 +135,7 @@ class DocumentSummaryStore:
             l3_vector = (await asyncio.to_thread(self.embedding.embed, [l3]))[0]
             await self.save_summary(
                 document_id=document_id,
-                title=doc.get("title") or "Untitled",
+                title=await self._resolve_title(doc),
                 l2=l2,
                 l3=l3,
                 l3_vector=l3_vector,

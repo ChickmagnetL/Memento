@@ -16,6 +16,7 @@ from core.models.chat_completion import (
 from core.models.factory import build_embedding_client
 from core.documents.metadata import parse_markdown_metadata
 from core.rag.chunking import chunk_markdown
+from core.rag.document_summary_store import DocumentSummaryStore
 from core.rag.embedding import EmbeddingError, post_json
 from core.rag.indexer import DocumentIndexer
 from core.video.cleaner import CleaningError, TranscriptCleaner
@@ -70,26 +71,22 @@ async def _persist_summary(
     l3_brief: str,
     embedding_client,
 ) -> None:
-    """Persist L2/L3 summaries in SQLite and the L3 vector in Qdrant."""
-    document_id = document["id"]
-    await sqlite.set_document_summary(document_id, l2=l2_summary, l3=l3_brief)
+    """Persist L2/L3 summaries in SQLite and the L3 vector in Qdrant.
 
-    l3_vector = await asyncio.to_thread(
-        embedding_client.embed, [l3_brief]
+    Delegates to DocumentSummaryStore so the clean-time path and the
+    on-demand backfill path share one persistence implementation.
+    """
+    summary_store = DocumentSummaryStore(
+        sqlite=sqlite, qdrant=qdrant, embedding=embedding_client
     )
-    qdrant.ensure_summary_collection(vector_size=len(l3_vector[0]))
-
-    title = document.get("title") or "Untitled"
-    if title == "Untitled" and document.get("video_id"):
-        video = await sqlite.get_video(document["video_id"])
-        if video:
-            title = video.get("title") or title
-
-    qdrant.upsert_summary(
-        document_id=document_id,
-        vector=l3_vector[0],
+    l3_vector = await asyncio.to_thread(embedding_client.embed, [l3_brief])
+    title = await summary_store._resolve_title(document)
+    await summary_store.save_summary(
+        document_id=document["id"],
         title=title,
-        brief=l3_brief,
+        l2=l2_summary,
+        l3=l3_brief,
+        l3_vector=l3_vector[0],
     )
 
 
