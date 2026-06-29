@@ -122,6 +122,8 @@ class DocumentSummaryStore:
                 l3_vector=l3_vector,
             )
         else:
+            # Without an embedder we cannot produce a valid dense vector, so only
+            # persist to SQLite. Searching briefs requires an embedder anyway.
             await self.sqlite.set_document_summary(document_id, l2=l2, l3=l3)
 
         return l2, l3

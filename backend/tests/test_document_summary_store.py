@@ -119,7 +119,8 @@ async def test_get_or_generate_returns_existing_summary():
 
 
 @pytest.mark.asyncio
-async def test_get_or_generate_uses_empty_vector_without_embedding(monkeypatch):
+async def test_get_or_generate_skips_qdrant_without_embedding(monkeypatch):
+    # Without an embedder, only SQLite is updated.
     sqlite = AsyncMock()
     sqlite.get_document_summary.return_value = None
     sqlite.get_document.return_value = {
