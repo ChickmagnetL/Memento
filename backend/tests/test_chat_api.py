@@ -24,6 +24,9 @@ async def client(tmp_path: Path, monkeypatch):
     await sqlite.connect()
     qdrant = QdrantStore(tmp_path / "qdrant")
     qdrant.connect(vector_size=4)
+    # lookup_documents searches the summary collection; ensure it exists so
+    # TestModel's tool call does not crash on a missing collection.
+    qdrant.ensure_summary_collection(vector_size=4)
     monkeypatch.setattr(
         chat_api,
         "build_chat_model",

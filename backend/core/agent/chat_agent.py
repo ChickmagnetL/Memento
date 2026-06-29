@@ -5,6 +5,7 @@ backed by the hybrid retriever. The model instance is injected so tests
 can use TestModel and the API layer can build a cloud model from settings.
 """
 
+import asyncio
 from dataclasses import dataclass
 
 from pydantic_ai import Agent, RunContext
@@ -20,6 +21,14 @@ SYSTEM_PROMPT = (
     "Answer in the same language as the user. When a question concerns "
     "stored video content, call search_knowledge first and ground your "
     "answer in the returned excerpts. If nothing relevant is found, say so.\n\n"
+    "## Tool Routing\n"
+    "- Specific or detail questions (a particular point, timestamp, snippet) "
+    "→ call search_knowledge.\n"
+    "- Summary, overview, or exploration questions (\"what does this video cover\", "
+    "\"summarize\", \"which videos discuss X\") → first call lookup_documents to see "
+    "relevant documents, then call summarize_document(doc_id) on the chosen one.\n"
+    "- You do NOT see all documents by default; lookup_documents gives you the "
+    "global view. Do not assume search_knowledge results are the whole story.\n\n"
     "## Citation Rules (MANDATORY)\n\n"
     "Every claim grounded in search results MUST include a clickable timestamp link. "
     "This is not optional.\n\n"
@@ -48,6 +57,8 @@ SYSTEM_PROMPT = (
 class ChatDeps:
     retriever: object  # HybridRetriever-compatible: async search(query, *, top_k)
     top_k: int
+    summary_store: object = None   # DocumentSummaryStore-compatible
+    embedder: object = None        # embedding client with .embed(list[str]) -> list[list[float]]
 
 
 def history_from_pairs(pairs: list[tuple[str, str]]) -> list:
@@ -83,5 +94,35 @@ def build_agent(model) -> Agent:
             + f"\n{result.text}"
             for result in results
         )
+
+    @agent.tool
+    async def lookup_documents(ctx: RunContext[ChatDeps], query: str) -> str:
+        """List documents whose topic matches the query. Use for summary/overview
+        questions to see what documents exist before summarizing. Returns top-K
+        lines with [doc_id, title, brief]."""
+        vectors = await asyncio.to_thread(ctx.deps.embedder.embed, [query])
+        briefs = await ctx.deps.summary_store.search_briefs(
+            query_vector=vectors[0], top_k=5
+        )
+        if not briefs:
+            return "No matching documents found."
+        lines = []
+        for entry in briefs:
+            payload = entry.get("payload") or {}
+            doc_id = payload.get("document_id", "")
+            title = payload.get("title", "")
+            brief = payload.get("brief", "")
+            lines.append(f"[doc_id: {doc_id}] {title} — {brief}")
+        return "\n".join(lines)
+
+    @agent.tool
+    async def summarize_document(ctx: RunContext[ChatDeps], doc_id: str) -> str:
+        """Return the full summary of one document. Use after lookup_documents
+        to get a document's overview. doc_id comes from lookup_documents."""
+        try:
+            l2, _l3 = await ctx.deps.summary_store.get_or_generate(doc_id)
+        except ValueError:
+            return f"Document {doc_id} not found."
+        return l2
 
     return agent

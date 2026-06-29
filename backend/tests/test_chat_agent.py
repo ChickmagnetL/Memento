@@ -17,6 +17,31 @@ class FakeRetriever:
         return self.results
 
 
+class FakeSummaryStore:
+    """Minimal stand-in so lookup_documents/summarize_document do not crash
+    when TestModel calls every registered tool."""
+
+    async def search_briefs(self, *, query_vector, top_k) -> list[dict]:
+        return []
+
+    async def get_or_generate(self, document_id: str) -> tuple[str, str]:
+        return ("summary", "brief")
+
+
+class FakeEmbedder:
+    def embed(self, texts: list[str]) -> list[list[float]]:
+        return [[0.1, 0.2, 0.3] for _ in texts]
+
+
+def _deps(retriever: FakeRetriever) -> ChatDeps:
+    return ChatDeps(
+        retriever=retriever,
+        top_k=5,
+        summary_store=FakeSummaryStore(),
+        embedder=FakeEmbedder(),
+    )
+
+
 def _result(text: str) -> SearchResult:
     return SearchResult(
         video_id="v1", document_id="d1", chunk_index=0,
@@ -33,7 +58,7 @@ async def test_agent_calls_search_tool_and_returns_text():
 
     result = await agent.run(
         "视频里讲了什么？",
-        deps=ChatDeps(retriever=retriever, top_k=5),
+        deps=_deps(retriever),
     )
 
     assert retriever.queries  # tool was invoked
@@ -46,7 +71,7 @@ async def test_search_tool_formats_results_with_timestamps():
     agent = build_agent(TestModel())
 
     result = await agent.run(
-        "查一下", deps=ChatDeps(retriever=retriever, top_k=5)
+        "查一下", deps=_deps(retriever)
     )
 
     # TestModel echoes tool return values in its output; the tool output
@@ -62,7 +87,7 @@ async def test_search_tool_handles_empty_results():
     agent = build_agent(TestModel())
 
     result = await agent.run(
-        "查一下", deps=ChatDeps(retriever=retriever, top_k=5)
+        "查一下", deps=_deps(retriever)
     )
 
     assert isinstance(result.output, str)

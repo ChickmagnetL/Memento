@@ -9,6 +9,7 @@ from fastapi.responses import StreamingResponse
 
 from config.settings import get_settings
 from core.agent.chat_agent import ChatDeps, build_agent, history_from_pairs
+from core.rag.document_summary_store import DocumentSummaryStore
 from core.models.factory import (
     build_chat_model as factory_build_chat_model,
     build_embedding_client,  # noqa: F401 - re-export for test monkeypatching
@@ -74,7 +75,15 @@ async def chat(payload: ChatRequest, request: Request) -> StreamingResponse:
         qdrant=qdrant,
         weights=settings.rag.hybrid_weights,
     )
-    deps = ChatDeps(retriever=retriever, top_k=settings.rag.top_k)
+    summary_store = DocumentSummaryStore(
+        sqlite=sqlite, qdrant=qdrant, embedding=embedding_client
+    )
+    deps = ChatDeps(
+        retriever=retriever,
+        top_k=settings.rag.top_k,
+        summary_store=summary_store,
+        embedder=embedding_client,
+    )
     agent = build_agent(build_chat_model())
 
     # Resolve or create the session.
