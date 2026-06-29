@@ -48,15 +48,14 @@ async def test_save_and_get_summary():
     sqlite.get_document_summary.assert_awaited_once_with("d1")
 
 
-@pytest.mark.asyncio
-async def test_search_briefs_returns_top_k():
+def test_search_briefs_returns_top_k():
     qdrant = MagicMock()
     qdrant.search_summaries.return_value = [
         {"score": 0.9, "payload": {"document_id": "d1", "brief": "one"}}
     ]
     store = DocumentSummaryStore(sqlite=AsyncMock(), qdrant=qdrant)
 
-    results = await store.search_briefs(query_vector=[0.1, 0.2], top_k=3)
+    results = store.search_briefs(query_vector=[0.1, 0.2], top_k=3)
 
     qdrant.search_summaries.assert_called_once_with(
         vector=[0.1, 0.2], top_k=3

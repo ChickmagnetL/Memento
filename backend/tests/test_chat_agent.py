@@ -21,7 +21,7 @@ class FakeSummaryStore:
     """Minimal stand-in so lookup_documents/summarize_document do not crash
     when TestModel calls every registered tool."""
 
-    async def search_briefs(self, *, query_vector, top_k) -> list[dict]:
+    def search_briefs(self, *, query_vector, top_k) -> list[dict]:
         return []
 
     async def get_or_generate(self, document_id: str) -> tuple[str, str]:

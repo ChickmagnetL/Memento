@@ -90,8 +90,10 @@ class DocumentSummaryStore:
         self, *, document_id: str, title: str, l2: str, l3: str, l3_vector: list[float]
     ) -> None:
         await self.sqlite.set_document_summary(document_id, l2=l2, l3=l3)
-        await asyncio.to_thread(
-            self.qdrant.upsert_summary,
+        # QdrantLocal stores points in SQLite whose connection is bound to the
+        # thread that created it. Call it directly from the event-loop thread,
+        # matching how the indexer/retriever use QdrantStore (never to_thread).
+        self.qdrant.upsert_summary(
             document_id=document_id,
             vector=l3_vector,
             title=title,
@@ -114,10 +116,10 @@ class DocumentSummaryStore:
     async def get_summary(self, document_id: str) -> tuple[str, str] | None:
         return await self.sqlite.get_document_summary(document_id)
 
-    async def search_briefs(self, *, query_vector: list[float], top_k: int) -> list[dict]:
-        return await asyncio.to_thread(
-            self.qdrant.search_summaries, vector=query_vector, top_k=top_k
-        )
+    def search_briefs(self, *, query_vector: list[float], top_k: int) -> list[dict]:
+        # Sync: see save_summary. QdrantLocal's SQLite connection is
+        # thread-bound, so this must run in the event-loop thread.
+        return self.qdrant.search_summaries(vector=query_vector, top_k=top_k)
 
     async def get_or_generate(self, document_id: str) -> tuple[str, str]:
         existing = await self.sqlite.get_document_summary(document_id)

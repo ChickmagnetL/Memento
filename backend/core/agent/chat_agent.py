@@ -101,7 +101,7 @@ def build_agent(model) -> Agent:
         questions to see what documents exist before summarizing. Returns top-K
         lines with [doc_id, title, brief]."""
         vectors = await asyncio.to_thread(ctx.deps.embedder.embed, [query])
-        briefs = await ctx.deps.summary_store.search_briefs(
+        briefs = ctx.deps.summary_store.search_briefs(
             query_vector=vectors[0], top_k=ctx.deps.top_k
         )
         if not briefs:

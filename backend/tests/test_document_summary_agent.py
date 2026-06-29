@@ -43,7 +43,7 @@ class FakeSummaryStore:
         self.l3 = l3
         self.missing_ids = missing_ids if missing_ids is not None else set()
 
-    async def search_briefs(self, *, query_vector, top_k) -> list[dict]:
+    def search_briefs(self, *, query_vector, top_k) -> list[dict]:
         return self.briefs
 
     async def get_or_generate(self, document_id: str) -> tuple[str, str]:
