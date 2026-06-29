@@ -3,7 +3,7 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
+from core.models.chat_completion import ChatCompletionError
 from core.rag import document_summary_store as summary_module
 from core.rag.document_summary_store import (
     DocumentSummaryStore,
@@ -48,14 +48,14 @@ async def test_save_and_get_summary():
     sqlite.get_document_summary.assert_awaited_once_with("d1")
 
 
-def test_search_briefs_returns_top_k():
+async def test_search_briefs_returns_top_k():
     qdrant = MagicMock()
     qdrant.search_summaries.return_value = [
         {"score": 0.9, "payload": {"document_id": "d1", "brief": "one"}}
     ]
     store = DocumentSummaryStore(sqlite=AsyncMock(), qdrant=qdrant)
 
-    results = store.search_briefs(query_vector=[0.1, 0.2], top_k=3)
+    results = await store.search_briefs(query_vector=[0.1, 0.2], top_k=3)
 
     qdrant.search_summaries.assert_called_once_with(
         vector=[0.1, 0.2], top_k=3
@@ -79,13 +79,22 @@ async def test_get_or_generate_backfills_legacy_doc(monkeypatch):
     embedding = MagicMock()
     embedding.embed.return_value = [[0.1, 0.2, 0.3]]
 
-    store = DocumentSummaryStore(sqlite=sqlite, qdrant=qdrant, embedding=embedding)
+    class FakeChatClient:
+        def complete(self, messages):
+            return (
+                "<summary>paragraph</summary>\n"
+                "<brief>brief</brief>"
+            )
+
+    store = DocumentSummaryStore(
+        sqlite=sqlite,
+        qdrant=qdrant,
+        embedding=embedding,
+        chat_client=FakeChatClient(),
+    )
 
     monkeypatch.setattr(
         summary_module, "read_markdown", lambda path: "# Legacy markdown\n"
-    )
-    monkeypatch.setattr(
-        summary_module, "generate_summary", lambda text: ("paragraph", "brief")
     )
 
     result = await store.get_or_generate("d1")
@@ -130,12 +139,18 @@ async def test_get_or_generate_skips_qdrant_without_embedding(monkeypatch):
     }
     qdrant = MagicMock()
 
-    store = DocumentSummaryStore(sqlite=sqlite, qdrant=qdrant, embedding=None)
+    class FakeChatClient:
+        def complete(self, messages):
+            return "<summary>l2</summary>\n<brief>l3</brief>"
+
+    store = DocumentSummaryStore(
+        sqlite=sqlite,
+        qdrant=qdrant,
+        embedding=None,
+        chat_client=FakeChatClient(),
+    )
 
     monkeypatch.setattr(summary_module, "read_markdown", lambda path: "text")
-    monkeypatch.setattr(
-        summary_module, "generate_summary", lambda text: ("l2", "l3")
-    )
 
     await store.get_or_generate("d1")
 
@@ -176,8 +191,6 @@ def test_generate_summary_raises_on_missing_tag():
     class FakeClient:
         def complete(self, messages):
             return "<summary>only summary</summary>"
-
-    from core.models.chat_completion import ChatCompletionError
 
     with pytest.raises(ChatCompletionError):
         generate_summary("# markdown", chat_client=FakeClient())

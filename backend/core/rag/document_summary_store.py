@@ -78,16 +78,20 @@ def generate_summary(
 
 
 class DocumentSummaryStore:
-    def __init__(self, *, sqlite, qdrant, embedding=None) -> None:
+    def __init__(
+        self, *, sqlite, qdrant, embedding=None, chat_client=None
+    ) -> None:
         self.sqlite = sqlite
         self.qdrant = qdrant
         self.embedding = embedding
+        self._chat_client = chat_client
 
     async def save_summary(
         self, *, document_id: str, title: str, l2: str, l3: str, l3_vector: list[float]
     ) -> None:
         await self.sqlite.set_document_summary(document_id, l2=l2, l3=l3)
-        self.qdrant.upsert_summary(
+        await asyncio.to_thread(
+            self.qdrant.upsert_summary,
             document_id=document_id,
             vector=l3_vector,
             title=title,
@@ -97,8 +101,10 @@ class DocumentSummaryStore:
     async def get_summary(self, document_id: str) -> tuple[str, str] | None:
         return await self.sqlite.get_document_summary(document_id)
 
-    def search_briefs(self, *, query_vector: list[float], top_k: int) -> list[dict]:
-        return self.qdrant.search_summaries(vector=query_vector, top_k=top_k)
+    async def search_briefs(self, *, query_vector: list[float], top_k: int) -> list[dict]:
+        return await asyncio.to_thread(
+            self.qdrant.search_summaries, vector=query_vector, top_k=top_k
+        )
 
     async def get_or_generate(self, document_id: str) -> tuple[str, str]:
         existing = await self.sqlite.get_document_summary(document_id)
@@ -110,7 +116,7 @@ class DocumentSummaryStore:
             raise ValueError(f"document {document_id} not found")
 
         markdown = await asyncio.to_thread(read_markdown, doc["file_path"])
-        l2, l3 = await asyncio.to_thread(generate_summary, markdown)
+        l2, l3 = await asyncio.to_thread(generate_summary, markdown, self._chat_client)
 
         if self.embedding:
             l3_vector = (await asyncio.to_thread(self.embedding.embed, [l3]))[0]
