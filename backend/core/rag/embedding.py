@@ -4,9 +4,9 @@ Talks to any /v1/embeddings endpoint (DeepSeek, SiliconFlow, OpenAI...).
 The HTTP call is injectable for tests, mirroring core.video.bilibili.
 """
 
-import json
 from typing import Callable
-from urllib.request import Request, urlopen
+
+import httpx
 
 
 class EmbeddingError(Exception):
@@ -14,11 +14,22 @@ class EmbeddingError(Exception):
 
 
 def post_json(url: str, payload: dict, headers: dict, *, timeout: int = 30) -> dict:
-    """POST a JSON payload and return the decoded JSON response."""
-    body = json.dumps(payload).encode("utf-8")
-    request = Request(url, data=body, headers=headers, method="POST")
-    with urlopen(request, timeout=timeout) as response:
-        return json.loads(response.read().decode("utf-8"))
+    """POST a JSON payload and return the decoded JSON response.
+
+    Uses httpx (not urllib) because some OpenAI-compatible proxies block
+    urllib's TLS/HTTP fingerprint with HTTP 403.
+    """
+    try:
+        response = httpx.post(
+            url, json=payload, headers=headers, timeout=timeout
+        )
+    except httpx.HTTPError as exc:
+        raise EmbeddingError(f"HTTP request failed: {exc}") from exc
+    if response.status_code >= 400:
+        raise EmbeddingError(
+            f"HTTP {response.status_code}: {response.text[:200]}"
+        )
+    return response.json()
 
 
 class CloudEmbeddingClient:
