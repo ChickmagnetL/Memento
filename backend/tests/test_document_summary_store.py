@@ -93,8 +93,6 @@ async def test_get_or_generate_backfills_legacy_doc(monkeypatch):
     assert result == ("paragraph", "brief")
     sqlite.get_document_summary.assert_awaited_once_with("d1")
     sqlite.get_document.assert_awaited_once_with("d1")
-    summary_module.read_markdown("/tmp/d1.md")
-    summary_module.generate_summary("# Legacy markdown\n")
     sqlite.set_document_summary.assert_awaited_once_with(
         "d1", l2="paragraph", l3="brief"
     )
@@ -104,6 +102,20 @@ async def test_get_or_generate_backfills_legacy_doc(monkeypatch):
         title="Legacy Doc",
         brief="brief",
     )
+
+
+@pytest.mark.asyncio
+async def test_get_or_generate_returns_existing_summary():
+    sqlite = AsyncMock()
+    sqlite.get_document_summary.return_value = ("cached l2", "cached l3")
+    qdrant = MagicMock()
+    store = DocumentSummaryStore(sqlite=sqlite, qdrant=qdrant)
+
+    result = await store.get_or_generate("d1")
+
+    assert result == ("cached l2", "cached l3")
+    sqlite.get_document.assert_not_awaited()
+    qdrant.upsert_summary.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -126,70 +138,45 @@ async def test_get_or_generate_uses_empty_vector_without_embedding(monkeypatch):
 
     await store.get_or_generate("d1")
 
-    qdrant.upsert_summary.assert_called_once_with(
-        document_id="d1",
-        vector=[],
-        title="Untitled",
-        brief="l3",
+    sqlite.set_document_summary.assert_awaited_once_with(
+        "d1", l2="l2", l3="l3"
     )
-
-
-@pytest.mark.asyncio
-async def test_get_or_generate_returns_existing_summary():
-    sqlite = AsyncMock()
-    sqlite.get_document_summary.return_value = ("cached l2", "cached l3")
-    qdrant = MagicMock()
-    store = DocumentSummaryStore(sqlite=sqlite, qdrant=qdrant)
-
-    result = await store.get_or_generate("d1")
-
-    assert result == ("cached l2", "cached l3")
-    sqlite.get_document.assert_not_awaited()
     qdrant.upsert_summary.assert_not_called()
 
 
-def test_generate_summary_extracts_tags(monkeypatch):
-    settings = MagicMock()
-    settings.models.chat.endpoint = "https://api.example.com/v1"
-    settings.models.chat.api_key = "sk-test"
-    settings.models.chat.model = "test-model"
-    monkeypatch.setattr(summary_module, "get_settings", lambda: settings)
+@pytest.mark.asyncio
+async def test_get_or_generate_missing_document_raises():
+    sqlite = AsyncMock()
+    sqlite.get_document_summary.return_value = None
+    sqlite.get_document.return_value = None
+    qdrant = MagicMock()
 
+    store = DocumentSummaryStore(sqlite=sqlite, qdrant=qdrant)
+
+    with pytest.raises(ValueError, match="document d1 not found"):
+        await store.get_or_generate("d1")
+
+
+def test_generate_summary_extracts_tags():
     class FakeClient:
-        def __init__(self, **kwargs):
-            pass
-
         def complete(self, messages):
             return (
                 "<summary>Paragraph summary here</summary>\n"
                 "<brief>One sentence brief</brief>"
             )
 
-    monkeypatch.setattr(summary_module, "CloudChatCompletionClient", FakeClient)
-
-    l2, l3 = generate_summary("# markdown")
+    l2, l3 = generate_summary("# markdown", chat_client=FakeClient())
 
     assert l2 == "Paragraph summary here"
     assert l3 == "One sentence brief"
 
 
-def test_generate_summary_raises_on_missing_tag(monkeypatch):
-    settings = MagicMock()
-    settings.models.chat.endpoint = "https://api.example.com/v1"
-    settings.models.chat.api_key = "sk-test"
-    settings.models.chat.model = "test-model"
-    monkeypatch.setattr(summary_module, "get_settings", lambda: settings)
-
+def test_generate_summary_raises_on_missing_tag():
     class FakeClient:
-        def __init__(self, **kwargs):
-            pass
-
         def complete(self, messages):
             return "<summary>only summary</summary>"
-
-    monkeypatch.setattr(summary_module, "CloudChatCompletionClient", FakeClient)
 
     from core.models.chat_completion import ChatCompletionError
 
     with pytest.raises(ChatCompletionError):
-        generate_summary("# markdown")
+        generate_summary("# markdown", chat_client=FakeClient())

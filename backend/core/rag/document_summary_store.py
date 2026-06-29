@@ -5,6 +5,7 @@ A small store that coordinates SQLite (L2 summary + L3 brief) and Qdrant
 the configured chat completion model.
 """
 
+import asyncio
 import re
 from pathlib import Path
 
@@ -14,6 +15,19 @@ from core.models.chat_completion import (
     CloudChatCompletionClient,
 )
 from core.rag.embedding import post_json
+
+
+def _build_chat_completion_client() -> CloudChatCompletionClient:
+    """Build the chat completion client from settings."""
+    chat = get_settings().models.chat
+    return CloudChatCompletionClient(
+        endpoint=chat.endpoint,
+        api_key=chat.api_key,
+        model=chat.model,
+        post_json=lambda url, payload, headers: post_json(
+            url, payload, headers, timeout=300
+        ),
+    )
 
 
 SUMMARY_PATTERN = re.compile(
@@ -44,17 +58,12 @@ def _extract_tag(text: str, pattern: re.Pattern, label: str) -> str:
     return match.group(1).strip()
 
 
-def generate_summary(markdown_text: str) -> tuple[str, str]:
+def generate_summary(
+    markdown_text: str,
+    chat_client: CloudChatCompletionClient | None = None,
+) -> tuple[str, str]:
     """Call the configured chat model and extract <summary> and <brief>."""
-    chat = get_settings().models.chat
-    client = CloudChatCompletionClient(
-        endpoint=chat.endpoint,
-        api_key=chat.api_key,
-        model=chat.model,
-        post_json=lambda url, payload, headers: post_json(
-            url, payload, headers, timeout=300
-        ),
-    )
+    client = chat_client or _build_chat_completion_client()
 
     output = client.complete(
         [
@@ -100,15 +109,19 @@ class DocumentSummaryStore:
         if doc is None:
             raise ValueError(f"document {document_id} not found")
 
-        markdown = read_markdown(doc["file_path"])
-        l2, l3 = generate_summary(markdown)
-        l3_vector = self.embedding.embed([l3])[0] if self.embedding else None
+        markdown = await asyncio.to_thread(read_markdown, doc["file_path"])
+        l2, l3 = await asyncio.to_thread(generate_summary, markdown)
 
-        await self.save_summary(
-            document_id=document_id,
-            title=doc.get("title") or "Untitled",
-            l2=l2,
-            l3=l3,
-            l3_vector=l3_vector or [],
-        )
+        if self.embedding:
+            l3_vector = (await asyncio.to_thread(self.embedding.embed, [l3]))[0]
+            await self.save_summary(
+                document_id=document_id,
+                title=doc.get("title") or "Untitled",
+                l2=l2,
+                l3=l3,
+                l3_vector=l3_vector,
+            )
+        else:
+            await self.sqlite.set_document_summary(document_id, l2=l2, l3=l3)
+
         return l2, l3
