@@ -48,6 +48,7 @@ async def test_save_and_get_summary():
     sqlite.get_document_summary.assert_awaited_once_with("d1")
 
 
+@pytest.mark.asyncio
 async def test_search_briefs_returns_top_k():
     qdrant = MagicMock()
     qdrant.search_summaries.return_value = [
