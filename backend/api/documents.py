@@ -68,14 +68,14 @@ async def _persist_summary(
     document: dict,
     l2_summary: str,
     l3_brief: str,
+    embedding_client,
 ) -> None:
     """Persist L2/L3 summaries in SQLite and the L3 vector in Qdrant."""
     document_id = document["id"]
     await sqlite.set_document_summary(document_id, l2=l2_summary, l3=l3_brief)
 
-    summary_embedding_client = build_embedding_client()
     l3_vector = await asyncio.to_thread(
-        summary_embedding_client.embed, [l3_brief]
+        embedding_client.embed, [l3_brief]
     )
     qdrant.ensure_summary_collection(vector_size=len(l3_vector[0]))
 
@@ -98,9 +98,9 @@ async def _index_cleaned_document(
     qdrant,
     document: dict,
     settings,
+    embedding_client,
 ) -> dict:
     """Index a cleaned document and return the updated record."""
-    embedding_client = build_embedding_client()
     indexer = DocumentIndexer(
         sqlite=sqlite,
         qdrant=qdrant,
@@ -249,10 +249,22 @@ async def clean_document(document_id: str, request: Request) -> dict:
         cleaned_path.write_text, cleaned_md, encoding="utf-8"
     )
 
+    settings = get_settings()
+    try:
+        embedding_client = build_embedding_client()
+    except EmbeddingError as exc:
+        raise HTTPException(
+            status_code=500, detail=str(exc)
+        ) from exc
+
     try:
         document = await sqlite.update_document_path(document_id, str(cleaned_path))
-        await _persist_summary(sqlite, qdrant, document, l2_summary, l3_brief)
-        return await _index_cleaned_document(sqlite, qdrant, document, get_settings())
+        await _persist_summary(
+            sqlite, qdrant, document, l2_summary, l3_brief, embedding_client
+        )
+        return await _index_cleaned_document(
+            sqlite, qdrant, document, settings, embedding_client
+        )
     except EmbeddingError as exc:
         logger.exception("Embedding failed for document %s", document_id)
         raise HTTPException(
