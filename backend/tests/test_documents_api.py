@@ -18,10 +18,27 @@ DRAFT = """# 示例视频
 [00:01] 第一行内容
 """
 
+CLEAN_REPLY = (
+    "## 主题\n\n"
+    "[00:01] 清洗后的第一行内容。\n"
+    "<summary>这是关于示例视频的一段描述。</summary>\n"
+    "<brief>示例视频的主题。</brief>\n"
+)
+
 
 class FakeEmbeddingClient:
     def embed(self, texts: list[str]) -> list[list[float]]:
         return [[0.1, 0.2, 0.3, 0.4] for _ in texts]
+
+
+def chat_client_reply(text: str) -> type:
+    """Return a fake chat client class whose ``complete`` always returns ``text``."""
+
+    class FakeChatClient:
+        def complete(self, messages: list[dict]) -> str:
+            return text
+
+    return FakeChatClient
 
 
 @pytest.fixture
@@ -148,17 +165,8 @@ async def test_clean_document_updates_in_place_and_indexes(
     test_client, sqlite = client
     await _seed_document(sqlite, tmp_path)
 
-    class FakeChatClient:
-        def complete(self, messages: list[dict]) -> str:
-            return (
-                "## 主题\n\n"
-                "[00:01] 清洗后的第一行内容。\n"
-                "<summary>这是关于示例视频的一段描述。</summary>\n"
-                "<brief>示例视频的主题。</brief>\n"
-            )
-
     monkeypatch.setattr(
-        documents, "build_chat_completion_client", lambda: FakeChatClient()
+        documents, "build_chat_completion_client", lambda: chat_client_reply(CLEAN_REPLY)()
     )
 
     response = test_client.post("/api/documents/d1/clean")
@@ -190,17 +198,8 @@ async def test_clean_document_file_missing_returns_500(
     test_client, sqlite = client
     await _seed_document(sqlite, tmp_path)
 
-    class FakeChatClient:
-        def complete(self, messages: list[dict]) -> str:
-            return (
-                "## 主题\n\n"
-                "[00:01] 内容。\n"
-                "<summary>这是关于示例视频的一段描述。</summary>\n"
-                "<brief>示例视频的主题。</brief>\n"
-            )
-
     monkeypatch.setattr(
-        documents, "build_chat_completion_client", lambda: FakeChatClient()
+        documents, "build_chat_completion_client", lambda: chat_client_reply(CLEAN_REPLY)()
     )
 
     (tmp_path / "v1.md").unlink()
@@ -219,64 +218,61 @@ async def test_clean_document_persists_summary_and_vector(
     qdrant.connect(vector_size=4)
     qdrant.ensure_summary_collection(vector_size=4)
 
-    await sqlite.create_video(
-        video_id="v1",
-        platform="bilibili",
-        title="示例视频",
-        url="https://www.bilibili.com/video/BV1abc",
-    )
-    draft_path = tmp_path / "v1.md"
-    draft_path.write_text(DRAFT, encoding="utf-8")
-    await sqlite.create_document(
-        document_id="d1", video_id="v1", file_path=str(draft_path)
-    )
+    try:
+        await sqlite.create_video(
+            video_id="v1",
+            platform="bilibili",
+            title="示例视频",
+            url="https://www.bilibili.com/video/BV1abc",
+        )
+        draft_path = tmp_path / "v1.md"
+        draft_path.write_text(DRAFT, encoding="utf-8")
+        await sqlite.create_document(
+            document_id="d1", video_id="v1", file_path=str(draft_path)
+        )
 
-    class FakeChatClient:
-        def complete(self, messages: list[dict]) -> str:
-            return (
-                "## 主题\n\n"
-                "[00:01] 清洗后的第一行内容。\n"
-                "<summary>这是关于示例视频的一段描述。</summary>\n"
-                "<brief>示例视频的主题。</brief>\n"
-            )
+        monkeypatch.setattr(
+            documents,
+            "build_chat_completion_client",
+            lambda: chat_client_reply(CLEAN_REPLY)(),
+        )
+        monkeypatch.setattr(
+            documents, "build_embedding_client", lambda: FakeEmbeddingClient()
+        )
 
-    monkeypatch.setattr(
-        documents, "build_chat_completion_client", lambda: FakeChatClient()
-    )
-    monkeypatch.setattr(
-        documents, "build_embedding_client", lambda: FakeEmbeddingClient()
-    )
+        # We call the endpoint directly because the shared client fixture
+        # monkeypatches Qdrant upsert_summary, making it impossible to verify
+        # the real summary vector was persisted.
+        test_app = FastAPI()
+        test_app.state.sqlite = sqlite
+        test_app.state.qdrant = qdrant
+        request = Request(
+            scope={
+                "type": "http",
+                "method": "POST",
+                "path": "/api/documents/d1/clean",
+                "headers": [],
+                "query_string": b"",
+                "app": test_app,
+            }
+        )
 
-    test_app = FastAPI()
-    test_app.state.sqlite = sqlite
-    test_app.state.qdrant = qdrant
-    request = Request(
-        scope={
-            "type": "http",
-            "method": "POST",
-            "path": "/api/documents/d1/clean",
-            "headers": [],
-            "query_string": b"",
-            "app": test_app,
-        }
-    )
+        record = await documents.clean_document("d1", request)
 
-    record = await documents.clean_document("d1", request)
+        assert record["id"] == "d1"
+        assert record["summary"] == "这是关于示例视频的一段描述。"
+        assert record["brief"] == "示例视频的主题。"
 
-    assert record["id"] == "d1"
-    assert record["summary"] == "这是关于示例视频的一段描述。"
-    assert record["brief"] == "示例视频的主题。"
-
-    results = qdrant.search_summaries(
-        vector=[0.1, 0.2, 0.3, 0.4], top_k=5
-    )
-    assert any(r["payload"].get("document_id") == "d1" for r in results)
-    match = next(r for r in results if r["payload"].get("document_id") == "d1")
-    assert match["payload"]["title"] == "示例视频"
-    assert match["payload"]["brief"] == "示例视频的主题。"
-
-    await sqlite.close()
-    qdrant.close()
+        results = qdrant.search_summaries(
+            vector=[0.1, 0.2, 0.3, 0.4], top_k=5
+        )
+        assert any(r["payload"].get("document_id") == "d1" for r in results)
+        match = next(r for r in results if r["payload"].get("document_id") == "d1")
+        assert match["payload"]["title"] == "示例视频"
+        assert match["payload"]["brief"] == "示例视频的主题。"
+    finally:
+        await sqlite.close()
+        qdrant.close()
 
 
 @pytest.mark.asyncio

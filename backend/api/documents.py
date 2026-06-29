@@ -13,7 +13,7 @@ from core.models.chat_completion import (
     ChatCompletionError,
     CloudChatCompletionClient,
 )
-from core.models.factory import build_embedding_client  # noqa: F401 - re-export for test monkeypatching
+from core.models.factory import build_embedding_client
 from core.documents.metadata import parse_markdown_metadata
 from core.rag.chunking import chunk_markdown
 from core.rag.embedding import EmbeddingError, post_json
@@ -60,6 +60,55 @@ def get_state(request: Request):
     if sqlite is None or qdrant is None:
         raise HTTPException(status_code=500, detail="Storage is not initialized")
     return sqlite, qdrant
+
+
+async def _persist_summary(
+    sqlite,
+    qdrant,
+    document: dict,
+    l2_summary: str,
+    l3_brief: str,
+) -> None:
+    """Persist L2/L3 summaries in SQLite and the L3 vector in Qdrant."""
+    document_id = document["id"]
+    await sqlite.set_document_summary(document_id, l2=l2_summary, l3=l3_brief)
+
+    summary_embedding_client = build_embedding_client()
+    l3_vector = await asyncio.to_thread(
+        summary_embedding_client.embed, [l3_brief]
+    )
+    qdrant.ensure_summary_collection(vector_size=len(l3_vector[0]))
+
+    title = document.get("title") or "Untitled"
+    if title == "Untitled" and document.get("video_id"):
+        video = await sqlite.get_video(document["video_id"])
+        if video:
+            title = video.get("title") or title
+
+    qdrant.upsert_summary(
+        document_id=document_id,
+        vector=l3_vector[0],
+        title=title,
+        brief=l3_brief,
+    )
+
+
+async def _index_cleaned_document(
+    sqlite,
+    qdrant,
+    document: dict,
+    settings,
+) -> dict:
+    """Index a cleaned document and return the updated record."""
+    embedding_client = build_embedding_client()
+    indexer = DocumentIndexer(
+        sqlite=sqlite,
+        qdrant=qdrant,
+        embedding_client=embedding_client,
+        chunk_size=settings.rag.chunk_size,
+        overlap=settings.rag.overlap,
+    )
+    return await indexer.index(document)
 
 
 @router.get("", response_model=list[DocumentRecord])
@@ -200,72 +249,18 @@ async def clean_document(document_id: str, request: Request) -> dict:
         cleaned_path.write_text, cleaned_md, encoding="utf-8"
     )
 
-    # Update the document path in-place.
-    document = await sqlite.update_document_path(document_id, str(cleaned_path))
-
-    # Persist L2/L3 summaries and the L3 vector for semantic retrieval.
-    document = await sqlite.set_document_summary(
-        document_id, l2=l2_summary, l3=l3_brief
-    )
-
     try:
-        summary_embedding_client = build_embedding_client()
+        document = await sqlite.update_document_path(document_id, str(cleaned_path))
+        await _persist_summary(sqlite, qdrant, document, l2_summary, l3_brief)
+        return await _index_cleaned_document(sqlite, qdrant, document, get_settings())
     except EmbeddingError as exc:
-        raise HTTPException(
-            status_code=500, detail=str(exc)
-        ) from exc
-    try:
-        l3_vector = await asyncio.to_thread(
-            summary_embedding_client.embed, [l3_brief]
-        )
-        qdrant.ensure_summary_collection(
-            vector_size=len(l3_vector[0])
-        )
-        title = document.get("title") or "Untitled"
-        if title == "Untitled" and document.get("video_id"):
-            video = await sqlite.get_video(document["video_id"])
-            if video:
-                title = video.get("title") or title
-        qdrant.upsert_summary(
-            document_id=document_id,
-            vector=l3_vector[0],
-            title=title,
-            brief=l3_brief,
-        )
-    except EmbeddingError as exc:
+        logger.exception("Embedding failed for document %s", document_id)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Embedding API failed: {exc}",
         ) from exc
     except (OSError, ValueError, RuntimeError) as exc:
-        logger.exception("Summary persistence failed for document %s", document_id)
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
-
-    # Auto-index the cleaned document.
-    settings = get_settings()
-    try:
-        embedding_client = build_embedding_client()
-    except EmbeddingError as exc:
-        raise HTTPException(
-            status_code=500, detail=str(exc)
-        ) from exc
-
-    indexer = DocumentIndexer(
-        sqlite=sqlite,
-        qdrant=qdrant,
-        embedding_client=embedding_client,
-        chunk_size=settings.rag.chunk_size,
-        overlap=settings.rag.overlap,
-    )
-    try:
-        return await indexer.index(document)
-    except EmbeddingError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Embedding API failed: {exc}",
-        ) from exc
-    except (OSError, ValueError, RuntimeError) as exc:
-        logger.exception("Indexing failed for document %s", document_id)
+        logger.exception("Storage/indexing failed for document %s", document_id)
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
