@@ -58,7 +58,7 @@ export default function LoginPage() {
     // Load initial settings
     getVideoProcessingSettings()
       .then(setSettings)
-      .catch(() => setMessage("加载设置失败"));
+      .catch((e) => setMessage(e instanceof Error ? e.message : "加载设置失败"));
   }, []);
 
   useEffect(() => {
@@ -73,8 +73,8 @@ export default function LoginPage() {
         const updated = await updateVideoProcessingSettings(updatePayload);
         setSettings(updated);
         setMessage(`${data.platform === "bilibili" ? "Bilibili" : "Douyin"} 登录成功`);
-      } catch {
-        setMessage("保存登录凭证失败");
+      } catch (e) {
+        setMessage(e instanceof Error ? e.message : "保存登录凭证失败");
       }
     });
 
@@ -87,8 +87,8 @@ export default function LoginPage() {
         const updated = await updateVideoProcessingSettings(updatePayload);
         setSettings(updated);
         setMessage(`${data.platform === "bilibili" ? "Bilibili" : "Douyin"} 凭证已刷新`);
-      } catch {
-        setMessage("保存刷新凭证失败");
+      } catch (e) {
+        setMessage(e instanceof Error ? e.message : "保存刷新凭证失败");
       }
     });
 
@@ -128,8 +128,8 @@ export default function LoginPage() {
 
       // Open login window immediately (session is already cleared)
       window.electron.openLogin(platform);
-    } catch {
-      setMessage("清除登录状态失败");
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "清除登录状态失败");
     }
   };
 
