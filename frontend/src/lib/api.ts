@@ -8,6 +8,30 @@
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 
+/**
+ * Throw an Error carrying the backend's `detail` message when `res` is not OK.
+ *
+ * Backend (FastAPI HTTPException) always returns `{"detail":"..."}`. Falls
+ * back to `<label> failed (HTTP <status>)` when the body is not JSON or has
+ * no `detail` field. Network errors (fetch itself throwing) bypass this and
+ * surface directly at call-site catch blocks.
+ */
+async function assertOk(res: Response, label: string): Promise<void> {
+  if (res.ok) {
+    return;
+  }
+  let detail: string | null = null;
+  try {
+    const body = await res.json();
+    if (typeof body?.detail === "string" && body.detail) {
+      detail = body.detail;
+    }
+  } catch {
+    // body is not JSON — detail stays null
+  }
+  throw new Error(detail ?? `${label} failed (HTTP ${res.status})`);
+}
+
 export interface HealthResponse {
   status: string;
   service: string;
@@ -42,17 +66,13 @@ export interface CreateVideoRequest {
  */
 export async function getHealth(): Promise<HealthResponse> {
   const res = await fetch(`${API_BASE_URL}/api/health`, { cache: "no-store" });
-  if (!res.ok) {
-    throw new Error(`Health check failed: ${res.status}`);
-  }
+  await assertOk(res, "Health check");
   return res.json();
 }
 
 export async function listVideos(): Promise<VideoRecord[]> {
   const res = await fetch(`${API_BASE_URL}/api/videos`, { cache: "no-store" });
-  if (!res.ok) {
-    throw new Error(`List videos failed: ${res.status}`);
-  }
+  await assertOk(res, "List videos");
   return res.json();
 }
 
@@ -64,9 +84,7 @@ export async function createVideo(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
-  if (!res.ok) {
-    throw new Error(`Create video failed: ${res.status}`);
-  }
+  await assertOk(res, "Create video");
   return res.json();
 }
 
@@ -78,9 +96,7 @@ export async function processVideo(
   const res = await fetch(`${API_BASE_URL}/api/videos/${videoId}/process${qs}`, {
     method: "POST",
   });
-  if (!res.ok) {
-    throw new Error(`Process video failed: ${res.status}`);
-  }
+  await assertOk(res, "Process video");
   return res.json();
 }
 
@@ -89,7 +105,7 @@ export async function deleteVideo(videoId: string): Promise<void> {
     method: "DELETE",
   });
   if (!res.ok && res.status !== 404) {
-    throw new Error(`Delete video failed: ${res.status}`);
+    await assertOk(res, "Delete video");
   }
 }
 
@@ -105,9 +121,7 @@ export async function checkSubtitles(
     `${API_BASE_URL}/api/videos/${videoId}/check-subtitles`,
     { cache: "no-store" }
   );
-  if (!res.ok) {
-    throw new Error(`Check subtitles failed: ${res.status}`);
-  }
+  await assertOk(res, "Check subtitles");
   return res.json();
 }
 
@@ -134,9 +148,7 @@ export async function listDocuments(): Promise<DocumentRecord[]> {
   const res = await fetch(`${API_BASE_URL}/api/documents`, {
     cache: "no-store",
   });
-  if (!res.ok) {
-    throw new Error(`List documents failed: ${res.status}`);
-  }
+  await assertOk(res, "List documents");
   return res.json();
 }
 
@@ -147,9 +159,7 @@ export async function indexDocument(
     `${API_BASE_URL}/api/documents/${documentId}/index`,
     { method: "POST" }
   );
-  if (!res.ok) {
-    throw new Error(`Index document failed: ${res.status}`);
-  }
+  await assertOk(res, "Index document");
   return res.json();
 }
 
@@ -160,9 +170,7 @@ export async function previewChunks(
     `${API_BASE_URL}/api/documents/${documentId}/chunks`,
     { cache: "no-store" }
   );
-  if (!res.ok) {
-    throw new Error(`Preview chunks failed: ${res.status}`);
-  }
+  await assertOk(res, "Preview chunks");
   return res.json();
 }
 
@@ -174,9 +182,7 @@ export async function deleteDocument(
   const res = await fetch(`${API_BASE_URL}/api/documents/${documentId}${qs}`, {
     method: "DELETE",
   });
-  if (!res.ok) {
-    throw new Error(`Delete document failed: ${res.status}`);
-  }
+  await assertOk(res, "Delete document");
 }
 
 export async function cleanDocument(
@@ -186,9 +192,7 @@ export async function cleanDocument(
     `${API_BASE_URL}/api/documents/${documentId}/clean`,
     { method: "POST" }
   );
-  if (!res.ok) {
-    throw new Error(`Clean document failed: ${res.status}`);
-  }
+  await assertOk(res, "Clean document");
   return res.json();
 }
 
@@ -205,9 +209,7 @@ export async function listUnimportedDocuments(): Promise<UnimportedDocument[]> {
   const res = await fetch(`${API_BASE_URL}/api/documents/unimported`, {
     cache: "no-store",
   });
-  if (!res.ok) {
-    throw new Error(`List unimported failed: ${res.status}`);
-  }
+  await assertOk(res, "List unimported");
   return res.json();
 }
 
@@ -219,9 +221,7 @@ export async function importUnimportedDocuments(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ file_paths: filePaths }),
   });
-  if (!res.ok) {
-    throw new Error(`Import unimported failed: ${res.status}`);
-  }
+  await assertOk(res, "Import unimported");
   return res.json();
 }
 
@@ -250,7 +250,18 @@ export async function sendChatMessage(
     ),
   });
   if (!res.ok || !res.body) {
-    handlers.onError(`Chat request failed: ${res.status}`);
+    let detail: string | null = null;
+    if (!res.ok) {
+      try {
+        const body = await res.json();
+        if (typeof body?.detail === "string" && body.detail) {
+          detail = body.detail;
+        }
+      } catch {
+        // body is not JSON — detail stays null
+      }
+    }
+    handlers.onError(detail ?? `Chat request failed: ${res.status}`);
     return;
   }
 
@@ -313,9 +324,7 @@ export interface ChatSessionMessage {
 
 export async function listSessions(): Promise<ChatSession[]> {
   const res = await fetch(`${API_BASE_URL}/api/sessions`);
-  if (!res.ok) {
-    throw new Error(`List sessions failed: ${res.status}`);
-  }
+  await assertOk(res, "List sessions");
   return res.json();
 }
 
@@ -325,9 +334,7 @@ export async function createSession(title?: string): Promise<ChatSession> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(title ? { title } : {}),
   });
-  if (!res.ok) {
-    throw new Error(`Create session failed: ${res.status}`);
-  }
+  await assertOk(res, "Create session");
   return res.json();
 }
 
@@ -337,9 +344,7 @@ export async function getSessionMessages(
   const res = await fetch(
     `${API_BASE_URL}/api/sessions/${sessionId}/messages`
   );
-  if (!res.ok) {
-    throw new Error(`Get session messages failed: ${res.status}`);
-  }
+  await assertOk(res, "Get session messages");
   return res.json();
 }
 
@@ -347,9 +352,7 @@ export async function deleteSession(sessionId: string): Promise<void> {
   const res = await fetch(`${API_BASE_URL}/api/sessions/${sessionId}`, {
     method: "DELETE",
   });
-  if (!res.ok) {
-    throw new Error(`Delete session failed: ${res.status}`);
-  }
+  await assertOk(res, "Delete session");
   // 204 No Content — no body to parse.
 }
 
@@ -380,9 +383,7 @@ export async function updateModelSettings(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
-  if (!res.ok) {
-    throw new Error(`Update settings failed: ${res.status}`);
-  }
+  await assertOk(res, "Update settings");
   return res.json();
 }
 
@@ -392,9 +393,7 @@ export async function getServiceStatus(): Promise<
   const res = await fetch(`${API_BASE_URL}/api/settings/status`, {
     cache: "no-store",
   });
-  if (!res.ok) {
-    throw new Error(`Get status failed: ${res.status}`);
-  }
+  await assertOk(res, "Get status");
   return res.json();
 }
 
@@ -403,9 +402,7 @@ export async function fetchApiKey(modelName: string): Promise<string | null> {
     `${API_BASE_URL}/api/settings/models/${modelName}/api_key`,
     { cache: "no-store" }
   );
-  if (!res.ok) {
-    throw new Error(`Fetch api_key failed: ${res.status}`);
-  }
+  await assertOk(res, "Fetch api_key");
   const data = await res.json();
   return data.api_key;
 }
@@ -427,9 +424,7 @@ export async function getAsrDeployStatus(): Promise<AsrDeployStatus> {
   const res = await fetch(`${API_BASE_URL}/api/asr/deploy/status`, {
     cache: "no-store",
   });
-  if (!res.ok) {
-    throw new Error(`Get ASR deploy status failed: ${res.status}`);
-  }
+  await assertOk(res, "Get ASR deploy status");
   return res.json();
 }
 
@@ -437,9 +432,7 @@ export async function deployAsr(): Promise<AsrDeployProgress> {
   const res = await fetch(`${API_BASE_URL}/api/asr/deploy`, {
     method: "POST",
   });
-  if (!res.ok) {
-    throw new Error(`Deploy ASR failed: ${res.status}`);
-  }
+  await assertOk(res, "Deploy ASR");
   return res.json();
 }
 
@@ -447,9 +440,7 @@ export async function getAsrDeployProgress(): Promise<AsrDeployProgress> {
   const res = await fetch(`${API_BASE_URL}/api/asr/deploy/progress`, {
     cache: "no-store",
   });
-  if (!res.ok) {
-    throw new Error(`Get ASR deploy progress failed: ${res.status}`);
-  }
+  await assertOk(res, "Get ASR deploy progress");
   return res.json();
 }
 
@@ -509,9 +500,7 @@ export async function getLocalAsrStatus(): Promise<AsrManagerStatus> {
   const res = await fetch(`${API_BASE_URL}/api/asr/local/status`, {
     cache: "no-store",
   });
-  if (!res.ok) {
-    throw new Error(`Get local ASR status failed: ${res.status}`);
-  }
+  await assertOk(res, "Get local ASR status");
   return res.json();
 }
 
@@ -521,9 +510,7 @@ export async function installLocalAsrModel(
   const res = await fetch(`${API_BASE_URL}/api/asr/local/models/${slug}/install`, {
     method: "POST",
   });
-  if (!res.ok) {
-    throw new Error(`Install local ASR model failed: ${res.status}`);
-  }
+  await assertOk(res, "Install local ASR model");
   return res.json();
 }
 
@@ -533,9 +520,7 @@ export async function selectLocalAsrModel(
   const res = await fetch(`${API_BASE_URL}/api/asr/local/models/${slug}/select`, {
     method: "POST",
   });
-  if (!res.ok) {
-    throw new Error(`Select local ASR model failed: ${res.status}`);
-  }
+  await assertOk(res, "Select local ASR model");
   return res.json();
 }
 
@@ -545,9 +530,7 @@ export async function uninstallLocalAsrModel(
   const res = await fetch(`${API_BASE_URL}/api/asr/local/models/${slug}`, {
     method: "DELETE",
   });
-  if (!res.ok) {
-    throw new Error(`Uninstall local ASR model failed: ${res.status}`);
-  }
+  await assertOk(res, "Uninstall local ASR model");
   return res.json();
 }
 
@@ -555,9 +538,7 @@ export async function uninstallAllLocalAsr(): Promise<AsrManagerProgress> {
   const res = await fetch(`${API_BASE_URL}/api/asr/local/uninstall-all`, {
     method: "POST",
   });
-  if (!res.ok) {
-    throw new Error(`Uninstall all local ASR failed: ${res.status}`);
-  }
+  await assertOk(res, "Uninstall all local ASR");
   return res.json();
 }
 
@@ -565,9 +546,7 @@ export async function getLocalAsrProgress(): Promise<AsrManagerProgress> {
   const res = await fetch(`${API_BASE_URL}/api/asr/local/progress`, {
     cache: "no-store",
   });
-  if (!res.ok) {
-    throw new Error(`Get local ASR progress failed: ${res.status}`);
-  }
+  await assertOk(res, "Get local ASR progress");
   return res.json();
 }
 
@@ -599,9 +578,7 @@ export async function listPresets(
     `${API_BASE_URL}/api/settings/models/${modelName}/presets`,
     { cache: "no-store" }
   );
-  if (!res.ok) {
-    throw new Error(`List presets failed: ${res.status}`);
-  }
+  await assertOk(res, "List presets");
   return res.json();
 }
 
@@ -618,9 +595,7 @@ export async function createPreset(
       body: JSON.stringify({ name, config }),
     }
   );
-  if (!res.ok) {
-    throw new Error(`Create preset failed: ${res.status}`);
-  }
+  await assertOk(res, "Create preset");
   return res.json();
 }
 
@@ -637,9 +612,7 @@ export async function renamePreset(
       body: JSON.stringify({ name: newName }),
     }
   );
-  if (!res.ok) {
-    throw new Error(`Rename preset failed: ${res.status}`);
-  }
+  await assertOk(res, "Rename preset");
   return res.json();
 }
 
@@ -651,9 +624,7 @@ export async function deletePreset(
     `${API_BASE_URL}/api/settings/models/${modelName}/presets/${presetId}`,
     { method: "DELETE" }
   );
-  if (!res.ok) {
-    throw new Error(`Delete preset failed: ${res.status}`);
-  }
+  await assertOk(res, "Delete preset");
 }
 
 export async function getActivePreset(
@@ -663,9 +634,7 @@ export async function getActivePreset(
     `${API_BASE_URL}/api/settings/models/${modelName}/active`,
     { cache: "no-store" }
   );
-  if (!res.ok) {
-    throw new Error(`Get active preset failed: ${res.status}`);
-  }
+  await assertOk(res, "Get active preset");
   return res.json();
 }
 
@@ -681,9 +650,7 @@ export async function switchActivePreset(
       body: JSON.stringify({ preset_id: presetId }),
     }
   );
-  if (!res.ok) {
-    throw new Error(`Switch active preset failed: ${res.status}`);
-  }
+  await assertOk(res, "Switch active preset");
   return res.json();
 }
 
@@ -700,9 +667,7 @@ export async function updatePreset(
       body: JSON.stringify({ config }),
     }
   );
-  if (!res.ok) {
-    throw new Error(`Update preset failed: ${res.status}`);
-  }
+  await assertOk(res, "Update preset");
   return res.json();
 }
 
@@ -726,9 +691,7 @@ export async function getVideoProcessingSettings(): Promise<VideoProcessingSetti
   const res = await fetch(`${API_BASE_URL}/api/video-processing`, {
     cache: "no-store",
   });
-  if (!res.ok) {
-    throw new Error(`Get video processing settings failed: ${res.status}`);
-  }
+  await assertOk(res, "Get video processing settings");
   return res.json();
 }
 
@@ -740,8 +703,6 @@ export async function updateVideoProcessingSettings(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
-  if (!res.ok) {
-    throw new Error(`Update video processing settings failed: ${res.status}`);
-  }
+  await assertOk(res, "Update video processing settings");
   return res.json();
 }
