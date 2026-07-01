@@ -47,8 +47,8 @@ export function ChatPanel() {
         if (restoreId) {
           await selectSession(restoreId);
         }
-      } catch {
-        setError("Failed to load conversations.");
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Operation failed");
       }
     })();
     // Mount-only: load sessions + restore last active.
@@ -64,8 +64,8 @@ export function ChatPanel() {
       setMessages(msgs.map((m) => ({ role: m.role, content: m.content })));
       setActiveId(id);
       localStorage.setItem(LAST_SESSION_KEY, id);
-    } catch {
-      setError("Failed to load conversation.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Operation failed");
     }
   }
 
@@ -90,8 +90,8 @@ export function ChatPanel() {
       if (activeId === target.id) {
         handleNew();
       }
-    } catch {
-      setError("Failed to delete conversation.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Operation failed");
     } finally {
       setPendingDelete(null);
     }
@@ -139,8 +139,8 @@ export function ChatPanel() {
         },
         onError: (msg) => setError(msg),
       });
-    } catch {
-      setError("Chat failed. Is the backend running?");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Operation failed");
     } finally {
       setIsStreaming(false);
     }
