@@ -97,10 +97,10 @@ export function SettingsForm() {
           setIsDeployingAsr(false);
           setAsrDeployStatus(await getAsrDeployStatus());
         }
-      } catch {
+      } catch (e) {
         window.clearInterval(interval);
         setIsDeployingAsr(false);
-        setMessage("ASR deploy status failed.");
+        setMessage(e instanceof Error ? e.message : "Operation failed");
       }
     }, 1000);
     return () => window.clearInterval(interval);
@@ -112,9 +112,9 @@ export function SettingsForm() {
     try {
       const progress = await deployAsr();
       setAsrDeployProgress(progress);
-    } catch {
+    } catch (e) {
       setIsDeployingAsr(false);
-      setMessage("ASR deploy failed.");
+      setMessage(e instanceof Error ? e.message : "Operation failed");
     }
   }
 
