@@ -90,8 +90,8 @@ export function ModelPanel({
         if (active.preset?.config) {
           setSettings(toModelConfig(active.preset.config));
         }
-      } catch {
-        // Ignore preset load failures.
+      } catch (e) {
+        setMessage(e instanceof Error ? e.message : "Operation failed");
       }
     }
     load();
@@ -110,8 +110,8 @@ export function ModelPanel({
       const plain = await fetchApiKey(modelName);
       setApiKeyPlain(plain);
       setApiKeyVisible(true);
-    } catch {
-      setMessage("Failed to fetch api_key.");
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "Operation failed");
     }
   }
 
@@ -124,8 +124,8 @@ export function ModelPanel({
         setSettings(toModelConfig(preset.config));
       }
       setMessage("");
-    } catch {
-      setMessage("Switch preset failed.");
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "Operation failed");
     }
   }
 
@@ -135,8 +135,8 @@ export function ModelPanel({
       const presetList = await listPresets(modelName);
       setPresets(presetList);
       await handleSwitchPreset(newPreset.id);
-    } catch {
-      setMessage("Create preset failed.");
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "Operation failed");
     }
   }
 
@@ -148,8 +148,8 @@ export function ModelPanel({
       setRenamingPreset(null);
       setRenameValue("");
       setMessage("");
-    } catch {
-      setMessage("Rename preset failed.");
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "Operation failed");
     }
   }
 
@@ -168,8 +168,8 @@ export function ModelPanel({
         setSettings(toModelConfig(active.preset.config));
       }
       setMessage("");
-    } catch {
-      setMessage("Delete preset failed.");
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "Operation failed");
     }
   }
 
@@ -184,8 +184,8 @@ export function ModelPanel({
     try {
       await updatePreset(modelName, activePresetId, settings);
       setMessage("Saved.");
-    } catch {
-      setMessage("Save failed.");
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "Operation failed");
     } finally {
       setIsSaving(false);
     }
