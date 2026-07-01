@@ -56,8 +56,8 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
     setBusyId(documentId);
     try {
       await action();
-    } catch {
-      setError("Operation failed. Check backend logs.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Operation failed");
     } finally {
       setBusyId(null);
     }
@@ -110,8 +110,8 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
       const items = await listUnimportedDocuments();
       setUnimported(items);
       setSelectedUnimported(new Set());
-    } catch {
-      setError("Failed to scan unimported documents.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Operation failed");
     } finally {
       setScanning(false);
     }
@@ -152,8 +152,8 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
       setUnimported([]);
       setSelectedUnimported(new Set());
       await refresh();
-    } catch {
-      setError("Failed to import unimported documents.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Operation failed");
     }
   }
 
