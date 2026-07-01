@@ -57,8 +57,8 @@ export function VideoIntake({ initialHealth, initialVideos }: VideoIntakeProps) 
       await createVideo({ url: trimmedUrl });
       setUrl("");
       await refreshVideos();
-    } catch {
-      setError("Only Bilibili and Douyin URLs are supported.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Operation failed");
     } finally {
       setIsSubmitting(false);
     }
@@ -72,8 +72,8 @@ export function VideoIntake({ initialHealth, initialVideos }: VideoIntakeProps) 
       if (processed.status === "failed" && processed.error_message) {
         setError(processed.error_message);
       }
-    } catch {
-      setError("Processing failed. Try again.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Operation failed");
     } finally {
       setProcessingVideoId(null);
     }
@@ -84,8 +84,8 @@ export function VideoIntake({ initialHealth, initialVideos }: VideoIntakeProps) 
     try {
       await deleteVideo(videoId);
       await refreshVideos();
-    } catch {
-      setError("Delete failed. Try again.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Operation failed");
     }
   }
 
@@ -103,8 +103,8 @@ export function VideoIntake({ initialHealth, initialVideos }: VideoIntakeProps) 
     try {
       const result = await checkSubtitles(video.id);
       hasSubtitles = result.has_subtitles;
-    } catch {
-      setError("Failed to check subtitles. Try again.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Operation failed");
       setCheckingVideoId(null);
       return;
     }
