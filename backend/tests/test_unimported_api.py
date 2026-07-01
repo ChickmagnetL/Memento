@@ -75,7 +75,7 @@ async def client_with_indexing(tmp_path: Path, monkeypatch):
 @pytest.mark.asyncio
 async def test_list_unimported_excludes_already_imported(client, tmp_path: Path):
     test_client, sqlite = client
-    knowledge = tmp_path / "knowledge" / "bilibili"
+    knowledge = tmp_path / "knowledge" / "bilibili" / "raw"
     knowledge.mkdir(parents=True)
     imported = knowledge / "bv1.md"
     unimported = knowledge / "bv2.md"
@@ -98,6 +98,26 @@ async def test_list_unimported_excludes_already_imported(client, tmp_path: Path)
 
 
 @pytest.mark.asyncio
+async def test_list_unimported_ignores_cleaned_markdown(client, tmp_path: Path):
+    test_client, _sqlite = client
+    raw_dir = tmp_path / "knowledge" / "bilibili" / "raw"
+    cleaned_dir = tmp_path / "knowledge" / "bilibili" / "cleaned"
+    raw_dir.mkdir(parents=True)
+    cleaned_dir.mkdir(parents=True)
+    (raw_dir / "bv1.md").write_text(DRAFT_WITH_HEADER, encoding="utf-8")
+    (cleaned_dir / "bv2.md").write_text(
+        DRAFT_WITH_HEADER.replace("bv1", "bv2").replace("示例视频", "Cleaned"),
+        encoding="utf-8",
+    )
+
+    resp = test_client.get("/api/documents/unimported")
+
+    assert resp.status_code == 200
+    items = resp.json()
+    assert [Path(item["file_path"]).name for item in items] == ["bv1.md"]
+
+
+@pytest.mark.asyncio
 async def test_list_unimported_empty_when_knowledge_dir_missing(client):
     test_client, _sqlite = client
 
@@ -110,7 +130,7 @@ async def test_list_unimported_empty_when_knowledge_dir_missing(client):
 @pytest.mark.asyncio
 async def test_import_unimported_creates_document_records(client, tmp_path: Path):
     test_client, sqlite = client
-    knowledge = tmp_path / "knowledge" / "bilibili"
+    knowledge = tmp_path / "knowledge" / "bilibili" / "raw"
     knowledge.mkdir(parents=True)
     target = knowledge / "bv1.md"
     target.write_text(DRAFT_WITH_HEADER, encoding="utf-8")
@@ -135,7 +155,7 @@ async def test_import_unimported_skips_already_imported_and_missing(
     client, tmp_path: Path
 ):
     test_client, sqlite = client
-    knowledge = tmp_path / "knowledge" / "bilibili"
+    knowledge = tmp_path / "knowledge" / "bilibili" / "raw"
     knowledge.mkdir(parents=True)
     target = knowledge / "bv1.md"
     target.write_text(DRAFT_WITH_HEADER, encoding="utf-8")
@@ -157,7 +177,7 @@ async def test_index_unimported_document_with_null_video_id(
     client_with_indexing, tmp_path: Path
 ):
     test_client, sqlite = client_with_indexing
-    knowledge = tmp_path / "knowledge" / "bilibili"
+    knowledge = tmp_path / "knowledge" / "bilibili" / "raw"
     knowledge.mkdir(parents=True)
     target = knowledge / "bv1.md"
     target.write_text(DRAFT_WITH_HEADER, encoding="utf-8")

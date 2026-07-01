@@ -30,7 +30,9 @@ def test_writer_writes_exact_bilibili_draft_content_and_path(tmp_path):
 
     path = writer.write(video, entries)
 
-    expected_path = tmp_path / "knowledge" / "bilibili" / "BV1abcDEF234.md"
+    expected_path = (
+        tmp_path / "knowledge" / "bilibili" / "raw" / "BV1abcDEF234.md"
+    )
     assert path == expected_path
     assert path.read_text(encoding="utf-8") == (
         "# Example Video\n"
@@ -73,6 +75,8 @@ def test_writer_uses_platform_directory_and_label(tmp_path):
 
     path = writer.write(video, [SubtitleEntry(start_seconds=1.0, text="第一行")])
 
-    assert path == tmp_path / "knowledge" / "douyin" / "7640347491958803748.md"
+    assert path == (
+        tmp_path / "knowledge" / "douyin" / "raw" / "7640347491958803748.md"
+    )
     content = path.read_text(encoding="utf-8")
     assert "- Platform: douyin" in content

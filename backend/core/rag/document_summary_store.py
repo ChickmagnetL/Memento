@@ -9,25 +9,16 @@ import asyncio
 import re
 from pathlib import Path
 
-from config.settings import get_settings
-from core.models.chat_completion import (
-    ChatCompletionError,
-    CloudChatCompletionClient,
+from core.models.chat_completion import ChatCompletionError
+from core.models.chat_model_adapter import ChatCompletionClient
+from core.models.factory import (
+    build_chat_completion_client as factory_build_chat_completion_client,
 )
-from core.rag.embedding import post_json
 
 
-def _build_chat_completion_client() -> CloudChatCompletionClient:
+def _build_chat_completion_client() -> ChatCompletionClient:
     """Build the chat completion client from settings."""
-    chat = get_settings().models.chat
-    return CloudChatCompletionClient(
-        endpoint=chat.endpoint,
-        api_key=chat.api_key,
-        model=chat.model,
-        post_json=lambda url, payload, headers: post_json(
-            url, payload, headers, timeout=300
-        ),
-    )
+    return factory_build_chat_completion_client()
 
 
 SUMMARY_PATTERN = re.compile(
@@ -60,7 +51,7 @@ def _extract_tag(text: str, pattern: re.Pattern, label: str) -> str:
 
 def generate_summary(
     markdown_text: str,
-    chat_client: CloudChatCompletionClient | None = None,
+    chat_client: ChatCompletionClient | None = None,
 ) -> tuple[str, str]:
     """Call the configured chat model and extract <summary> and <brief>."""
     client = chat_client or _build_chat_completion_client()

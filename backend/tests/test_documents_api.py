@@ -1,12 +1,15 @@
 """Tests for document API endpoints."""
 
+import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.testclient import TestClient
 
 from api import documents
+from core.models.chat_completion import ChatCompletionError
 from main import app
 from storage.sqlite_client import SQLiteClient
 from storage.qdrant_client import QdrantStore
@@ -18,11 +21,13 @@ DRAFT = """# 示例视频
 [00:01] 第一行内容
 """
 
-CLEAN_REPLY = (
-    "## 主题\n\n"
-    "[00:01] 清洗后的第一行内容。\n"
-    "<summary>这是关于示例视频的一段描述。</summary>\n"
-    "<brief>示例视频的主题。</brief>\n"
+CLEAN_REPLY = json.dumps(
+    {
+        "lines": ["清洗后的第一行内容。"],
+        "summary": "这是关于示例视频的一段描述。",
+        "brief": "示例视频的主题。",
+    },
+    ensure_ascii=False,
 )
 
 
@@ -71,7 +76,8 @@ async def _seed_document(sqlite: SQLiteClient, tmp_path: Path) -> None:
         video_id="v1", platform="bilibili", title="示例视频",
         url="https://www.bilibili.com/video/BV1abc",
     )
-    draft_path = tmp_path / "v1.md"
+    draft_path = tmp_path / "knowledge" / "bilibili" / "raw" / "v1.md"
+    draft_path.parent.mkdir(parents=True)
     draft_path.write_text(DRAFT, encoding="utf-8")
     await sqlite.create_document(
         document_id="d1", video_id="v1", file_path=str(draft_path)
@@ -149,7 +155,7 @@ async def test_delete_document_removes_record_and_points(client, tmp_path: Path)
     assert response.status_code == 204
     assert await sqlite.get_document("d1") is None
     # The markdown file is intentionally preserved (user data).
-    assert Path(tmp_path / "v1.md").exists()
+    assert Path(tmp_path / "knowledge" / "bilibili" / "raw" / "v1.md").exists()
 
 
 @pytest.mark.asyncio
@@ -159,7 +165,7 @@ async def test_delete_missing_document_returns_404(client):
 
 
 @pytest.mark.asyncio
-async def test_clean_document_updates_in_place_and_indexes(
+async def test_clean_document_writes_cleaned_file_and_indexes(
     client, tmp_path: Path, monkeypatch
 ):
     test_client, sqlite = client
@@ -175,13 +181,15 @@ async def test_clean_document_updates_in_place_and_indexes(
     record = response.json()
     assert record["id"] == "d1"
     assert record["video_id"] == "v1"
-    assert record["file_path"].endswith("v1.clean.md")
+    assert record["file_path"] == str(
+        tmp_path / "knowledge" / "bilibili" / "cleaned" / "v1.md"
+    )
     assert record["status"] == "indexed"
     cleaned_text = Path(record["file_path"]).read_text(encoding="utf-8")
-    assert "## 主题" in cleaned_text
     assert cleaned_text.startswith("# 示例视频")
+    assert "[00:01] 清洗后的第一行内容。" in cleaned_text
     # Raw draft file is untouched.
-    raw = Path(tmp_path / "v1.md")
+    raw = Path(tmp_path / "knowledge" / "bilibili" / "raw" / "v1.md")
     assert "[00:01] 第一行内容" in raw.read_text(encoding="utf-8")
 
 
@@ -202,9 +210,132 @@ async def test_clean_document_file_missing_returns_500(
         documents, "build_chat_completion_client", lambda: chat_client_reply(CLEAN_REPLY)()
     )
 
-    (tmp_path / "v1.md").unlink()
+    (tmp_path / "knowledge" / "bilibili" / "raw" / "v1.md").unlink()
     response = test_client.post("/api/documents/d1/clean")
     assert response.status_code == 500
+
+
+@pytest.mark.asyncio
+async def test_clean_document_repeated_clean_does_not_stack_clean_suffix(
+    client, tmp_path: Path, monkeypatch
+):
+    test_client, sqlite = client
+    await _seed_document(sqlite, tmp_path)
+    raw_path = tmp_path / "knowledge" / "bilibili" / "raw" / "v1.md"
+    raw_path.write_text(
+        """# 示例视频
+
+- Platform: bilibili
+- Video ID: v1
+- Source URL: https://www.bilibili.com/video/BV1abc
+
+## Transcript
+
+[00:01] 第一行内容
+""",
+        encoding="utf-8",
+    )
+    first_cleaned_path = tmp_path / "knowledge" / "bilibili" / "cleaned" / "v1.md"
+    first_cleaned_path.parent.mkdir(parents=True, exist_ok=True)
+    first_cleaned_path.write_text(
+        """# 示例视频
+
+- Platform: bilibili
+- Video ID: v1
+- Source URL: https://www.bilibili.com/video/BV1abc
+
+[00:01] 清洗后的第一行内容。
+""",
+        encoding="utf-8",
+    )
+    await sqlite.update_document_path("d1", str(first_cleaned_path))
+
+    seen_messages: list[list[dict]] = []
+
+    class RecordingChatClient:
+        def complete(self, messages: list[dict]) -> str:
+            seen_messages.append(messages)
+            return CLEAN_REPLY
+
+    monkeypatch.setattr(
+        documents, "build_chat_completion_client", lambda: RecordingChatClient()
+    )
+
+    response = test_client.post("/api/documents/d1/clean")
+
+    assert response.status_code == 200
+    record = response.json()
+    assert record["file_path"] == str(first_cleaned_path)
+    assert not record["file_path"].endswith(".clean.md")
+    assert ".clean.clean." not in record["file_path"]
+    assert "第一行内容" in seen_messages[0][1]["content"]
+    assert "清洗后的第一行内容。" not in seen_messages[0][1]["content"]
+    cleaned_text = first_cleaned_path.read_text(encoding="utf-8")
+    assert cleaned_text.startswith("# 示例视频")
+    assert "- Video ID: v1" in cleaned_text
+
+
+@pytest.mark.asyncio
+async def test_clean_document_legacy_clean_path_prefers_canonical_raw_input(
+    client, tmp_path: Path, monkeypatch
+):
+    test_client, sqlite = client
+    await _seed_document(sqlite, tmp_path)
+    canonical_raw_path = tmp_path / "knowledge" / "bilibili" / "raw" / "v1.md"
+    canonical_raw_path.write_text(
+        """# 示例视频
+
+- Platform: bilibili
+- Video ID: v1
+- Source URL: https://www.bilibili.com/video/BV1abc
+
+## Transcript
+
+[00:01] canonical raw line
+""",
+        encoding="utf-8",
+    )
+    legacy_raw_path = tmp_path / "knowledge" / "bilibili" / "v1.md"
+    legacy_raw_path.write_text(
+        """# 示例视频
+
+## Transcript
+
+[00:01] legacy raw line
+""",
+        encoding="utf-8",
+    )
+    legacy_cleaned_path = tmp_path / "knowledge" / "bilibili" / "v1.clean.clean.md"
+    legacy_cleaned_path.write_text(
+        """# 示例视频
+
+[00:01] legacy cleaned line
+""",
+        encoding="utf-8",
+    )
+    await sqlite.update_document_path("d1", str(legacy_cleaned_path))
+
+    seen_messages: list[list[dict]] = []
+
+    class RecordingChatClient:
+        def complete(self, messages: list[dict]) -> str:
+            seen_messages.append(messages)
+            return CLEAN_REPLY
+
+    monkeypatch.setattr(
+        documents, "build_chat_completion_client", lambda: RecordingChatClient()
+    )
+
+    response = test_client.post("/api/documents/d1/clean")
+
+    assert response.status_code == 200
+    record = response.json()
+    assert record["file_path"] == str(
+        tmp_path / "knowledge" / "bilibili" / "cleaned" / "v1.md"
+    )
+    assert "canonical raw line" in seen_messages[0][1]["content"]
+    assert "legacy raw line" not in seen_messages[0][1]["content"]
+    assert "legacy cleaned line" not in seen_messages[0][1]["content"]
 
 
 @pytest.mark.asyncio
@@ -225,7 +356,8 @@ async def test_clean_document_persists_summary_and_vector(
             title="示例视频",
             url="https://www.bilibili.com/video/BV1abc",
         )
-        draft_path = tmp_path / "v1.md"
+        draft_path = tmp_path / "knowledge" / "bilibili" / "raw" / "v1.md"
+        draft_path.parent.mkdir(parents=True)
         draft_path.write_text(DRAFT, encoding="utf-8")
         await sqlite.create_document(
             document_id="d1", video_id="v1", file_path=str(draft_path)
@@ -276,10 +408,71 @@ async def test_clean_document_persists_summary_and_vector(
 
 
 @pytest.mark.asyncio
+async def test_clean_document_chat_timeout_returns_502(
+    tmp_path: Path, monkeypatch, caplog
+):
+    sqlite = SQLiteClient(tmp_path / "metadata.db")
+    await sqlite.connect()
+
+    class TimeoutChatClient:
+        def complete(self, messages: list[dict]) -> str:
+            raise ChatCompletionError("HTTP 524: upstream timeout")
+
+    try:
+        await _seed_document(sqlite, tmp_path)
+        monkeypatch.setattr(
+            documents,
+            "build_chat_completion_client",
+            lambda: TimeoutChatClient(),
+        )
+        monkeypatch.setattr(
+            documents,
+            "get_settings",
+            lambda: SimpleNamespace(
+                models=SimpleNamespace(
+                    chat=SimpleNamespace(
+                        provider="cloud",
+                        endpoint="https://api.example.com/v1",
+                        model="test-chat",
+                    )
+                )
+            ),
+        )
+
+        test_app = FastAPI()
+        test_app.state.sqlite = sqlite
+        test_app.state.qdrant = object()
+        request = Request(
+            scope={
+                "type": "http",
+                "method": "POST",
+                "path": "/api/documents/d1/clean",
+                "headers": [],
+                "query_string": b"",
+                "app": test_app,
+            }
+        )
+
+        with caplog.at_level("WARNING", logger="core.video.cleaner"):
+            with pytest.raises(HTTPException) as exc_info:
+                await documents.clean_document("d1", request)
+
+        assert exc_info.value.status_code == 502
+        assert exc_info.value.detail == "Chat API failed: HTTP 524: upstream timeout"
+        assert "clean_provider_failure" in caplog.text
+        assert "'document_id': 'd1'" in caplog.text
+        assert "'chat_provider': 'cloud'" in caplog.text
+        assert "'chat_endpoint': 'https://api.example.com/v1'" in caplog.text
+        assert "'chat_model': 'test-chat'" in caplog.text
+    finally:
+        await sqlite.close()
+
+
+@pytest.mark.asyncio
 async def test_delete_document_preserves_source_file_by_default(client, tmp_path: Path):
     test_client, sqlite = client
     await _seed_document(sqlite, tmp_path)
-    draft_path = tmp_path / "v1.md"
+    draft_path = tmp_path / "knowledge" / "bilibili" / "raw" / "v1.md"
     assert draft_path.exists()
 
     resp = test_client.delete("/api/documents/d1")
@@ -295,7 +488,7 @@ async def test_delete_document_removes_source_file_when_requested(
 ):
     test_client, sqlite = client
     await _seed_document(sqlite, tmp_path)
-    draft_path = tmp_path / "v1.md"
+    draft_path = tmp_path / "knowledge" / "bilibili" / "raw" / "v1.md"
     assert draft_path.exists()
 
     resp = test_client.delete("/api/documents/d1?delete_source_file=true")
@@ -311,7 +504,7 @@ async def test_delete_document_with_missing_source_file_does_not_error(
 ):
     test_client, sqlite = client
     await _seed_document(sqlite, tmp_path)
-    (tmp_path / "v1.md").unlink()  # file already gone
+    (tmp_path / "knowledge" / "bilibili" / "raw" / "v1.md").unlink()
 
     resp = test_client.delete("/api/documents/d1?delete_source_file=true")
 

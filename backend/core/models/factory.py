@@ -5,6 +5,11 @@ keep module-level names so tests can monkeypatch per-module.
 """
 
 from config.settings import Settings, get_settings
+from core.models.chat_completion import ChatCompletionError
+from core.models.chat_model_adapter import (
+    ChatCompletionClient,
+    SDKChatCompletionClient,
+)
 from core.rag.embedding import CloudEmbeddingClient
 from core.rag.ollama_embedding import (
     OllamaEmbeddingClient,
@@ -41,3 +46,20 @@ def build_chat_model(settings: Settings | None = None):
         chat.model,
         provider=OpenAIProvider(base_url=chat.endpoint, api_key=chat.api_key),
     )
+
+
+def build_chat_completion_client(
+    settings: Settings | None = None,
+) -> ChatCompletionClient:
+    """Build a sync-compatible client over the SDK-backed chat model path."""
+    resolved_settings = settings or get_settings()
+    chat = resolved_settings.models.chat
+    if not chat.endpoint or not chat.api_key or not chat.model:
+        raise ChatCompletionError(
+            "Chat model is not configured "
+            "(models.chat endpoint/api_key/model required)"
+        )
+    try:
+        return SDKChatCompletionClient(model=build_chat_model(resolved_settings))
+    except ValueError as exc:
+        raise ChatCompletionError(str(exc)) from exc

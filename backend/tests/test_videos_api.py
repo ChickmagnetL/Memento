@@ -405,10 +405,15 @@ def test_process_completed_video_reprocesses_and_keeps_completed_status(
 ):
     created = _create_video(client)
     _set_video_status(client, created["id"], "completed")
-    canonical_path = tmp_path / "knowledge" / "bilibili" / f"{created['id']}.md"
+    canonical_path = (
+        tmp_path / "knowledge" / "bilibili" / "raw" / f"{created['id']}.md"
+    )
     canonical_path.parent.mkdir(parents=True, exist_ok=True)
     canonical_path.write_text("# draft\n", encoding="utf-8")
-    cleaned_path = canonical_path.parent / f"{created['id']}.clean.md"
+    cleaned_path = (
+        tmp_path / "knowledge" / "bilibili" / "cleaned" / f"{created['id']}.md"
+    )
+    cleaned_path.parent.mkdir(parents=True, exist_ok=True)
     cleaned_path.write_text("# cleaned\n", encoding="utf-8")
 
     async def seed_documents() -> None:
@@ -504,7 +509,9 @@ def test_process_completed_video_reset_failure_restores_completed_status(
 ):
     created = _create_video(client)
     _set_video_status(client, created["id"], "completed")
-    canonical_path = tmp_path / "knowledge" / "bilibili" / f"{created['id']}.md"
+    canonical_path = (
+        tmp_path / "knowledge" / "bilibili" / "raw" / f"{created['id']}.md"
+    )
     canonical_path.parent.mkdir(parents=True, exist_ok=True)
     canonical_path.write_text("# draft\n", encoding="utf-8")
 

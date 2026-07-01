@@ -6,8 +6,8 @@
 # the ASR service is NOT started here — the backend lazily spawns it on first
 # use (see backend/core/video/asr_supervisor.py).
 #
-# Ctrl-C (or closing the window) tears down the frontend; Electron tears down
-# the backend and Douyin fetcher on exit.
+# Ctrl-C (or closing the window) tears down both the frontend and Electron
+# process groups so backend sidecars do not linger between runs.
 set -euo pipefail
 set -m  # job control: each background job gets its own process group, so the
         # trap below can kill the whole frontend tree (npm + next + workers).
@@ -25,16 +25,22 @@ echo "==> starting frontend (next dev)"
 (cd "$ROOT/frontend" && npm run dev) &
 FRONTEND_PID=$!
 
+echo "==> starting desktop (Electron spawns backend + douyin fetcher; ASR is lazy)"
+(cd "$ROOT/desktop" && MEMENTO_BACKEND_CMD="../backend/venv/bin/uvicorn main:app --port 8000" npm start) &
+DESKTOP_PID=$!
+
+stop_job() {
+  local pid="$1"
+  kill -- -"$pid" 2>/dev/null || true
+  wait "$pid" 2>/dev/null || true
+}
+
 cleanup() {
-  # Kill the frontend's entire process group (negative PID) so the next dev
-  # worker spawned under npm is reaped too, not just the subshell.
-  kill -- -"$FRONTEND_PID" 2>/dev/null || true
-  wait "$FRONTEND_PID" 2>/dev/null || true
+  # Kill each job's entire process group (negative PID) so npm/electron/uvicorn
+  # children are reaped too, not just the shell subshell.
+  stop_job "$DESKTOP_PID"
+  stop_job "$FRONTEND_PID"
 }
 trap cleanup EXIT INT TERM
 
-# 3. Start Electron. It spawns the backend + Douyin fetcher and waits for the
-#    backend health endpoint before opening the window.
-echo "==> starting desktop (Electron spawns backend + douyin fetcher; ASR is lazy)"
-cd "$ROOT/desktop"
-MEMENTO_BACKEND_CMD="../backend/venv/bin/uvicorn main:app --port 8000" npm start
+wait "$DESKTOP_PID"

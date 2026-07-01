@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+from core.documents.paths import raw_document_path
 from core.video.bilibili import SubtitleEntry
 
 
@@ -22,7 +23,7 @@ class MarkdownDraftWriter:
 
     def path_for(self, video: dict) -> Path:
         """Return the canonical raw transcript path for a video."""
-        return self.data_dir / "knowledge" / video["platform"] / f"{video['id']}.md"
+        return raw_document_path(self.data_dir, video["platform"], video["id"])
 
     def write(self, video: dict, entries: list[SubtitleEntry]) -> Path:
         if not entries:

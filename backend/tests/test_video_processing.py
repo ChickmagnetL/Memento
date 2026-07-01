@@ -134,10 +134,13 @@ async def test_process_reuses_existing_canonical_document_record(
         title=video["title"],
         url=video["url"],
     )
-    canonical_path = tmp_path / "knowledge" / "bilibili" / "video-1.md"
+    canonical_path = tmp_path / "knowledge" / "bilibili" / "raw" / "video-1.md"
     canonical_path.parent.mkdir(parents=True, exist_ok=True)
     canonical_path.write_text("# old raw\n", encoding="utf-8")
-    cleaned_path = canonical_path.parent / "video-1.clean.md"
+    cleaned_path = (
+        tmp_path / "knowledge" / "bilibili" / "cleaned" / "video-1.md"
+    )
+    cleaned_path.parent.mkdir(parents=True, exist_ok=True)
     cleaned_path.write_text("# cleaned\n", encoding="utf-8")
     await sqlite.create_document(
         document_id="raw-doc",
@@ -179,9 +182,12 @@ async def test_process_creates_canonical_document_record_when_missing(
         title=video["title"],
         url=video["url"],
     )
-    canonical_path = tmp_path / "knowledge" / "bilibili" / "video-1.md"
+    canonical_path = tmp_path / "knowledge" / "bilibili" / "raw" / "video-1.md"
     canonical_path.parent.mkdir(parents=True, exist_ok=True)
-    cleaned_path = canonical_path.parent / "video-1.clean.md"
+    cleaned_path = (
+        tmp_path / "knowledge" / "bilibili" / "cleaned" / "video-1.md"
+    )
+    cleaned_path.parent.mkdir(parents=True, exist_ok=True)
     cleaned_path.write_text("# cleaned\n", encoding="utf-8")
     await sqlite.create_document(
         document_id="clean-doc",

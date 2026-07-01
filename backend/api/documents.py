@@ -9,15 +9,19 @@ from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel
 
 from config.settings import get_settings
-from core.models.chat_completion import (
-    ChatCompletionError,
-    CloudChatCompletionClient,
+from core.documents.paths import (
+    cleaned_document_path_for_source,
+    preferred_clean_source_path,
 )
-from core.models.factory import build_embedding_client
+from core.models.chat_completion import ChatCompletionError
+from core.models.factory import (
+    build_chat_completion_client as factory_build_chat_completion_client,
+    build_embedding_client,
+)
 from core.documents.metadata import parse_markdown_metadata
 from core.rag.chunking import chunk_markdown
 from core.rag.document_summary_store import DocumentSummaryStore
-from core.rag.embedding import EmbeddingError, post_json
+from core.rag.embedding import EmbeddingError
 from core.rag.indexer import DocumentIndexer
 from core.video.cleaner import CleaningError, TranscriptCleaner
 from schemas.document import DocumentRecord, UnimportedDocument
@@ -41,17 +45,9 @@ class ImportUnimportedRequest(BaseModel):
     file_paths: list[str]
 
 
-def build_chat_completion_client() -> CloudChatCompletionClient:
+def build_chat_completion_client():
     """Build the chat completion client from settings (overridable in tests)."""
-    chat = get_settings().models.chat
-    return CloudChatCompletionClient(
-        endpoint=chat.endpoint,
-        api_key=chat.api_key,
-        model=chat.model,
-        post_json=lambda url, payload, headers: post_json(
-            url, payload, headers, timeout=300
-        ),
-    )
+    return factory_build_chat_completion_client()
 
 
 def get_state(request: Request):
@@ -125,11 +121,12 @@ async def list_unimported_documents(request: Request) -> list[dict]:
     existing = {doc["file_path"] for doc in await sqlite.list_documents()}
     results: list[dict] = []
     if knowledge_dir.exists():
-        for path in sorted(knowledge_dir.rglob("*.md")):
-            abs_path = str(path)
-            if abs_path in existing:
-                continue
-            results.append({"file_path": abs_path, **parse_markdown_metadata(path)})
+        for raw_dir in sorted(knowledge_dir.glob("*/raw")):
+            for path in sorted(raw_dir.glob("*.md")):
+                abs_path = str(path)
+                if abs_path in existing:
+                    continue
+                results.append({"file_path": abs_path, **parse_markdown_metadata(path)})
     return results
 
 
@@ -212,11 +209,12 @@ async def index_document(document_id: str, request: Request) -> dict:
     response_model=DocumentRecord,
 )
 async def clean_document(document_id: str, request: Request) -> dict:
-    """AI-clean a draft document, update in-place, and auto-index."""
+    """AI-clean a draft document, persist the cleaned copy, and auto-index."""
     sqlite, qdrant = get_state(request)
     document = await sqlite.get_document(document_id)
     if document is None:
         raise HTTPException(status_code=404, detail="Document not found")
+    settings = get_settings()
 
     try:
         chat_client = build_chat_completion_client()
@@ -225,8 +223,19 @@ async def clean_document(document_id: str, request: Request) -> dict:
             status_code=500, detail=str(exc)
         ) from exc
 
-    source_path = Path(document["file_path"])
-    cleaner = TranscriptCleaner(chat_client=chat_client)
+    source_path = preferred_clean_source_path(
+        document["file_path"], video_id=document["video_id"]
+    )
+    cleaner = TranscriptCleaner(
+        chat_client=chat_client,
+        diagnostic_context={
+            "document_id": document_id,
+            "source_path": str(source_path),
+            "chat_provider": settings.models.chat.provider,
+            "chat_endpoint": settings.models.chat.endpoint,
+            "chat_model": settings.models.chat.model,
+        },
+    )
     try:
         draft = await asyncio.to_thread(source_path.read_text, encoding="utf-8")
         cleaned_md, l2_summary, l3_brief = await asyncio.to_thread(
@@ -237,16 +246,27 @@ async def clean_document(document_id: str, request: Request) -> dict:
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Chat API failed: {exc}",
         ) from exc
-    except (CleaningError, OSError, ValueError) as exc:
-        logger.exception("Cleaning failed for document %s", document_id)
+    except CleaningError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except (OSError, ValueError) as exc:
+        logger.exception(
+            "document_clean_failure %s",
+            {
+                "document_id": document_id,
+                "source_path": str(source_path),
+                "error_type": type(exc).__name__,
+            },
+        )
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
-    cleaned_path = source_path.parent / f"{source_path.stem}.clean.md"
+    cleaned_path = cleaned_document_path_for_source(
+        source_path, video_id=document["video_id"]
+    )
+    cleaned_path.parent.mkdir(parents=True, exist_ok=True)
     await asyncio.to_thread(
         cleaned_path.write_text, cleaned_md, encoding="utf-8"
     )
 
-    settings = get_settings()
     try:
         embedding_client = build_embedding_client()
     except EmbeddingError as exc:

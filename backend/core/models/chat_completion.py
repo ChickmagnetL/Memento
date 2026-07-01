@@ -4,9 +4,13 @@ Same injectable-HTTP pattern as core.rag.embedding. Used by transcript
 cleaning (2D); the chat agent (4A) uses pydantic-ai instead.
 """
 
+import time
 from typing import Callable
 
-from core.rag.embedding import post_json as default_post_json
+from core.rag.embedding import EmbeddingError, post_json as default_post_json
+
+_MAX_COMPLETION_ATTEMPTS = 3
+_RETRY_BACKOFF_SECONDS = 1.0
 
 
 class ChatCompletionError(Exception):
@@ -34,14 +38,21 @@ class CloudChatCompletionClient:
 
     def complete(self, messages: list[dict]) -> str:
         """Run one chat completion and return the assistant message text."""
-        response = self.post_json(
-            f"{self.endpoint}/chat/completions",
-            {"model": self.model, "messages": messages},
-            {
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json",
-            },
-        )
+        for attempt in range(_MAX_COMPLETION_ATTEMPTS):
+            try:
+                response = self.post_json(
+                    f"{self.endpoint}/chat/completions",
+                    {"model": self.model, "messages": messages},
+                    {
+                        "Authorization": f"Bearer {self.api_key}",
+                        "Content-Type": "application/json",
+                    },
+                )
+                break
+            except EmbeddingError as exc:
+                if attempt == _MAX_COMPLETION_ATTEMPTS - 1:
+                    raise ChatCompletionError(str(exc)) from exc
+                time.sleep(_RETRY_BACKOFF_SECONDS * (attempt + 1))
 
         try:
             content = response["choices"][0]["message"]["content"]
