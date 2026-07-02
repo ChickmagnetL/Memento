@@ -327,6 +327,24 @@ async def _migrate_documents_add_summary_brief(conn: aiosqlite.Connection) -> No
     await conn.commit()
 
 
+async def _migrate_add_memories_table(conn: aiosqlite.Connection) -> None:
+    """Migration 11: create memories table for cross-session user profile/preferences.
+
+    Idempotent (CREATE TABLE IF NOT EXISTS).
+    """
+    await conn.executescript(
+        """
+        CREATE TABLE IF NOT EXISTS memories (
+            id TEXT PRIMARY KEY,
+            content TEXT NOT NULL,
+            category TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """
+    )
+    await conn.commit()
+
+
 _MIGRATIONS = [
     _migrate_documents_video_id_nullable,
     _migrate_videos_add_author_id,
@@ -338,6 +356,7 @@ _MIGRATIONS = [
     _migrate_documents_add_author_column,
     _migrate_add_chat_tables,
     _migrate_documents_add_summary_brief,
+    _migrate_add_memories_table,
 ]
 
 

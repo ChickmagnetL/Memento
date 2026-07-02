@@ -144,7 +144,7 @@ async def test_migration_adds_author_id(tmp_path: Path):
         # PRAGMA user_version bumped to 2
         cursor = await conn.execute("PRAGMA user_version")
         row = await cursor.fetchone()
-        assert row[0] == 10  # Now at migration 10 (latest)
+        assert row[0] == 11  # Now at migration 11 (latest)
 
 
 @pytest.mark.asyncio
@@ -191,7 +191,7 @@ async def test_migration_creates_chat_tables(tmp_path: Path):
         await conn.commit()
 
         cursor = await conn.execute("PRAGMA user_version")
-        assert (await cursor.fetchone())[0] == 10
+        assert (await cursor.fetchone())[0] == 11
     finally:
         await client.close()
 
@@ -211,7 +211,7 @@ async def test_migration_adds_summary_brief_columns(tmp_path: Path):
         assert "brief" in columns
 
         cursor = await conn.execute("PRAGMA user_version")
-        assert (await cursor.fetchone())[0] == 10
+        assert (await cursor.fetchone())[0] == 11
     finally:
         await client.close()
 
@@ -229,6 +229,31 @@ async def test_migration_chat_tables_idempotent(tmp_path: Path):
     try:
         conn = client._conn
         cursor = await conn.execute("PRAGMA user_version")
-        assert (await cursor.fetchone())[0] == 10
+        assert (await cursor.fetchone())[0] == 11
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_migration_creates_memories_table(tmp_path: Path):
+    """Migration 11: creates memories table (idempotent)."""
+    db_path = tmp_path / "metadata.db"
+    client = SQLiteClient(db_path)
+    await client.connect()
+    try:
+        conn = client._conn
+        cursor = await conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='memories'"
+        )
+        assert await cursor.fetchone() is not None
+
+        await conn.execute(
+            "INSERT INTO memories (id, content) VALUES (?, ?)",
+            ("m1", "在学 React"),
+        )
+        await conn.commit()
+
+        cursor = await conn.execute("PRAGMA user_version")
+        assert (await cursor.fetchone())[0] == 11
     finally:
         await client.close()
