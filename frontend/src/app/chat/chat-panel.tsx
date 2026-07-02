@@ -12,176 +12,57 @@ import { SessionList } from "@/components/chat/session-list";
 import { DeleteSessionDialog } from "@/components/chat/delete-session-dialog";
 import { MemoryProposalBubble } from "@/components/chat/memory-proposal-bubble";
 import { MemoryPanel } from "@/components/chat/memory-panel";
-import {
-  ChatSession,
-  listSessions,
-  getSessionMessages,
-  deleteSession,
-  sendChatMessage,
-  createMemory,
-} from "@/lib/api";
-
-const LAST_SESSION_KEY = "memento-last-chat-session";
-
-interface ChatMessage {
-  role: "user" | "assistant";
-  content: string;
-}
+import { StatusIndicator } from "@/components/chat/status-indicator";
+import { useChatStore } from "@/lib/chat-store";
 
 export function ChatPanel() {
-  const [sessions, setSessions] = useState<ChatSession[]>([]);
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const {
+    state,
+    activeMessages,
+    selectSession,
+    handleNew,
+    sendMessage,
+    rememberCommand,
+    acceptProposal,
+    rejectProposal,
+    requestDelete,
+  } = useChatStore();
   const [input, setInput] = useState("");
-  const [error, setError] = useState("");
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [pendingDelete, setPendingDelete] = useState<ChatSession | null>(null);
-  const [pendingProposal, setPendingProposal] = useState<string | null>(null);
-  const [memoryRefreshKey, setMemoryRefreshKey] = useState(0);
+  const [pendingDelete, setPendingDelete] = useState<typeof state.sessions[number] | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-
-  // On mount: load sessions + restore last active.
-  useEffect(() => {
-    (async () => {
-      try {
-        const list = await listSessions();
-        setSessions(list);
-        const last = localStorage.getItem(LAST_SESSION_KEY);
-        const restoreId =
-          last && list.some((s) => s.id === last) ? last : null;
-        if (restoreId) {
-          await selectSession(restoreId);
-        }
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Operation failed");
-      }
-    })();
-    // Mount-only: load sessions + restore last active.
-  }, []);
 
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  async function selectSession(id: string) {
-    try {
-      const msgs = await getSessionMessages(id);
-      setMessages(msgs.map((m) => ({ role: m.role, content: m.content })));
-      setActiveId(id);
-      localStorage.setItem(LAST_SESSION_KEY, id);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Operation failed");
-    }
-  }
-
-  function handleNew() {
-    // Don't create on backend yet — first message triggers creation.
-    setMessages([]);
-    setActiveId(null);
-    localStorage.removeItem(LAST_SESSION_KEY);
-  }
-
-  function handleDelete(session: ChatSession) {
-    setPendingDelete(session);
-  }
-
-  async function confirmDelete() {
-    if (!pendingDelete) return;
-    const target = pendingDelete;
-    try {
-      await deleteSession(target.id);
-      const list = await listSessions();
-      setSessions(list);
-      if (activeId === target.id) {
-        handleNew();
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Operation failed");
-    } finally {
-      setPendingDelete(null);
-    }
-  }
+  }, [activeMessages, state.generating]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const message = input.trim();
-    if (!message || isStreaming) {
-      return;
-    }
+    if (!message || state.generating) return;
 
-    // /remember command: store directly, don't send to agent.
     if (message.startsWith("/remember ")) {
       const content = message.slice("/remember ".length).trim();
       if (content) {
-        try {
-          await createMemory(content);
-          setMemoryRefreshKey((k) => k + 1);
-          setMessages((prev) => [
-            ...prev,
-            { role: "user", content: message },
-            { role: "assistant", content: "Got it — remembered." },
-          ]);
-        } catch (e) {
-          setError(e instanceof Error ? e.message : "Operation failed");
-        }
+        await rememberCommand(content, message);
       }
       setInput("");
       return;
     }
 
-    setError("");
     setInput("");
-    setIsStreaming(true);
-    setMessages((prev) => [
-      ...prev,
-      { role: "user", content: message },
-      { role: "assistant", content: "" },
-    ]);
-
-    const appendDelta = (delta: string) => {
-      setMessages((prev) => {
-        const next = [...prev];
-        const last = next[next.length - 1];
-        next[next.length - 1] = {
-          ...last,
-          content: last.content + delta,
-        };
-        return next;
-      });
-    };
-
-    try {
-      await sendChatMessage(message, activeId, {
-        onDelta: appendDelta,
-        onDone: async (sessionId) => {
-          setActiveId(sessionId);
-          localStorage.setItem(LAST_SESSION_KEY, sessionId);
-          try {
-            setSessions(await listSessions());
-          } catch {
-            /* non-fatal: title backfill may lag */
-          }
-        },
-        onError: (msg) => setError(msg),
-        onMemoryProposal: (content) => {
-          setPendingProposal(content);
-        },
-      });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Operation failed");
-    } finally {
-      setIsStreaming(false);
-    }
+    await sendMessage(message);
   }
+
+  const isStreaming = state.generating !== null;
 
   return (
     <div className="flex h-full w-full">
       <SessionList
-        sessions={sessions}
-        activeId={activeId}
+        sessions={state.sessions}
+        activeId={state.activeId}
         onSelect={(id) => selectSession(id)}
         onNew={handleNew}
-        onDeleteRequest={handleDelete}
+        onDeleteRequest={(session) => setPendingDelete(session)}
       />
       <div className="mx-auto flex h-full w-full max-w-4xl flex-col px-8 py-8">
         <header className="space-y-1 pb-6">
@@ -189,14 +70,14 @@ export function ChatPanel() {
         </header>
 
         <section className="flex flex-1 flex-col gap-4 overflow-y-auto pb-6">
-          {messages.length === 0 ? (
+          {activeMessages.length === 0 && !state.generating ? (
             <EmptyState
               icon={MessageSquare}
               title="Ask about your indexed videos"
               description="Answers cite timestamps like [02:35]."
             />
           ) : (
-            messages.map((message, index) => (
+            activeMessages.map((message, index) => (
               <div
                 key={index}
                 className={
@@ -220,7 +101,7 @@ export function ChatPanel() {
                         },
                       }}
                     >
-                      {message.content || (isStreaming ? "…" : "")}
+                      {message.content || (isStreaming && index === activeMessages.length - 1 ? "" : "")}
                     </ReactMarkdown>
                   </div>
                 ) : (
@@ -229,26 +110,21 @@ export function ChatPanel() {
               </div>
             ))
           )}
-          {pendingProposal ? (
+          {state.generating ? (
+            <StatusIndicator status={state.generating.status} tool={state.generating.tool} />
+          ) : null}
+          {state.pendingProposal ? (
             <MemoryProposalBubble
-              key={pendingProposal}
-              content={pendingProposal}
-              onAccept={async (content) => {
-                try {
-                  await createMemory(content);
-                  setMemoryRefreshKey((k) => k + 1);
-                } catch (e) {
-                  setError(e instanceof Error ? e.message : "Operation failed");
-                }
-                setPendingProposal(null);
-              }}
-              onReject={() => setPendingProposal(null)}
+              key={state.pendingProposal.content}
+              content={state.pendingProposal.content}
+              onAccept={acceptProposal}
+              onReject={rejectProposal}
             />
           ) : null}
           <div ref={scrollRef} />
         </section>
 
-        {error ? <ErrorBanner message={error} /> : null}
+        {state.error ? <ErrorBanner message={state.error} /> : null}
 
         <form className="flex gap-3" onSubmit={handleSubmit}>
           <input
@@ -266,14 +142,19 @@ export function ChatPanel() {
       </div>
 
       <div className="w-56">
-        <MemoryPanel refreshKey={memoryRefreshKey} />
+        <MemoryPanel refreshKey={state.memoryRefreshKey} />
       </div>
 
       <DeleteSessionDialog
         open={pendingDelete !== null}
         sessionTitle={pendingDelete?.title ?? ""}
         onCancel={() => setPendingDelete(null)}
-        onConfirm={confirmDelete}
+        onConfirm={async () => {
+          if (pendingDelete) {
+            await requestDelete(pendingDelete);
+            setPendingDelete(null);
+          }
+        }}
       />
     </div>
   );
