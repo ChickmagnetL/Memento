@@ -28,6 +28,7 @@ from api.sessions import router as sessions_router
 from api.settings import router as settings_router
 from api.asr import router as asr_router
 from api.video_processing import router as video_processing_router
+from api.memories import router as memories_router
 
 settings = get_settings()
 
@@ -80,3 +81,4 @@ app.include_router(sessions_router)
 app.include_router(settings_router)
 app.include_router(asr_router)
 app.include_router(video_processing_router)
+app.include_router(memories_router)
