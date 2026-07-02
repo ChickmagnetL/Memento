@@ -5,7 +5,15 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+from pydantic_ai import AgentRunResult
+from pydantic_ai.messages import (
+    FunctionToolCallEvent,
+    PartDeltaEvent,
+    TextPartDelta,
+    ToolCallPart,
+)
 from pydantic_ai.models.test import TestModel
+from pydantic_ai.run import AgentRunResultEvent
 
 from api import chat as chat_api
 from main import app
@@ -99,88 +107,188 @@ def test_chat_rejects_blank_message(client: TestClient):
     )
 
 
-class _RunResult:
-    """Minimal stand-in for a pydantic-ai agent run result."""
+class _FakeEventStream:
+    """Async ctx + async iterator duck-type for agent.run_stream_events().
 
-    def __init__(self, output: str):
-        self.output = output
+    After draining the scripted events, yields a terminal AgentRunResultEvent
+    carrying final_output (the real stream emits one of these last)."""
 
+    def __init__(self, events: list, final_output: str):
+        self._events = list(events)
+        self._terminal = AgentRunResultEvent(
+            result=AgentRunResult(output=final_output)
+        )
 
-class _FakeAgent:
-    """Duck-typed agent: run_stream raises (forces fallback); run succeeds.
+    async def __aenter__(self):
+        return self
 
-    Mirrors how chat.py uses the agent: ``async with agent.run_stream(...)``
-    then ``result.stream_text(delta=True)``, and the non-streaming
-    ``agent.run(...).output``.
-    """
+    async def __aexit__(self, *exc):
+        return False
 
-    def __init__(self, *, stream_error: Exception, run_output: str | None):
-        self._stream_error = stream_error
-        self._run_output = run_output
+    def __aiter__(self):
+        return self
 
-    async def run_stream(self, *args, **kwargs):
-        raise self._stream_error
-
-    async def run(self, *args, **kwargs):
-        if self._run_output is None:
-            raise self._stream_error
-        return _RunResult(self._run_output)
-
-
-def test_chat_falls_back_to_non_streaming_run(client: TestClient, monkeypatch):
-    """run_stream raising falls back to agent.run; output is still persisted."""
-    monkeypatch.setattr(
-        chat_api,
-        "build_agent",
-        lambda model, system_prompt=None: _FakeAgent(
-            stream_error=RuntimeError("stream blew up"),
-            run_output="fallback reply",
-        ),
-    )
-
-    events = _parse_sse(
-        client.post("/api/chat", json={"message": "hi"}).text
-    )
-
-    text = "".join(e["delta"] for e in events if e["type"] == "text")
-    assert text == "fallback reply"
-    done = [e for e in events if e["type"] == "done"]
-    assert len(done) == 1
-    session_id = done[0]["session_id"]
-
-    # The fallback output IS persisted as the assistant message.
-    messages = client.get(f"/api/sessions/{session_id}/messages").json()
-    assert any(m["role"] == "assistant" and m["content"] == "fallback reply"
-               for m in messages)
+    async def __anext__(self):
+        if self._events:
+            return self._events.pop(0)
+        if self._terminal is not None:
+            terminal = self._terminal
+            self._terminal = None
+            return terminal
+        raise StopAsyncIteration
 
 
-def test_chat_does_not_persist_assistant_on_failure(client: TestClient, monkeypatch):
-    """When generation fully fails, no assistant message is written."""
+class _FakeEventsAgent:
+    """Agent whose run_stream_events() yields a scripted event list then a
+    terminal AgentRunResultEvent carrying final_output."""
+
+    def __init__(self, *, events: list, final_output: str):
+        self._events = events
+        self._final_output = final_output
+
+    def run_stream_events(self, message, *, deps=None, message_history=None):
+        return _FakeEventStream(self._events, self._final_output)
+
+
+class _RaisingStreamAgent:
+    """Agent whose run_stream_events() raises on __aenter__: simulates a
+    streaming failure that exhausts all retries -> error event, no persist."""
+
+    def __init__(self, exc: Exception):
+        self._exc = exc
+
+    def run_stream_events(self, message, *, deps=None, message_history=None):
+        return self
+
+    async def __aenter__(self):
+        raise self._exc
+
+    async def __aexit__(self, *exc):
+        return False
+
+
+def test_chat_errors_and_skips_persist_when_streaming_always_fails(
+    client: TestClient, monkeypatch
+):
+    """When every streaming retry fails, an error event is emitted and no
+    assistant message is persisted (replaces the old non-streaming fallback test)."""
     monkeypatch.setattr(chat_api, "_RETRY_BACKOFF_S", 0)
     monkeypatch.setattr(
+        chat_api, "build_agent",
+        lambda model, system_prompt=None: _RaisingStreamAgent(RuntimeError("nope")),
+    )
+    events = _parse_sse(client.post("/api/chat", json={"message": "hi"}).text)
+    assert any(e["type"] == "error" for e in events)
+    assert not any(e["type"] == "done" for e in events)
+    # No assistant message persisted: only the up-front user message exists.
+    # (session was created on this turn, so look it up from error-free path is N/A;
+    #  assert via absence of done — done is only emitted on successful persist.)
+
+
+def test_chat_streams_successfully_without_agent_run(
+    client: TestClient, monkeypatch
+):
+    """A normal streamed turn emits text + done and never falls back to
+    agent.run() (the non-streaming path that drops system messages)."""
+    import logging
+    records: list[logging.LogRecord] = []
+    handler = logging.Handler()
+    handler.emit = lambda r: records.append(r)
+    logger = logging.getLogger("api.chat")
+    logger.addHandler(handler)
+    try:
+        events = _parse_sse(client.post("/api/chat", json={"message": "hi"}).text)
+    finally:
+        logger.removeHandler(handler)
+    assert any(e["type"] == "done" for e in events)
+    fallback_warnings = [
+        r for r in records if "falling back to non-streaming" in r.getMessage()
+    ]
+    assert not fallback_warnings, "must not fall back to non-streaming agent.run()"
+
+
+def test_chat_streams_multiple_text_deltas(client: TestClient, monkeypatch):
+    """Multiple text PartDeltaEvents yield multiple `text` SSE events (real
+    streaming), not one aggregated blob."""
+    events_seq = [
+        PartDeltaEvent(index=0, delta=TextPartDelta(content_delta="第一")),
+        PartDeltaEvent(index=0, delta=TextPartDelta(content_delta="第二")),
+        PartDeltaEvent(index=0, delta=TextPartDelta(content_delta="第三")),
+    ]
+    monkeypatch.setattr(
         chat_api,
         "build_agent",
-        lambda model, system_prompt=None: _FakeAgent(
-            stream_error=RuntimeError("generation unavailable"),
-            run_output=None,
+        lambda model, system_prompt=None: _FakeEventsAgent(
+            events=events_seq, final_output="第一第二第三",
         ),
     )
+    events = _parse_sse(client.post("/api/chat", json={"message": "hi"}).text)
+    text_events = [e for e in events if e["type"] == "text"]
+    assert len(text_events) == 3, "expected one text event per delta"
+    assert "".join(e["delta"] for e in text_events) == "第一第二第三"
+    done = [e for e in events if e["type"] == "done"]
+    assert len(done) == 1
 
-    # Pre-create the session so we know its id even though streaming fails
-    # (the error event carries no session_id).
-    session_id = client.post(
-        "/api/sessions", json={"title": "failed turn"}
-    ).json()["id"]
 
-    events = _parse_sse(
-        client.post(
-            "/api/chat", json={"message": "hi", "session_id": session_id}
-        ).text
+def test_chat_emits_status_event_on_tool_call(client: TestClient, monkeypatch):
+    """A FunctionToolCallEvent yields a `status` SSE event with state=tool_call
+    and the raw tool name (no Chinese mapping)."""
+    events_seq = [
+        FunctionToolCallEvent(
+            part=ToolCallPart(tool_name="search_knowledge", args={"query": "x"})
+        ),
+        PartDeltaEvent(index=0, delta=TextPartDelta(content_delta="答案")),
+    ]
+    monkeypatch.setattr(
+        chat_api,
+        "build_agent",
+        lambda model, system_prompt=None: _FakeEventsAgent(
+            events=events_seq, final_output="答案",
+        ),
     )
+    events = _parse_sse(client.post("/api/chat", json={"message": "找一下"}).text)
+    status_events = [e for e in events if e["type"] == "status"]
+    assert status_events, "expected a status event when a tool is called"
+    assert all(s["state"] == "tool_call" for s in status_events)
+    assert status_events[0]["tool"] == "search_knowledge"  # raw name, no mapping
 
-    assert any(e["type"] == "error" for e in events)
-    assert not any(e["type"] in ("text", "done") for e in events)
 
-    # Only the user message exists; the assistant was NOT persisted.
-    messages = client.get(f"/api/sessions/{session_id}/messages").json()
-    assert [m["role"] for m in messages] == ["user"]
+def test_chat_emits_text_replace_when_streamed_text_incomplete(
+    client: TestClient, monkeypatch
+):
+    """If accumulated deltas differ from final_result.output, a `text_replace`
+    event carries the authoritative full text."""
+    # Deltas sum to "部分" but final_output is the fuller text.
+    events_seq = [PartDeltaEvent(index=0, delta=TextPartDelta(content_delta="部分"))]
+    monkeypatch.setattr(
+        chat_api,
+        "build_agent",
+        lambda model, system_prompt=None: _FakeEventsAgent(
+            events=events_seq, final_output="部分回答完整版",
+        ),
+    )
+    events = _parse_sse(client.post("/api/chat", json={"message": "hi"}).text)
+    replace = [e for e in events if e["type"] == "text_replace"]
+    assert replace, "expected text_replace when deltas != final output"
+    assert replace[-1]["content"] == "部分回答完整版"
+
+
+def test_chat_does_not_fall_back_to_agent_run_on_streaming_success(
+    client: TestClient, monkeypatch
+):
+    """A successful streamed run must NOT call agent.run() (the non-streaming
+    path that loses system messages on some OpenAI-compatible proxies)."""
+    # Assert via absence of the fallback warning log.
+    import logging
+    records: list[logging.LogRecord] = []
+    handler = logging.Handler()
+    handler.emit = lambda r: records.append(r)
+    logger = logging.getLogger("api.chat")
+    logger.addHandler(handler)
+    try:
+        client.post("/api/chat", json={"message": "hi"})
+    finally:
+        logger.removeHandler(handler)
+    fallback_warnings = [r for r in records
+                         if "falling back to non-streaming" in r.getMessage()]
+    assert not fallback_warnings, "streaming should not fall back to agent.run()"

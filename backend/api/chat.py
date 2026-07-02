@@ -27,9 +27,8 @@ from schemas.chat import ChatRequest
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 logger = logging.getLogger(__name__)
 
-# Streaming fallback heuristics.
-_STREAM_NO_OUTPUT_TIMEOUT_S = 15.0  # no delta within this -> provider misbehaves
-_MAX_RETRIES = 2  # request-level retries (full regeneration)
+# Streaming retry heuristics (full regeneration of run_stream_events()).
+_MAX_RETRIES = 2
 _RETRY_BACKOFF_S = 1.0
 _TITLE_MAX_LEN = 48
 
@@ -145,76 +144,97 @@ async def chat(payload: ChatRequest, request: Request) -> StreamingResponse:
     )
     history = history + history_from_pairs([("user", payload.message)])
 
-    async def _run_with_fallback():
-        """Stream; if it stalls or raises, fall back to non-streaming run."""
-        try:
-            return await _run_stream(agent, payload.message, history, deps)
-        except Exception:  # noqa: BLE001 - any failure -> non-streaming retry
-            logger.warning(
-                "Streaming failed; falling back to non-streaming run",
-                exc_info=True,
-            )
-            result = await agent.run(
-                payload.message, deps=deps, message_history=history
-            )
-            return result.output, result
-
     async def event_stream():
         try:
-            output, result = await _run_with_retries(_run_with_fallback)
-            yield _sse({"type": "text", "delta": output})
+            result_holder: list = []
+            for attempt_i in range(_MAX_RETRIES + 1):
+                try:
+                    async for etype, epayload in _run_stream(
+                        agent, payload.message, history, deps, result_holder
+                    ):
+                        yield _sse({"type": etype, **epayload})
+                    break  # streamed successfully
+                except Exception as exc:  # noqa: BLE001 - any failure -> retry run_stream_events()
+                    logger.warning(
+                        "Streaming attempt %d failed", attempt_i, exc_info=True
+                    )
+                    if attempt_i < _MAX_RETRIES:
+                        await asyncio.sleep(_RETRY_BACKOFF_S * (attempt_i + 1))
+                    else:
+                        raise
+
+            result = result_holder[0] if result_holder else None
+            if result is None:
+                final_output = ""
+            else:
+                final_output = getattr(result, "output", "") or ""
+
             # Emit memory proposals before the terminal done event.
-            for content in _extract_memory_proposals(result):
-                yield _sse({"type": "memory_proposal", "content": content})
+            if result is not None:
+                for content in _extract_memory_proposals(result):
+                    yield _sse({"type": "memory_proposal", "content": content})
+
             # Persist the assistant message only on successful generation.
             await sqlite.add_chat_message(
-                session_id=session_id, role="assistant", content=output
+                session_id=session_id, role="assistant", content=final_output
             )
             yield _sse({"type": "done", "session_id": session_id})
         except Exception as exc:  # noqa: BLE001 - stream errors must reach the client
             logger.exception("Chat stream failed for session %s", session_id)
-            yield _sse(
-                {"type": "error", "message": _format_chat_error(exc)}
-            )
+            yield _sse({"type": "error", "message": _format_chat_error(exc)})
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
-async def _run_stream(agent, message, history, deps):
-    """Stream tokens; raise if no output arrives within the timeout."""
-    parts: list[str] = []
-    result_ref: list = []
+async def _run_stream(agent, message, history, deps, result_holder: list):
+    """Stream the agent run via ``agent.run_stream_events()``, yielding SSE events.
 
-    async def _produce():
-        async with agent.run_stream(
-            message, deps=deps, message_history=history
-        ) as result:
-            result_ref.append(result)
-            async for delta in result.stream_text(delta=True):
-                parts.append(delta)
-        return "".join(parts)
+    ``run_stream_events()`` is pydantic-ai's modern streaming API (the legacy
+    ``event_stream_handler`` kwarg is deprecated). It yields token-level text
+    deltas (``PartDeltaEvent``) AND tool-call events (``FunctionToolCallEvent``)
+    in one stream, and runs the full agent graph. Unlike ``run_stream()`` — which
+    stops the graph at the first output and can drop post-tool-call text — it
+    never needs a non-streaming ``agent.run()`` fallback, which is the path that
+    loses the system message on some OpenAI-compatible proxies (root cause of #7).
+    Event type names/attributes are verified by tests/test_chat_iter_probe.py.
 
-    try:
-        output = await asyncio.wait_for(
-            _produce(), timeout=_STREAM_NO_OUTPUT_TIMEOUT_S * 3
-        )
-        return output, result_ref[0] if result_ref else None
-    except asyncio.TimeoutError:
-        if parts:
-            return "".join(parts), result_ref[0] if result_ref else None
-        raise
+    The terminal ``AgentRunResultEvent``'s result is appended to ``result_holder``
+    so the caller can extract memory proposals and persist the authoritative
+    output. (``return value`` is forbidden in an async generator, so the result
+    is handed back via the mutable list instead.)
+    """
+    from pydantic_ai.messages import (
+        FunctionToolCallEvent,
+        PartDeltaEvent,
+        TextPartDelta,
+    )
+    from pydantic_ai.run import AgentRunResultEvent
 
+    accumulated: list[str] = []
 
-async def _run_with_retries(func):
-    """Call func() with request-level retries (full regeneration)."""
-    last_exc = None
-    for attempt in range(_MAX_RETRIES + 1):
-        try:
-            return await func()
-        except Exception as exc:  # noqa: BLE001
-            last_exc = exc
-            if attempt < _MAX_RETRIES:
-                await asyncio.sleep(_RETRY_BACKOFF_S * (attempt + 1))
-            else:
-                raise
-    raise last_exc  # pragma: no cover
+    async with agent.run_stream_events(
+        message, deps=deps, message_history=history
+    ) as stream:
+        async for event in stream:
+            if isinstance(event, FunctionToolCallEvent):
+                # Tool call starting: emit status (tool name kept raw, no mapping).
+                yield ("status", {"state": "tool_call", "tool": event.part.tool_name})
+            elif isinstance(event, PartDeltaEvent) and isinstance(
+                event.delta, TextPartDelta
+            ):
+                delta_text = event.delta.content_delta or ""
+                if delta_text:
+                    accumulated.append(delta_text)
+                    yield ("text", {"delta": delta_text})
+            elif isinstance(event, AgentRunResultEvent):
+                # Terminal event: capture authoritative result for the caller.
+                result_holder.append(event.result)
+
+    # Reconcile: if the authoritative final text differs from the streamed
+    # deltas (rare — e.g. a provider drops the trailing delta), send a full
+    # replace so the client ends with the correct text.
+    final_text = ""
+    if result_holder:
+        final_text = getattr(result_holder[0], "output", "") or ""
+    if final_text and final_text != "".join(accumulated):
+        yield ("text_replace", {"content": final_text})
