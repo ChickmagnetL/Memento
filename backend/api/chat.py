@@ -7,6 +7,12 @@ import logging
 from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from pydantic_ai.exceptions import ModelHTTPError
+from pydantic_ai.messages import (
+    FunctionToolCallEvent,
+    PartDeltaEvent,
+    TextPartDelta,
+)
+from pydantic_ai.run import AgentRunResultEvent
 
 from config.settings import get_settings
 from core.agent.chat_agent import (
@@ -147,14 +153,22 @@ async def chat(payload: ChatRequest, request: Request) -> StreamingResponse:
     async def event_stream():
         try:
             result_holder: list = []
+            accumulated: list[str] = []
+            sent_any = False
             for attempt_i in range(_MAX_RETRIES + 1):
                 try:
                     async for etype, epayload in _run_stream(
-                        agent, payload.message, history, deps, result_holder
+                        agent, payload.message, history, deps, result_holder,
+                        accumulated,
                     ):
                         yield _sse({"type": etype, **epayload})
+                        sent_any = True
                     break  # streamed successfully
-                except Exception as exc:  # noqa: BLE001 - any failure -> retry run_stream_events()
+                except Exception as exc:  # noqa: BLE001 - any failure mid-run
+                    if sent_any:
+                        # Already showed content to the client — retrying would
+                        # duplicate it. Surface the error and let the user retry.
+                        raise
                     logger.warning(
                         "Streaming attempt %d failed", attempt_i, exc_info=True
                     )
@@ -164,15 +178,16 @@ async def chat(payload: ChatRequest, request: Request) -> StreamingResponse:
                         raise
 
             result = result_holder[0] if result_holder else None
-            if result is None:
-                final_output = ""
-            else:
-                final_output = getattr(result, "output", "") or ""
+            final_output = getattr(result, "output", "") or ""
+            # If the authoritative output is empty but deltas reached the client,
+            # persist what the user actually saw.
+            if not final_output and accumulated:
+                final_output = "".join(accumulated)
 
             # Emit memory proposals before the terminal done event.
-            if result is not None:
-                for content in _extract_memory_proposals(result):
-                    yield _sse({"type": "memory_proposal", "content": content})
+            # (_extract_memory_proposals already returns [] for a None result.)
+            for content in _extract_memory_proposals(result):
+                yield _sse({"type": "memory_proposal", "content": content})
 
             # Persist the assistant message only on successful generation.
             await sqlite.add_chat_message(
@@ -186,7 +201,8 @@ async def chat(payload: ChatRequest, request: Request) -> StreamingResponse:
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
-async def _run_stream(agent, message, history, deps, result_holder: list):
+async def _run_stream(agent, message, history, deps, result_holder: list,
+                      accumulated: list[str]):
     """Stream the agent run via ``agent.run_stream_events()``, yielding SSE events.
 
     ``run_stream_events()`` is pydantic-ai's modern streaming API (the legacy
@@ -201,16 +217,12 @@ async def _run_stream(agent, message, history, deps, result_holder: list):
     The terminal ``AgentRunResultEvent``'s result is appended to ``result_holder``
     so the caller can extract memory proposals and persist the authoritative
     output. (``return value`` is forbidden in an async generator, so the result
-    is handed back via the mutable list instead.)
+    is handed back via the mutable list instead.) ``accumulated`` collects text
+    deltas so the caller can fall back to them if the final output is empty.
     """
-    from pydantic_ai.messages import (
-        FunctionToolCallEvent,
-        PartDeltaEvent,
-        TextPartDelta,
-    )
-    from pydantic_ai.run import AgentRunResultEvent
-
-    accumulated: list[str] = []
+    # Cheap insurance: clear any stale result/deltas from a prior failed attempt.
+    result_holder.clear()
+    accumulated.clear()
 
     async with agent.run_stream_events(
         message, deps=deps, message_history=history

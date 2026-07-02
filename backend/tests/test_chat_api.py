@@ -167,44 +167,132 @@ class _RaisingStreamAgent:
         return False
 
 
+class _MidStreamRaisingStream:
+    """Async ctx + iterator: yields scripted events, then raises mid-stream
+    (no terminal result). Simulates a failure after partial content has
+    already reached the client."""
+
+    def __init__(self, events: list, exc: Exception):
+        self._events = list(events)
+        self._exc = exc
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *exc):
+        return False
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        if self._events:
+            return self._events.pop(0)
+        raise self._exc
+
+
+class _MidStreamRaisingAgent:
+    """Agent whose run_stream_events() yields some events then raises."""
+
+    def __init__(self, *, events: list, exc: Exception):
+        self._events = events
+        self._exc = exc
+
+    def run_stream_events(self, message, *, deps=None, message_history=None):
+        return _MidStreamRaisingStream(self._events, self._exc)
+
+
 def test_chat_errors_and_skips_persist_when_streaming_always_fails(
     client: TestClient, monkeypatch
 ):
-    """When every streaming retry fails, an error event is emitted and no
-    assistant message is persisted (replaces the old non-streaming fallback test)."""
+    """When every streaming retry fails (before any content is sent), an error
+    event is emitted and no assistant message is persisted."""
     monkeypatch.setattr(chat_api, "_RETRY_BACKOFF_S", 0)
     monkeypatch.setattr(
         chat_api, "build_agent",
         lambda model, system_prompt=None: _RaisingStreamAgent(RuntimeError("nope")),
     )
-    events = _parse_sse(client.post("/api/chat", json={"message": "hi"}).text)
+    # Pre-create the session so its id is known even when the turn fails.
+    session_id = client.post(
+        "/api/sessions", json={"title": "fails"}
+    ).json()["id"]
+    events = _parse_sse(
+        client.post(
+            "/api/chat", json={"message": "hi", "session_id": session_id}
+        ).text
+    )
     assert any(e["type"] == "error" for e in events)
     assert not any(e["type"] == "done" for e in events)
-    # No assistant message persisted: only the up-front user message exists.
-    # (session was created on this turn, so look it up from error-free path is N/A;
-    #  assert via absence of done — done is only emitted on successful persist.)
+    # Strong DB assertion: only the up-front user message exists, no assistant.
+    messages = client.get(f"/api/sessions/{session_id}/messages").json()
+    roles = [m["role"] for m in messages]
+    assert roles == ["user"]
 
 
-def test_chat_streams_successfully_without_agent_run(
+def test_chat_emits_error_after_partial_stream_without_retry(
     client: TestClient, monkeypatch
 ):
-    """A normal streamed turn emits text + done and never falls back to
-    agent.run() (the non-streaming path that drops system messages)."""
-    import logging
-    records: list[logging.LogRecord] = []
-    handler = logging.Handler()
-    handler.emit = lambda r: records.append(r)
-    logger = logging.getLogger("api.chat")
-    logger.addHandler(handler)
-    try:
-        events = _parse_sse(client.post("/api/chat", json={"message": "hi"}).text)
-    finally:
-        logger.removeHandler(handler)
-    assert any(e["type"] == "done" for e in events)
-    fallback_warnings = [
-        r for r in records if "falling back to non-streaming" in r.getMessage()
+    """A failure AFTER content has been streamed surfaces an error event with
+    the partial text intact — no retry (which would duplicate text), no done."""
+    monkeypatch.setattr(chat_api, "_RETRY_BACKOFF_S", 0)
+    events_seq = [
+        PartDeltaEvent(index=0, delta=TextPartDelta(content_delta="部分")),
     ]
-    assert not fallback_warnings, "must not fall back to non-streaming agent.run()"
+    monkeypatch.setattr(
+        chat_api,
+        "build_agent",
+        lambda model, system_prompt=None: _MidStreamRaisingAgent(
+            events=events_seq, exc=RuntimeError("mid-stream boom"),
+        ),
+    )
+    events = _parse_sse(client.post("/api/chat", json={"message": "hi"}).text)
+    text_events = [e for e in events if e["type"] == "text"]
+    assert len(text_events) == 1, "partial delta must reach client exactly once (no retry)"
+    assert text_events[0]["delta"] == "部分"
+    assert any(e["type"] == "error" for e in events), "error must be surfaced"
+    assert not any(e["type"] == "done" for e in events), "no done on mid-stream failure"
+
+
+class _NonStreamingRunSpy:
+    """Wraps a streaming agent and records whether the non-streaming
+    ``agent.run()`` is ever invoked (it must not be on a streamed turn)."""
+
+    def __init__(self, inner):
+        self._inner = inner
+        self.run_called = False
+
+    def run_stream_events(self, message, *, deps=None, message_history=None):
+        return self._inner.run_stream_events(
+            message, deps=deps, message_history=message_history
+        )
+
+    def run(self, *args, **kwargs):
+        self.run_called = True
+        raise AssertionError("agent.run() must not be called on a streamed turn")
+
+
+def test_chat_never_calls_non_streaming_agent_run(
+    client: TestClient, monkeypatch
+):
+    """A successful streamed turn must never invoke the non-streaming
+    agent.run() (the path that loses system messages on some OpenAI-compatible
+    proxies). Replaces two tautological log-string assertions with a faithful
+    spy on the agent instance."""
+    spy_holder: dict = {}
+
+    def build_spy(model, system_prompt=None):
+        inner = _FakeEventsAgent(
+            events=[PartDeltaEvent(index=0, delta=TextPartDelta(content_delta="ok"))],
+            final_output="ok",
+        )
+        spy = _NonStreamingRunSpy(inner)
+        spy_holder["spy"] = spy
+        return spy
+
+    monkeypatch.setattr(chat_api, "build_agent", build_spy)
+    events = _parse_sse(client.post("/api/chat", json={"message": "hi"}).text)
+    assert any(e["type"] == "done" for e in events), "turn must complete via streaming"
+    assert not spy_holder["spy"].run_called, "agent.run() must not be called"
 
 
 def test_chat_streams_multiple_text_deltas(client: TestClient, monkeypatch):
@@ -271,24 +359,3 @@ def test_chat_emits_text_replace_when_streamed_text_incomplete(
     replace = [e for e in events if e["type"] == "text_replace"]
     assert replace, "expected text_replace when deltas != final output"
     assert replace[-1]["content"] == "部分回答完整版"
-
-
-def test_chat_does_not_fall_back_to_agent_run_on_streaming_success(
-    client: TestClient, monkeypatch
-):
-    """A successful streamed run must NOT call agent.run() (the non-streaming
-    path that loses system messages on some OpenAI-compatible proxies)."""
-    # Assert via absence of the fallback warning log.
-    import logging
-    records: list[logging.LogRecord] = []
-    handler = logging.Handler()
-    handler.emit = lambda r: records.append(r)
-    logger = logging.getLogger("api.chat")
-    logger.addHandler(handler)
-    try:
-        client.post("/api/chat", json={"message": "hi"})
-    finally:
-        logger.removeHandler(handler)
-    fallback_warnings = [r for r in records
-                         if "falling back to non-streaming" in r.getMessage()]
-    assert not fallback_warnings, "streaming should not fall back to agent.run()"
