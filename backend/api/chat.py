@@ -6,6 +6,7 @@ import logging
 
 from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
+from pydantic_ai.exceptions import ModelHTTPError
 
 from config.settings import get_settings
 from core.agent.chat_agent import ChatDeps, build_agent, history_from_pairs
@@ -40,6 +41,21 @@ def build_chat_model():
 
 def _sse(event: dict) -> str:
     return f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+
+
+def _format_chat_error(exc: BaseException) -> str:
+    """Surface a useful, non-sensitive message for the chat SSE error event."""
+    if isinstance(exc, ModelHTTPError):
+        body = exc.body
+        if isinstance(body, dict):
+            msg = body.get("message")
+            if not isinstance(msg, str) or not msg:
+                err = body.get("error")
+                msg = err.get("message") if isinstance(err, dict) else None
+            if isinstance(msg, str) and msg:
+                return f"HTTP {exc.status_code}: {msg}"
+        return f"HTTP {exc.status_code}"
+    return str(exc) or exc.__class__.__name__
 
 
 def _get_sqlite(request: Request):
@@ -128,10 +144,10 @@ async def chat(payload: ChatRequest, request: Request) -> StreamingResponse:
                 session_id=session_id, role="assistant", content=output
             )
             yield _sse({"type": "done", "session_id": session_id})
-        except Exception:  # noqa: BLE001 - stream errors must reach the client
+        except Exception as exc:  # noqa: BLE001 - stream errors must reach the client
             logger.exception("Chat stream failed for session %s", session_id)
             yield _sse(
-                {"type": "error", "message": "Chat failed, see backend logs"}
+                {"type": "error", "message": _format_chat_error(exc)}
             )
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
