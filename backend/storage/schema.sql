@@ -94,3 +94,12 @@ CREATE TABLE IF NOT EXISTS chat_messages (
 );
 
 CREATE INDEX IF NOT EXISTS idx_chat_messages_session_id ON chat_messages(session_id);
+
+-- Memories table
+-- Cross-session user learning profile / preferences (L3 of chat memory)
+CREATE TABLE IF NOT EXISTS memories (
+    id TEXT PRIMARY KEY,
+    content TEXT NOT NULL,                 -- memory text (learning profile / preference)
+    category TEXT,                         -- optional: style/study/weakness/background
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
