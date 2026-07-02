@@ -667,6 +667,38 @@ class SQLiteClient:
         await conn.commit()
         return cursor.rowcount == 1
 
+    # ===== Memories (cross-session user profile) =====
+
+    async def add_memory(self, *, content: str, category: str | None = None) -> dict:
+        """Add a memory and return it."""
+        conn = self._require_conn()
+        memory_id = uuid.uuid4().hex
+        await conn.execute(
+            "INSERT INTO memories (id, content, category) VALUES (?, ?, ?)",
+            (memory_id, content, category),
+        )
+        await conn.commit()
+        cursor = await conn.execute(
+            "SELECT id, content, category, created_at FROM memories WHERE id = ?",
+            (memory_id,),
+        )
+        return self._row_to_dict(await cursor.fetchone())
+
+    async def list_memories(self) -> list[dict]:
+        """List all memories, newest first."""
+        conn = self._require_conn()
+        cursor = await conn.execute(
+            "SELECT id, content, category, created_at FROM memories ORDER BY created_at DESC, id DESC"
+        )
+        return [self._row_to_dict(r) for r in await cursor.fetchall()]
+
+    async def delete_memory(self, memory_id: str) -> bool:
+        """Delete a memory. Return True when removed."""
+        conn = self._require_conn()
+        cursor = await conn.execute("DELETE FROM memories WHERE id = ?", (memory_id,))
+        await conn.commit()
+        return cursor.rowcount == 1
+
     async def close(self) -> None:
         """Close database connection."""
         if self._conn:
