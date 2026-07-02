@@ -230,13 +230,17 @@ export interface ChatStreamHandlers {
   onDone: (sessionId: string) => void;
   onError: (message: string) => void;
   onMemoryProposal?: (content: string) => void;
+  onStatus?: (state: "tool_call", tool: string) => void;
+  onTextReplace?: (content: string) => void;
 }
 
 /**
  * Send one chat turn and consume the SSE stream.
  *
  * The backend emits `data: {...}` lines with events:
- * {type:"text",delta} / {type:"done",session_id} / {type:"error",message}.
+ * {type:"text",delta} / {type:"done",session_id} / {type:"error",message} /
+ * {type:"memory_proposal",content} /
+ * {type:"status",state:"tool_call",tool} / {type:"text_replace",content}.
  */
 export async function sendChatMessage(
   message: string,
@@ -297,6 +301,10 @@ export async function sendChatMessage(
             handlers.onError(event.message);
           } else if (event.type === "memory_proposal") {
             handlers.onMemoryProposal?.(event.content);
+          } else if (event.type === "status" && event.state === "tool_call") {
+            handlers.onStatus?.("tool_call", event.tool);
+          } else if (event.type === "text_replace") {
+            handlers.onTextReplace?.(event.content);
           }
         } catch {
           handlers.onError("Chat request failed: invalid event");

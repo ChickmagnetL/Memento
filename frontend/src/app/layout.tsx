@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Sidebar } from "@/components/layout/sidebar";
+import { ChatStoreProvider } from "@/lib/chat-store";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -30,7 +31,9 @@ export default async function RootLayout({
     >
       <body className="h-full flex bg-background text-foreground">
         <Sidebar />
-        <main className="flex-1 overflow-y-auto">{children}</main>
+        <main className="flex-1 overflow-y-auto">
+          <ChatStoreProvider>{children}</ChatStoreProvider>
+        </main>
       </body>
     </html>
   );
