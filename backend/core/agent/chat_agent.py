@@ -22,6 +22,9 @@ SYSTEM_PROMPT = (
     "stored video content, call search_knowledge first and ground your "
     "answer in the returned excerpts. If nothing relevant is found, say so.\n\n"
     "## Tool Routing\n"
+    "- Questions about the user themselves (what they're learning, their "
+    "preferences, background, weak spots) → answer from the user memory "
+    "block; do NOT call search_knowledge for these.\n"
     "- Specific or detail questions (a particular point, timestamp, snippet) "
     "→ call search_knowledge.\n"
     "- Summary, overview, or exploration questions (\"what does this video cover\", "
@@ -52,6 +55,27 @@ SYSTEM_PROMPT = (
     "WRONG (do NOT do this): citing as [00:48-01:36], citing without a link, inventing timestamps."
 )
 
+MEMORY_BLOCK_TEMPLATE = (
+    "\n\n<user_memory>\n"
+    "This section holds facts remembered about the user across sessions "
+    "(learning profile, preferences, background). When the user asks about "
+    "THEMSELVES — what they are learning, their preferences, background, or "
+    "weak spots — answer from this section FIRST. Do NOT call "
+    "search_knowledge for questions about the user; those answers live here, "
+    "not in the video knowledge base.\n"
+    "\n{items}\n"
+    "</user_memory>\n"
+)
+
+
+def build_system_prompt(memories: list[dict] | None = None) -> str:
+    """Assemble the system prompt, optionally injecting a <user_memory> block."""
+    prompt = SYSTEM_PROMPT
+    if memories:
+        items = "\n".join(f"- {m['content']}" for m in memories)
+        prompt += MEMORY_BLOCK_TEMPLATE.format(items=items)
+    return prompt
+
 
 @dataclass
 class ChatDeps:
@@ -77,9 +101,14 @@ def history_from_pairs(pairs: list[tuple[str, str]]) -> list:
     return history
 
 
-def build_agent(model) -> Agent:
-    """Build the chat agent around an injected pydantic-ai model."""
-    agent = Agent(model, deps_type=ChatDeps, system_prompt=SYSTEM_PROMPT)
+def build_agent(model, system_prompt: str | None = None) -> Agent:
+    """Build the chat agent around an injected pydantic-ai model.
+
+    Args:
+        model: The pydantic-ai model instance.
+        system_prompt: Optional custom system prompt. When None, uses SYSTEM_PROMPT.
+    """
+    agent = Agent(model, deps_type=ChatDeps, system_prompt=system_prompt or SYSTEM_PROMPT)
 
     @agent.tool
     async def search_knowledge(ctx: RunContext[ChatDeps], query: str) -> str:
@@ -124,5 +153,14 @@ def build_agent(model) -> Agent:
         except ValueError:
             return f"Document {doc_id} not found."
         return l2
+
+    @agent.tool
+    async def propose_memory(ctx: RunContext[ChatDeps], content: str) -> str:
+        """Propose a memory to remember about the user (learning profile/preference).
+        Call ONLY when the user reveals a stable cross-session fact about themselves
+        (what they're learning, weak spots, explanation-style preferences, background).
+        Do NOT call for one-off or time-sensitive info. The user will be asked to
+        confirm; you do not write anything. At most once per turn."""
+        return f"[memory proposed, awaiting user confirmation]: {content}"
 
     return agent
