@@ -65,6 +65,10 @@ def _isolate_project_config(tmp_path, monkeypatch):
         str(backend_config_dir / "settings.py"),
     )
     monkeypatch.chdir(tmp_path)
+    # conftest.py sets MEMENTO_PROJECT_ROOT for global test isolation;
+    # this test helper manages its own project root via __file__ + chdir,
+    # so clear the env var to avoid interference.
+    monkeypatch.delenv("MEMENTO_PROJECT_ROOT", raising=False)
     return backend_config_dir
 
 
