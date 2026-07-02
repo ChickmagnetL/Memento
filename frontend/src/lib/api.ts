@@ -229,6 +229,7 @@ export interface ChatStreamHandlers {
   onDelta: (delta: string) => void;
   onDone: (sessionId: string) => void;
   onError: (message: string) => void;
+  onMemoryProposal?: (content: string) => void;
 }
 
 /**
@@ -294,6 +295,8 @@ export async function sendChatMessage(
             handlers.onDone(event.session_id);
           } else if (event.type === "error") {
             handlers.onError(event.message);
+          } else if (event.type === "memory_proposal") {
+            handlers.onMemoryProposal?.(event.content);
           }
         } catch {
           handlers.onError("Chat request failed: invalid event");
@@ -705,4 +708,39 @@ export async function updateVideoProcessingSettings(
   });
   await assertOk(res, "Update video processing settings");
   return res.json();
+}
+
+// ===== Memories =====
+
+export interface Memory {
+  id: string;
+  content: string;
+  category: string | null;
+  created_at: string;
+}
+
+export async function listMemories(): Promise<Memory[]> {
+  const res = await fetch(`${API_BASE_URL}/api/memories`);
+  await assertOk(res, "List memories");
+  return res.json();
+}
+
+export async function createMemory(
+  content: string,
+  category?: string
+): Promise<Memory> {
+  const res = await fetch(`${API_BASE_URL}/api/memories`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(category ? { content, category } : { content }),
+  });
+  await assertOk(res, "Create memory");
+  return res.json();
+}
+
+export async function deleteMemory(id: string): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}/api/memories/${id}`, {
+    method: "DELETE",
+  });
+  await assertOk(res, "Delete memory");
 }
