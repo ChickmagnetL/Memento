@@ -9,7 +9,12 @@ from fastapi.responses import StreamingResponse
 from pydantic_ai.exceptions import ModelHTTPError
 
 from config.settings import get_settings
-from core.agent.chat_agent import ChatDeps, build_agent, history_from_pairs
+from core.agent.chat_agent import (
+    ChatDeps,
+    build_agent,
+    build_system_prompt,
+    history_from_pairs,
+)
 from core.rag.document_summary_store import DocumentSummaryStore
 from core.models.factory import (
     build_chat_model as factory_build_chat_model,
@@ -70,6 +75,23 @@ def _truncate_title(message: str) -> str:
     return title[:_TITLE_MAX_LEN] + ("…" if len(title) > _TITLE_MAX_LEN else "")
 
 
+def _extract_memory_proposals(result) -> list[str]:
+    """Extract proposed memory contents from agent result."""
+    proposals: list[str] = []
+    if result is None or not hasattr(result, "all_messages"):
+        return proposals
+    for msg in result.new_messages():
+        if hasattr(msg, "parts"):
+            for part in msg.parts:
+                if hasattr(part, "tool_name") and part.tool_name == "propose_memory" and hasattr(part, "args"):
+                    args = part.args
+                    if isinstance(args, str):
+                        args = json.loads(args)
+                    if isinstance(args, dict) and "content" in args:
+                        proposals.append(args["content"])
+    return proposals
+
+
 @router.post("")
 async def chat(payload: ChatRequest, request: Request) -> StreamingResponse:
     """Stream one chat turn as SSE events; persist messages on success."""
@@ -100,7 +122,9 @@ async def chat(payload: ChatRequest, request: Request) -> StreamingResponse:
         summary_store=summary_store,
         embedder=embedding_client,
     )
-    agent = build_agent(build_chat_model())
+    memories = await sqlite.list_memories()
+    system_prompt = build_system_prompt(memories=memories)
+    agent = build_agent(build_chat_model(), system_prompt=system_prompt)
 
     # Resolve or create the session.
     session_id = payload.session_id
@@ -133,12 +157,15 @@ async def chat(payload: ChatRequest, request: Request) -> StreamingResponse:
             result = await agent.run(
                 payload.message, deps=deps, message_history=history
             )
-            return result.output
+            return result.output, result
 
     async def event_stream():
         try:
-            output = await _run_with_retries(_run_with_fallback)
+            output, result = await _run_with_retries(_run_with_fallback)
             yield _sse({"type": "text", "delta": output})
+            # Emit memory proposals before the terminal done event.
+            for content in _extract_memory_proposals(result):
+                yield _sse({"type": "memory_proposal", "content": content})
             # Persist the assistant message only on successful generation.
             await sqlite.add_chat_message(
                 session_id=session_id, role="assistant", content=output
@@ -153,27 +180,28 @@ async def chat(payload: ChatRequest, request: Request) -> StreamingResponse:
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
-async def _run_stream(agent, message, history, deps) -> str:
+async def _run_stream(agent, message, history, deps):
     """Stream tokens; raise if no output arrives within the timeout."""
     parts: list[str] = []
+    result_ref: list = []
 
     async def _produce():
         async with agent.run_stream(
             message, deps=deps, message_history=history
         ) as result:
+            result_ref.append(result)
             async for delta in result.stream_text(delta=True):
                 parts.append(delta)
         return "".join(parts)
 
     try:
-        return await asyncio.wait_for(
+        output = await asyncio.wait_for(
             _produce(), timeout=_STREAM_NO_OUTPUT_TIMEOUT_S * 3
         )
+        return output, result_ref[0] if result_ref else None
     except asyncio.TimeoutError:
         if parts:
-            # Partial output from a timed-out stream is kept as-is; the caller
-            # persists it as the assistant message (truncated > missing reply).
-            return "".join(parts)
+            return "".join(parts), result_ref[0] if result_ref else None
         raise
 
 

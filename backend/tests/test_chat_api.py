@@ -132,7 +132,7 @@ def test_chat_falls_back_to_non_streaming_run(client: TestClient, monkeypatch):
     monkeypatch.setattr(
         chat_api,
         "build_agent",
-        lambda model: _FakeAgent(
+        lambda model, system_prompt=None: _FakeAgent(
             stream_error=RuntimeError("stream blew up"),
             run_output="fallback reply",
         ),
@@ -160,7 +160,7 @@ def test_chat_does_not_persist_assistant_on_failure(client: TestClient, monkeypa
     monkeypatch.setattr(
         chat_api,
         "build_agent",
-        lambda model: _FakeAgent(
+        lambda model, system_prompt=None: _FakeAgent(
             stream_error=RuntimeError("generation unavailable"),
             run_output=None,
         ),
