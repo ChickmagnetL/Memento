@@ -10,12 +10,15 @@ import { ErrorBanner } from "@/components/ui/error-banner";
 import { VideoTimestampLink } from "@/components/VideoTimestampLink";
 import { SessionList } from "@/components/chat/session-list";
 import { DeleteSessionDialog } from "@/components/chat/delete-session-dialog";
+import { MemoryProposalBubble } from "@/components/chat/memory-proposal-bubble";
+import { MemoryPanel } from "@/components/chat/memory-panel";
 import {
   ChatSession,
   listSessions,
   getSessionMessages,
   deleteSession,
   sendChatMessage,
+  createMemory,
 } from "@/lib/api";
 
 const LAST_SESSION_KEY = "memento-last-chat-session";
@@ -33,6 +36,8 @@ export function ChatPanel() {
   const [error, setError] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<ChatSession | null>(null);
+  const [pendingProposal, setPendingProposal] = useState<string | null>(null);
+  const [memoryRefreshKey, setMemoryRefreshKey] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // On mount: load sessions + restore last active.
@@ -104,6 +109,26 @@ export function ChatPanel() {
       return;
     }
 
+    // /remember command: store directly, don't send to agent.
+    if (message.startsWith("/remember ")) {
+      const content = message.slice("/remember ".length).trim();
+      if (content) {
+        try {
+          await createMemory(content);
+          setMemoryRefreshKey((k) => k + 1);
+          setMessages((prev) => [
+            ...prev,
+            { role: "user", content: message },
+            { role: "assistant", content: "Got it — remembered." },
+          ]);
+        } catch (e) {
+          setError(e instanceof Error ? e.message : "Operation failed");
+        }
+      }
+      setInput("");
+      return;
+    }
+
     setError("");
     setInput("");
     setIsStreaming(true);
@@ -138,6 +163,9 @@ export function ChatPanel() {
           }
         },
         onError: (msg) => setError(msg),
+        onMemoryProposal: (content) => {
+          setPendingProposal(content);
+        },
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Operation failed");
@@ -201,6 +229,22 @@ export function ChatPanel() {
               </div>
             ))
           )}
+          {pendingProposal ? (
+            <MemoryProposalBubble
+              key={pendingProposal}
+              content={pendingProposal}
+              onAccept={async (content) => {
+                try {
+                  await createMemory(content);
+                  setMemoryRefreshKey((k) => k + 1);
+                } catch (e) {
+                  setError(e instanceof Error ? e.message : "Operation failed");
+                }
+                setPendingProposal(null);
+              }}
+              onReject={() => setPendingProposal(null)}
+            />
+          ) : null}
           <div ref={scrollRef} />
         </section>
 
@@ -219,6 +263,10 @@ export function ChatPanel() {
             Send
           </Button>
         </form>
+      </div>
+
+      <div className="w-56">
+        <MemoryPanel refreshKey={memoryRefreshKey} />
       </div>
 
       <DeleteSessionDialog
