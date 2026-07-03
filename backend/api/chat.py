@@ -9,7 +9,9 @@ from fastapi.responses import StreamingResponse
 from pydantic_ai.exceptions import ModelHTTPError
 from pydantic_ai.messages import (
     FunctionToolCallEvent,
+    ModelRequest,
     PartDeltaEvent,
+    SystemPromptPart,
     TextPartDelta,
 )
 from pydantic_ai.run import AgentRunResultEvent
@@ -142,13 +144,27 @@ async def chat(payload: ChatRequest, request: Request) -> StreamingResponse:
         )
         session_id = session["id"]
 
-    # Rebuild prior history from SQLite, then append this turn's user message.
+    # Rebuild prior history from SQLite. Only PRIOR turns belong here — this
+    # turn's user message is supplied separately via the `message` arg to
+    # run_stream_events(). (Earlier code appended it here too, producing
+    # duplicate user messages on every turn.)
     history = history_from_pairs(await sqlite.get_chat_history(session_id))
+    # pydantic-ai 1.107 silently drops the Agent(system_prompt=...) kwarg
+    # whenever message_history is non-empty, so the model would never see the
+    # system prompt on any multi-turn conversation. Inject it explicitly as a
+    # SystemPromptPart at the front of the history instead. (Verified by
+    # capturing the outgoing HTTP request body — see /tmp/verify_fix.py.)
+    if history:
+        first = history[0]
+        history[0] = ModelRequest(
+            parts=[SystemPromptPart(content=system_prompt), *first.parts]
+        )
+    else:
+        history = [ModelRequest(parts=[SystemPromptPart(content=system_prompt)])]
     # Persist the user message up-front so it survives a mid-stream crash.
     await sqlite.add_chat_message(
         session_id=session_id, role="user", content=payload.message
     )
-    history = history + history_from_pairs([("user", payload.message)])
 
     async def event_stream():
         try:
