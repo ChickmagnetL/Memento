@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 /* ===== Sidebar, input, radius, z-index tokens (theme-independent) ===== */
 :root {
@@ -139,4 +140,45 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-text-muted);
+}
+
+/* ===== Markdown 表格 (chat) — 单一 border 来源；显式清零 typography 的表格 border 避免双线 ===== */
+.prose table {
+  width: 100%;
+  table-layout: auto;
+  border-collapse: collapse;
+  border-style: hidden; /* only inner borders drawn by rows */
+}
+
+/* Neutralize any border typography may have put on cells/header — single source below */
+.prose thead,
+.prose tbody,
+.prose tr,
+.prose th,
+.prose td {
+  border-top-width: 0;
+  border-bottom-width: 0;
+  border-left-width: 0;
+  border-right-width: 0;
+}
+
+/* Single horizontal separator: header row bottom + each body row bottom */
+.prose thead {
+  border-bottom: 1px solid hsl(var(--foreground) / 0.2);
+}
+.prose tbody tr {
+  border-bottom: 1px solid hsl(var(--foreground) / 0.2);
+}
+.prose tbody tr:last-child {
+  border-bottom: 0;
+}
+
+.prose th,
+.prose td {
+  padding: 0.4rem 0.6rem;
+  text-align: left;
+  vertical-align: top;
+}
+.prose thead th {
+  font-weight: 600;
 }

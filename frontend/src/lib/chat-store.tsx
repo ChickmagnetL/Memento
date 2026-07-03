@@ -218,14 +218,20 @@ export function ChatStoreProvider({ children }: { children: ReactNode }) {
             dispatch({ type: "PATCH_LAST_MESSAGE", sessionId: activeIdRef.current ?? bucket, content, replace: true });
           },
           onDone: async (newSessionId) => {
-            // New session created server-side: migrate the __new__ bucket to the real id.
+            // New session created server-side: fetch authoritative messages from backend.
             if (!sessionId) {
-              const prevMsgs = state.messagesBySession["__new__"] ?? [];
-              dispatch({ type: "SET_MESSAGES", sessionId: newSessionId, messages: prevMsgs });
-              dispatch({ type: "SET_MESSAGES", sessionId: "__new__", messages: [] });
-              dispatch({ type: "SET_ACTIVE", activeId: newSessionId });
-              activeIdRef.current = newSessionId;
-              localStorage.setItem(LAST_SESSION_KEY, newSessionId);
+              try {
+                const msgs = await getSessionMessages(newSessionId);
+                dispatch({ type: "SET_MESSAGES", sessionId: newSessionId, messages: msgs.map((m) => ({ role: m.role, content: m.content })) });
+                dispatch({ type: "SET_MESSAGES", sessionId: "__new__", messages: [] });
+                dispatch({ type: "SET_ACTIVE", activeId: newSessionId });
+                activeIdRef.current = newSessionId;
+                localStorage.setItem(LAST_SESSION_KEY, newSessionId);
+              } catch (e) {
+                dispatch({ type: "SET_ERROR", error: e instanceof Error ? e.message : "Operation failed" });
+                dispatch({ type: "STOP_GENERATING" });
+                return;
+              }
             }
             dispatch({ type: "STOP_GENERATING" });
             try {
@@ -247,7 +253,7 @@ export function ChatStoreProvider({ children }: { children: ReactNode }) {
         dispatch({ type: "STOP_GENERATING" });
       }
     },
-    [state.generating, state.activeId, state.messagesBySession]
+    [state.generating, state.activeId]
   );
 
   const rememberCommand = useCallback(

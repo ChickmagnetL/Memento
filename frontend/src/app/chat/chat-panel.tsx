@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { SendHorizontal, MessageSquare } from "lucide-react";
 import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -89,6 +90,7 @@ export function ChatPanel() {
                 {message.role === "assistant" ? (
                   <div className="prose prose-sm max-w-none dark:prose-invert">
                     <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
                       urlTransform={(value) =>
                         value.startsWith("memento://") ? value : defaultUrlTransform(value)
                       }
