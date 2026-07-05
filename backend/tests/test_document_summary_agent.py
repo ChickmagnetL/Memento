@@ -10,6 +10,7 @@ from pydantic_ai.models.test import TestModel
 from pydantic_ai.usage import RunUsage
 
 from core.agent.chat_agent import ChatDeps, build_agent
+from core.rag.embedding import EmbeddingError
 from core.rag.retrieval import SearchResult
 
 
@@ -59,6 +60,16 @@ class FakeEmbedder:
         return [[0.1, 0.2, 0.3] for _ in texts]
 
 
+class RaisingEmbedder:
+    def embed(self, texts: list[str]) -> list[list[float]]:
+        raise EmbeddingError("embedding service unavailable")
+
+
+class EmbeddingFailingSummaryStore(FakeSummaryStore):
+    async def get_or_generate(self, document_id: str) -> tuple[str, str]:
+        raise EmbeddingError("embedding service unavailable")
+
+
 def _result(text: str) -> SearchResult:
     return SearchResult(
         video_id="v1", document_id="d1", chunk_index=0,
@@ -73,6 +84,15 @@ def _deps(summary_store) -> ChatDeps:
         top_k=5,
         summary_store=summary_store,
         embedder=FakeEmbedder(),
+    )
+
+
+def _deps_with_embedder(summary_store, embedder) -> ChatDeps:
+    return ChatDeps(
+        retriever=FakeRetriever([_result("片段内容")]),
+        top_k=5,
+        summary_store=summary_store,
+        embedder=embedder,
     )
 
 
@@ -127,3 +147,35 @@ async def test_summarize_document_handles_missing():
 
     output = await tool_fn(ctx, "doc-missing")
     assert output == "Document doc-missing not found."
+
+
+@pytest.mark.asyncio
+async def test_lookup_documents_reports_embedding_unavailable():
+    agent = build_agent(TestModel())
+    ctx = RunContext(
+        deps=_deps_with_embedder(FakeSummaryStore(), RaisingEmbedder()),
+        model=TestModel(),
+        usage=RunUsage(),
+    )
+    tool_fn = agent._function_toolset.tools["lookup_documents"].function  # type: ignore[attr-defined]
+
+    output = await tool_fn(ctx, "topic")
+
+    assert "Knowledge base retrieval is currently unavailable" in output
+    assert "embedding model is unavailable" in output
+
+
+@pytest.mark.asyncio
+async def test_summarize_document_reports_embedding_unavailable():
+    agent = build_agent(TestModel())
+    ctx = RunContext(
+        deps=_deps_with_embedder(EmbeddingFailingSummaryStore(), FakeEmbedder()),
+        model=TestModel(),
+        usage=RunUsage(),
+    )
+    tool_fn = agent._function_toolset.tools["summarize_document"].function  # type: ignore[attr-defined]
+
+    output = await tool_fn(ctx, "doc-1")
+
+    assert "Knowledge base retrieval is currently unavailable" in output
+    assert "embedding model is unavailable" in output

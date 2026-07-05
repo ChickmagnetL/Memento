@@ -41,6 +41,14 @@ _RETRY_BACKOFF_S = 1.0
 _TITLE_MAX_LEN = 48
 
 
+class _UnavailableEmbeddingClient:
+    def __init__(self, error: EmbeddingError) -> None:
+        self._error = error
+
+    def embed(self, texts: list[str]) -> list[list[float]]:
+        raise EmbeddingError(str(self._error)) from self._error
+
+
 def build_chat_model():
     """Build the chat model; raises HTTP 409 when unconfigured."""
     try:
@@ -109,9 +117,11 @@ async def chat(payload: ChatRequest, request: Request) -> StreamingResponse:
     try:
         embedding_client = build_embedding_client()
     except EmbeddingError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail=str(exc)
-        ) from exc
+        logger.warning(
+            "Embedding client unavailable for chat; retrieval tools will degrade",
+            exc_info=True,
+        )
+        embedding_client = _UnavailableEmbeddingClient(exc)
 
     sqlite = _get_sqlite(request)
     settings = get_settings()

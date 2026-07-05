@@ -16,6 +16,8 @@ from pydantic_ai.messages import (
     UserPromptPart,
 )
 
+from core.rag.embedding import EmbeddingError
+
 SYSTEM_PROMPT = (
     "You are Memento, an assistant for a personal video knowledge base. "
     "Answer in the same language as the user. When a question concerns "
@@ -53,6 +55,10 @@ SYSTEM_PROMPT = (
     "Your response: \"According to [05:30 useState introduction](memento://play?"
     "platform=bilibili&video_id=BV1234567890&t=330), useState allows...\"\n\n"
     "WRONG (do NOT do this): citing as [00:48-01:36], citing without a link, inventing timestamps."
+    "\n\n### Tool Failure Rules\n"
+    "If a tool says knowledge base retrieval is currently unavailable because "
+    "the embedding model is unavailable, tell the user this plainly. Do not "
+    "cite stored video content and do not fabricate timestamp links."
 )
 
 MEMORY_BLOCK_TEMPLATE = (
@@ -65,6 +71,13 @@ MEMORY_BLOCK_TEMPLATE = (
     "not in the video knowledge base.\n"
     "\n{items}\n"
     "</user_memory>\n"
+)
+
+EMBEDDING_UNAVAILABLE_TOOL_MESSAGE = (
+    "Knowledge base retrieval is currently unavailable because the "
+    "embedding model is unavailable. Tell the user that knowledge-base "
+    "retrieval is temporarily unavailable, do not cite stored video content, "
+    "and do not invent timestamps."
 )
 
 
@@ -113,7 +126,10 @@ def build_agent(model, system_prompt: str | None = None) -> Agent:
     @agent.tool
     async def search_knowledge(ctx: RunContext[ChatDeps], query: str) -> str:
         """Search the video knowledge base and return matching excerpts."""
-        results = await ctx.deps.retriever.search(query, top_k=ctx.deps.top_k)
+        try:
+            results = await ctx.deps.retriever.search(query, top_k=ctx.deps.top_k)
+        except EmbeddingError:
+            return EMBEDDING_UNAVAILABLE_TOOL_MESSAGE
         if not results:
             return "No matching knowledge found."
         return "\n\n".join(
@@ -129,10 +145,13 @@ def build_agent(model, system_prompt: str | None = None) -> Agent:
         """List documents whose topic matches the query. Use for summary/overview
         questions to see what documents exist before summarizing. Returns top-K
         lines with [doc_id, title, brief]."""
-        vectors = await asyncio.to_thread(ctx.deps.embedder.embed, [query])
-        briefs = ctx.deps.summary_store.search_briefs(
-            query_vector=vectors[0], top_k=ctx.deps.top_k
-        )
+        try:
+            vectors = await asyncio.to_thread(ctx.deps.embedder.embed, [query])
+            briefs = ctx.deps.summary_store.search_briefs(
+                query_vector=vectors[0], top_k=ctx.deps.top_k
+            )
+        except EmbeddingError:
+            return EMBEDDING_UNAVAILABLE_TOOL_MESSAGE
         if not briefs:
             return "No matching documents found."
         lines = []
@@ -152,6 +171,8 @@ def build_agent(model, system_prompt: str | None = None) -> Agent:
             l2, _l3 = await ctx.deps.summary_store.get_or_generate(doc_id)
         except ValueError:
             return f"Document {doc_id} not found."
+        except EmbeddingError:
+            return EMBEDDING_UNAVAILABLE_TOOL_MESSAGE
         return l2
 
     @agent.tool

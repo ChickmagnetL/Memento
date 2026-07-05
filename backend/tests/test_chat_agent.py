@@ -4,6 +4,7 @@ import pytest
 from pydantic_ai.models.test import TestModel
 
 from core.agent.chat_agent import ChatDeps, build_agent
+from core.rag.embedding import EmbeddingError
 from core.rag.retrieval import SearchResult
 
 
@@ -15,6 +16,11 @@ class FakeRetriever:
     async def search(self, query: str, *, top_k: int) -> list[SearchResult]:
         self.queries.append(query)
         return self.results
+
+
+class RaisingRetriever:
+    async def search(self, query: str, *, top_k: int) -> list[SearchResult]:
+        raise EmbeddingError("embedding service unavailable")
 
 
 class FakeSummaryStore:
@@ -33,7 +39,7 @@ class FakeEmbedder:
         return [[0.1, 0.2, 0.3] for _ in texts]
 
 
-def _deps(retriever: FakeRetriever) -> ChatDeps:
+def _deps(retriever: object) -> ChatDeps:
     return ChatDeps(
         retriever=retriever,
         top_k=5,
@@ -91,6 +97,20 @@ async def test_search_tool_handles_empty_results():
     )
 
     assert isinstance(result.output, str)
+
+
+@pytest.mark.asyncio
+async def test_search_tool_reports_embedding_unavailable():
+    agent = build_agent(TestModel())
+
+    result = await agent.run(
+        "查一下知识库",
+        deps=_deps(RaisingRetriever()),
+    )
+
+    text = str(result.output)
+    assert "Knowledge base retrieval is currently unavailable" in text
+    assert "embedding model is unavailable" in text
 
 
 def test_history_from_pairs_builds_request_response_pairs():

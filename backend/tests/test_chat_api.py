@@ -16,6 +16,7 @@ from pydantic_ai.models.test import TestModel
 from pydantic_ai.run import AgentRunResultEvent
 
 from api import chat as chat_api
+from core.rag.embedding import EmbeddingError
 from main import app
 from storage.sqlite_client import SQLiteClient
 from storage.qdrant_client import QdrantStore
@@ -105,6 +106,26 @@ def test_chat_rejects_blank_message(client: TestClient):
     assert (
         client.post("/api/chat", json={"message": "   "}).status_code == 422
     )
+
+
+def test_chat_continues_when_embedding_client_build_fails(
+    client: TestClient, monkeypatch
+):
+    def raise_embedding_error():
+        raise EmbeddingError("embedding service unavailable")
+
+    monkeypatch.setattr(chat_api, "build_embedding_client", raise_embedding_error)
+
+    response = client.post("/api/chat", json={"message": "你好"})
+
+    assert response.status_code == 200
+    events = _parse_sse(response.text)
+    text = "".join(e["delta"] for e in events if e["type"] == "text")
+    assert "这是回答" in text
+    done_events = [e for e in events if e["type"] == "done"]
+    assert len(done_events) == 1
+    assert done_events[0]["session_id"]
+    assert not any(e["type"] == "error" for e in events)
 
 
 class _FakeEventStream:
