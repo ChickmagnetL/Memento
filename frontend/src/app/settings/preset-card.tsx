@@ -10,20 +10,25 @@ import type { ModelConfig, PresetResponse, ServiceStatus } from "@/lib/api";
 export interface PresetCardProps {
   preset: PresetResponse;
   isActive: boolean;
-  switchDisabled?: boolean;
+  isSelected: boolean;
+  selectionDisabled?: boolean;
   status?: ServiceStatus;
   fields: { key: keyof ModelConfig; label: string }[];
   values: ModelConfig;
   onFieldChange: (key: keyof ModelConfig, value: string) => void;
-  onSave: () => void;
-  isSaving?: boolean;
-  onSwitchActivate: () => void;
+  fieldsDisabled: boolean;
+  actionLabel: "Save" | "Activate";
+  actionDisabled: boolean;
+  onAction: () => void;
+  onSelect: () => void;
   onRename: () => void;
   onDelete: () => void;
   canDelete: boolean;
+  menuDisabled: boolean;
   // api_key mask
   apiKeyVisible: boolean;
   apiKeyPlain: string | null;
+  canRevealApiKey: boolean;
   onToggleApiKey: () => void;
   children?: ReactNode;
   // rename-related props — kept on the card so the rename UI is self-contained
@@ -47,19 +52,24 @@ function statusDotColor(status: string): string {
 export function PresetCard({
   preset,
   isActive,
-  switchDisabled = false,
+  isSelected,
+  selectionDisabled = false,
   status,
   fields,
   values,
   onFieldChange,
-  onSave,
-  isSaving,
-  onSwitchActivate,
+  fieldsDisabled,
+  actionLabel,
+  actionDisabled,
+  onAction,
+  onSelect,
   onRename,
   onDelete,
   canDelete,
+  menuDisabled,
   apiKeyVisible,
   apiKeyPlain,
+  canRevealApiKey,
   onToggleApiKey,
   children,
   isRenaming,
@@ -69,6 +79,7 @@ export function PresetCard({
   onRenameCancel,
 }: PresetCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const isMenuOpen = menuOpen && !menuDisabled;
 
   // Close the ⋯ menu on click-outside. stopPropagation on the trigger keeps
   // the opening click from immediately closing it.
@@ -76,21 +87,23 @@ export function PresetCard({
     if (!menuOpen) {
       return;
     }
+    if (menuDisabled) {
+      const timeoutId = window.setTimeout(() => setMenuOpen(false), 0);
+      return () => window.clearTimeout(timeoutId);
+    }
     function handleClickOutside() {
       setMenuOpen(false);
     }
     window.addEventListener("click", handleClickOutside);
     return () => window.removeEventListener("click", handleClickOutside);
-  }, [menuOpen]);
+  }, [menuDisabled, menuOpen]);
 
   function handleCardClick() {
-    if (isActive || isRenaming || menuOpen || switchDisabled) {
+    if (isSelected || isRenaming || isMenuOpen || selectionDisabled) {
       return;
     }
-    onSwitchActivate();
+    onSelect();
   }
-
-  const summary = `${values.endpoint ?? ""} / ${values.model ?? ""}`;
 
   return (
     <div
@@ -99,12 +112,14 @@ export function PresetCard({
         "rounded-xl border bg-card p-4 text-card-foreground shadow transition-colors",
         isActive
           ? "border-primary ring-1 ring-primary/30"
-          : "border-border",
-        !isActive &&
+          : isSelected
+            ? "border-primary/60"
+            : "border-border",
+        !isSelected &&
           !isRenaming &&
-          !switchDisabled &&
+          !selectionDisabled &&
           "cursor-pointer hover:border-primary/50",
-        !isActive && switchDisabled && "cursor-not-allowed opacity-60",
+        !isSelected && selectionDisabled && "cursor-not-allowed opacity-60",
       )}
     >
       {/* Top row: preset name + active marker + status + ⋯ menu */}
@@ -177,15 +192,19 @@ export function PresetCard({
             <button
               type="button"
               aria-label="Preset actions"
+              disabled={menuDisabled}
               onClick={(event) => {
                 event.stopPropagation();
+                if (menuDisabled) {
+                  return;
+                }
                 setMenuOpen((open) => !open);
               }}
-              className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+              className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
             >
               <MoreHorizontal size={18} />
             </button>
-            {menuOpen ? (
+            {isMenuOpen ? (
               <div
                 onClick={(event) => event.stopPropagation()}
                 className="absolute right-0 top-full z-30 mt-1 w-32 rounded-md border border-border bg-popover p-1 text-sm shadow-md"
@@ -220,10 +239,23 @@ export function PresetCard({
       </div>
 
       {/* Summary row: endpoint / model */}
-      <p className="mt-2 truncate text-xs text-muted-foreground">{summary}</p>
+      <div className="mt-2 grid gap-1 text-xs text-muted-foreground sm:grid-cols-2">
+        <div className="min-w-0">
+          <span className="block uppercase tracking-wide text-muted-foreground/70">
+            Endpoint
+          </span>
+          <span className="block truncate">{values.endpoint || "Not set"}</span>
+        </div>
+        <div className="min-w-0">
+          <span className="block uppercase tracking-wide text-muted-foreground/70">
+            Model
+          </span>
+          <span className="block truncate">{values.model || "Not set"}</span>
+        </div>
+      </div>
 
-      {/* Expanded fields — active preset only */}
-      {isActive ? (
+      {/* Expanded fields — selected preset only */}
+      {isSelected ? (
         <div className="mt-4 space-y-3">
           {fields.map(({ key, label }) => {
             const isApiKey = key === "api_key";
@@ -236,16 +268,17 @@ export function PresetCard({
                 <span className="mb-1 block text-muted-foreground">{label}</span>
                 <div className="relative">
                   <input
+                    type={isApiKey && !apiKeyVisible ? "password" : "text"}
                     className="h-9 w-full rounded-md border border-input bg-background px-3 pr-9 text-sm disabled:cursor-not-allowed disabled:opacity-60"
                     value={fieldValue}
                     onChange={(event) => onFieldChange(key, event.target.value)}
-                    disabled={isSaving}
+                    disabled={fieldsDisabled}
                   />
-                  {isApiKey && values.api_key ? (
+                  {isApiKey && values.api_key && canRevealApiKey ? (
                     <button
                       type="button"
                       onClick={onToggleApiKey}
-                      disabled={isSaving}
+                      disabled={fieldsDisabled}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
                       aria-label={
                         apiKeyVisible ? "Hide API key" : "Show API key"
@@ -262,8 +295,16 @@ export function PresetCard({
           {children}
 
           <div className="flex justify-end">
-            <Button type="button" size="sm" onClick={onSave} disabled={isSaving}>
-              Save
+            <Button
+              type="button"
+              size="sm"
+              onClick={(event) => {
+                event.stopPropagation();
+                onAction();
+              }}
+              disabled={actionDisabled}
+            >
+              {actionLabel}
             </Button>
           </div>
         </div>

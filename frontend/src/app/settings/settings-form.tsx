@@ -66,6 +66,7 @@ interface AsrExtrasCtx {
   protocol: ModelConfig["protocol"];
   onProtocolChange: (value: string) => void;
   endpoint: string | null;
+  disabled: boolean;
 }
 
 export function SettingsForm() {
@@ -126,6 +127,7 @@ export function SettingsForm() {
           className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
           value={ctx.protocol ?? "transcriptions"}
           onChange={(e) => ctx.onProtocolChange(e.target.value)}
+          disabled={ctx.disabled}
         >
           <option value="transcriptions">transcriptions</option>
           <option value="chat_audio">chat_audio</option>
@@ -142,6 +144,7 @@ export function SettingsForm() {
             size="sm"
             variant="outline"
             onClick={() => setShowLocalAsrModal(true)}
+            disabled={ctx.disabled}
           >
             Local ASR Model Settings
           </Button>
@@ -156,7 +159,7 @@ export function SettingsForm() {
             type="button"
             size="sm"
             onClick={handleDeployAsr}
-            disabled={isDeployingAsr}
+            disabled={ctx.disabled || isDeployingAsr}
           >
             Deploy
           </Button>

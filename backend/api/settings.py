@@ -402,6 +402,24 @@ async def get_preset(
         await sqlite.close()
 
 
+@router.get("/models/{model_name}/presets/{preset_id}/api_key")
+async def get_preset_api_key(
+    model_name: Literal["chat", "embedding", "asr"], preset_id: str
+) -> dict:
+    """Return the plaintext api_key for a specific preset."""
+    sqlite = _get_sqlite_client()
+    await sqlite.connect()
+    try:
+        preset = await sqlite.get_preset(preset_id)
+        if not preset or preset["model_name"] != model_name:
+            raise HTTPException(status_code=404, detail="Preset not found")
+
+        config = json.loads(preset["config"]) if isinstance(preset["config"], str) else preset["config"]
+        return {"api_key": config.get("api_key")}
+    finally:
+        await sqlite.close()
+
+
 @router.patch("/models/{model_name}/presets/{preset_id}")
 async def update_preset(
     request: Request,

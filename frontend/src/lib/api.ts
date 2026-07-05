@@ -582,6 +582,19 @@ export interface PresetResponse {
 
 export type PresetModelName = "chat" | "embedding" | "asr";
 
+export async function fetchPresetApiKey(
+  modelName: PresetModelName,
+  presetId: string
+): Promise<string | null> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/settings/models/${modelName}/presets/${presetId}/api_key`,
+    { cache: "no-store" }
+  );
+  await assertOk(res, "Fetch preset api_key");
+  const data = await res.json();
+  return data.api_key;
+}
+
 export interface EmbeddingSwitchPreview {
   preset_id: string;
   current_dimension: number;

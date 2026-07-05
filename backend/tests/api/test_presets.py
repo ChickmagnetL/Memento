@@ -1,13 +1,11 @@
 """Tests for preset CRUD API."""
 
-import json
 import sqlite3
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
-from api.settings import db_path
 from main import app
 
 
@@ -160,6 +158,58 @@ def test_get_preset_wrong_model(client):
 
     # Try to get it as embedding preset
     response = client.get(f"/api/settings/models/embedding/presets/{preset_id}")
+    assert response.status_code == 404
+
+
+def test_get_preset_api_key_returns_plaintext(client):
+    """Test getting a preset's plaintext API key."""
+    create_response = client.post(
+        "/api/settings/models/chat/presets",
+        json={
+            "config": {
+                "provider": "cloud",
+                "model": "test",
+                "api_key": "sk-secret123",
+            }
+        },
+    )
+    preset_id = create_response.json()["id"]
+
+    response = client.get(f"/api/settings/models/chat/presets/{preset_id}/api_key")
+    assert response.status_code == 200
+    assert response.json()["api_key"] == "sk-secret123"
+
+
+def test_get_preset_api_key_returns_none_when_not_set(client):
+    """Test getting a preset API key when the preset has no API key."""
+    create_response = client.post(
+        "/api/settings/models/chat/presets",
+        json={"config": {"provider": "ollama", "model": "test"}},
+    )
+    preset_id = create_response.json()["id"]
+
+    response = client.get(f"/api/settings/models/chat/presets/{preset_id}/api_key")
+    assert response.status_code == 200
+    assert response.json()["api_key"] is None
+
+
+def test_get_preset_api_key_wrong_model_returns_404(client):
+    """Test getting a preset API key with wrong model_name returns 404."""
+    create_response = client.post(
+        "/api/settings/models/chat/presets",
+        json={"config": {"provider": "cloud", "model": "test"}},
+    )
+    preset_id = create_response.json()["id"]
+
+    response = client.get(
+        f"/api/settings/models/embedding/presets/{preset_id}/api_key"
+    )
+    assert response.status_code == 404
+
+
+def test_get_preset_api_key_missing_preset_returns_404(client):
+    """Test getting a missing preset API key returns 404."""
+    response = client.get("/api/settings/models/chat/presets/missing/api_key")
     assert response.status_code == 404
 
 
