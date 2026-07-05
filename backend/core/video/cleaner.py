@@ -14,23 +14,20 @@ from core.models.chat_completion import ChatCompletionError
 
 CLEANING_SYSTEM_PROMPT = (
     "You clean Chinese video transcripts. Rules:\n"
-    "1. Return valid JSON only. Do not wrap it in markdown.\n"
-    "2. When the user provides timestamped transcript lines, return JSON shaped: "
-    '{"lines":["cleaned text for line 0","cleaned text for line 1",...],'
-    '"summary":"...","brief":"..."}. '
-    "The `lines` array MUST be the cleaned text strings, in the SAME order as the "
-    "source lines, and MUST have the SAME number of entries as the source lines. "
-    "Do NOT include timestamps or slot numbers inside the array — output only the "
-    "cleaned text itself for each line.\n"
-    "3. If a source line is pure filler or meaningless (嗯/呃/那个那个那个 etc.), "
-    "return an empty string \"\" for that line's entry — the whole line is removed.\n"
-    "4. Do not merge lines, split lines, reorder them, invent content, or translate. "
-    "Each array entry corresponds to exactly one source line, in order.\n"
-    "5. When the user provides plain transcript text without timestamps, return "
-    'JSON with {"cleaned_text":"...","summary":"...","brief":"..."}.\n'
-    "6. Clean Chinese ASR text by fixing recognition errors, adding punctuation, "
+    "1. Return valid JSON only; no markdown fence.\n"
+    "2. Output only `cleaned_text`, `summary`, and `brief`.\n"
+    "3. When the input contains timestamped subtitle lines, return `cleaned_text` "
+    "as multi-line [timestamp] cleaned text. All timestamps must be copied from "
+    "the source only; never invent or modify timestamps.\n"
+    "4. only adjacent subtitle lines may be merged. Merge at most two source "
+    "subtitle lines into one output line; never three or more. The merged output "
+    "uses the earlier timestamp. do not move text far from the original timestamp.\n"
+    "5. filler or meaningless lines may be deleted (嗯/呃/那个那个那个 etc.).\n"
+    "6. When the input is plain transcript text without timestamps, return plain "
+    'cleaned text in `cleaned_text`.\n'
+    "7. Clean Chinese ASR text by fixing recognition errors, adding punctuation, "
     "and removing filler words (嗯/啊/呃/额/就是说/那么 etc.) and repeated phrases.\n"
-    "7. `summary` must be a 150-300 character paragraph summarizing the video. "
+    "8. `summary` must be a 150-300 character paragraph summarizing the video. "
     "`brief` must be one sentence of 60 characters or fewer describing the topic."
 )
 
@@ -167,64 +164,65 @@ def _extract_text_field(
 def _assert_cleaned_payload(
     raw_output: str,
     *,
+    source_body: str | None = None,
     log_context: dict[str, object] | None = None,
 ) -> dict:
-    """校验模型返回可解析且含 summary/brief 与（lines 或 cleaned_text）。
-
-    这是两条路径共享的重试前预检：只校验「能解析 + 有 summary + 有 brief +
-    有正文 key」。lines 与 timestamps 的精确配对交给 _validate_compact_lines。
-    """
+    """Validate payload shape enough to decide whether to retry the model call."""
     payload = _load_cleaned_payload(raw_output, log_context=log_context)
     _extract_text_field(payload, "summary", log_context=log_context)
     _extract_text_field(payload, "brief", log_context=log_context)
-    if "lines" not in payload and "cleaned_text" not in payload:
-        raise CleaningError("Missing `lines` or `cleaned_text` in cleaned output")
+    if source_body is not None:
+        _validate_timestamped_payload(source_body, payload, log_context=log_context)
+        return payload
+    _validate_plain_payload(payload, log_context=log_context)
     return payload
 
 
-def _validate_compact_lines(
+def _validate_timestamped_payload(
     source_body: str,
     payload: dict,
     *,
     log_context: dict[str, object] | None = None,
-) -> list[tuple[str, str]]:
-    """按位置把「清洗后文字数组」与原始时间戳配对。
-
-    payload["lines"] 是纯文字数组（模型只回文字）。与 source_body 解析出的
-    时间戳按位置一一对应：空串丢行，非空保留。行数差异等模型行为问题不校验
-    （交给 prompt）；此处只在缺 timestamps / 出现非约定 key / lines 非列表时报错。
-    """
+) -> str:
     source_lines = _timestamped_lines(source_body)
     if not source_lines:
         raise CleaningError("Source body does not contain timestamps")
 
-    if set(payload) != {"lines", "summary", "brief"}:
+    if set(payload) != {"cleaned_text", "summary", "brief"}:
         _log_clean_failure(
-            "clean_compact_shape_failure",
+            "clean_timestamped_shape_failure",
             log_context=log_context,
             top_level_keys=_sorted_object_keys(payload),
         )
         raise CleaningError(
-            "Cleaned output must contain only `lines`, `summary`, and `brief`"
+            "Cleaned output must contain only `cleaned_text`, `summary`, and `brief`"
         )
 
-    raw_lines = payload.get("lines")
-    if not isinstance(raw_lines, list):
+    cleaned_text = _extract_text_field(
+        payload, "cleaned_text", log_context=log_context
+    )
+    output_timestamps = TIMESTAMP_PATTERN.findall(cleaned_text)
+    if not output_timestamps:
         _log_clean_failure(
-            "clean_compact_shape_failure",
+            "clean_timestamped_missing_lines",
             log_context=log_context,
-            lines_type=type(raw_lines).__name__,
         )
-        raise CleaningError("Cleaned output `lines` must be a list")
+        raise CleaningError("Cleaned output must contain timestamped lines")
 
-    cleaned_lines: list[tuple[str, str]] = []
-    for source_line, cleaned_text in zip(source_lines, raw_lines):
-        if not isinstance(cleaned_text, str):
-            cleaned_text = ""
-        stripped = cleaned_text.strip()
-        if stripped:
-            cleaned_lines.append((source_line[0], stripped))
-    return cleaned_lines
+    source_timestamps = {timestamp for timestamp, _ in source_lines}
+    unknown_timestamps = [
+        timestamp for timestamp in output_timestamps if timestamp not in source_timestamps
+    ]
+    if unknown_timestamps:
+        _log_clean_failure(
+            "clean_timestamped_source_mismatch",
+            log_context=log_context,
+            unknown_timestamps=unknown_timestamps,
+        )
+        raise CleaningError(
+            "Cleaned output timestamps must come from source timestamps"
+        )
+    return cleaned_text
 
 
 def _validate_plain_payload(
@@ -251,10 +249,6 @@ def _validate_plain_payload(
         )
         raise CleaningError("Cleaned output `cleaned_text` must be a string")
     return cleaned_text.strip()
-
-
-def _format_timestamped_lines(lines: list[tuple[str, str]]) -> str:
-    return "\n".join(f"[{timestamp}] {text}" for timestamp, text in lines)
 
 
 class TranscriptCleaner:
@@ -293,7 +287,12 @@ class TranscriptCleaner:
             {"role": "user", "content": body},
         ]
 
-        raw_output = self._call_with_retry(messages, request_log_context)
+        retry_source_body = body if source_lines else None
+        raw_output = self._call_with_retry(
+            messages,
+            request_log_context,
+            source_body=retry_source_body,
+        )
 
         response_log_context = _merge_log_context(
             request_log_context,
@@ -309,8 +308,8 @@ class TranscriptCleaner:
         )
 
         if source_lines:
-            cleaned_body = _format_timestamped_lines(
-                _validate_compact_lines(body, payload, log_context=response_log_context)
+            cleaned_body = _validate_timestamped_payload(
+                body, payload, log_context=response_log_context
             )
         else:
             cleaned_body = _validate_plain_payload(
@@ -325,14 +324,19 @@ class TranscriptCleaner:
         return cleaned_markdown, l2_summary, l3_brief
 
     def _call_with_retry(
-        self, messages: list[dict], log_context: dict[str, object]
+        self,
+        messages: list[dict],
+        log_context: dict[str, object],
+        *,
+        source_body: str | None = None,
     ) -> str:
-        """Call the model once; on a parse/shape error retry once, then give up.
+        """Call the model once; on a validation error retry once, then give up.
 
         Provider errors (ChatCompletionError) propagate immediately — those are
-        not retryable here. Only parse/shape errors (non-JSON, missing keys)
-        trigger the single retry, since big transcripts occasionally come back
-        with a drifted format that a second call fixes.
+        not retryable here. Parse/shape errors (non-JSON, missing keys) and
+        timestamp validation failures trigger the single retry, since big
+        transcripts occasionally come back with a drifted format that a second
+        call fixes.
         """
         last_raw = ""
         for attempt in (1, 2):
@@ -342,7 +346,11 @@ class TranscriptCleaner:
                 _log_clean_failure("clean_provider_failure", log_context=log_context)
                 raise
             try:
-                _assert_cleaned_payload(last_raw, log_context=log_context)
+                _assert_cleaned_payload(
+                    last_raw,
+                    source_body=source_body,
+                    log_context=log_context,
+                )
                 return last_raw
             except CleaningError:
                 if attempt == 2:

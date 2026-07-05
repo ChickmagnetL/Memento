@@ -23,7 +23,7 @@ DRAFT = """# 示例视频
 
 CLEAN_REPLY = json.dumps(
     {
-        "lines": ["清洗后的第一行内容。"],
+        "cleaned_text": "[00:01] 清洗后的第一行内容。",
         "summary": "这是关于示例视频的一段描述。",
         "brief": "示例视频的主题。",
     },

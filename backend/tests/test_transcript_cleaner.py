@@ -1,10 +1,10 @@
-"""Tests for AI transcript cleaning (compact text-array format)."""
+"""Tests for AI transcript cleaning."""
 
 import json
 
 import pytest
 
-from core.video.cleaner import CleaningError, TranscriptCleaner
+from core.video.cleaner import CLEANING_SYSTEM_PROMPT, CleaningError, TranscriptCleaner
 
 RAW_DRAFT = """# 示例视频
 
@@ -23,8 +23,8 @@ SUMMARY_TEXT = (
     "涉及的生物学背景包括黄花蒿的分布与药用历史。"
 )
 BRIEF_TEXT = "介绍青蒿素从黄花蒿中提取的过程。"
-# 新格式：模型只回「清洗后文字」，按原文顺序排。
-CLEANED_TEXTS = ["青蒿素其实", "它是从黄花蒿里面提取出来的。"]
+CLEANED_TEXT = "[00:01] 青蒿素其实\n[00:05] 它是从黄花蒿里面提取出来的。"
+MERGED_CLEANED_TEXT = "[00:01] 青蒿素其实，它是从黄花蒿里面提取出来的。"
 
 
 class FakeChatClient:
@@ -38,15 +38,14 @@ class FakeChatClient:
 
 
 def build_timestamped_reply(
-    texts: list[str],
+    cleaned_text: str,
     *,
     summary: str = SUMMARY_TEXT,
     brief: str = BRIEF_TEXT,
     **extra,
 ) -> str:
-    """构造新格式回复：lines 是纯文字数组。"""
     payload = {
-        "lines": list(texts),
+        "cleaned_text": cleaned_text,
         "summary": summary,
         "brief": brief,
         **extra,
@@ -75,20 +74,38 @@ def wrap_in_fence(reply: str, language: str = "json") -> str:
     return f"{opening_fence}\n{reply}\n```"
 
 
-def test_clean_sends_transcript_body_and_wraps_result():
-    chat = FakeChatClient(build_timestamped_reply(CLEANED_TEXTS))
+def test_timestamped_clean_prompt_describes_relaxed_timestamp_rules():
+    assert "Return valid JSON only" in CLEANING_SYSTEM_PROMPT
+    assert "no markdown fence" in CLEANING_SYSTEM_PROMPT
+    assert "cleaned_text" in CLEANING_SYSTEM_PROMPT
+    assert "summary" in CLEANING_SYSTEM_PROMPT
+    assert "brief" in CLEANING_SYSTEM_PROMPT
+    assert "multi-line [timestamp] cleaned text" in CLEANING_SYSTEM_PROMPT
+    assert "timestamps must be copied from the source only" in CLEANING_SYSTEM_PROMPT
+    assert "only adjacent subtitle lines may be merged" in CLEANING_SYSTEM_PROMPT
+    assert "at most two source subtitle lines" in CLEANING_SYSTEM_PROMPT
+    assert "never three or more" in CLEANING_SYSTEM_PROMPT
+    assert "merged output uses the earlier timestamp" in CLEANING_SYSTEM_PROMPT
+    assert "do not move text far from the original timestamp" in CLEANING_SYSTEM_PROMPT
+    assert "filler or meaningless lines may be deleted" in CLEANING_SYSTEM_PROMPT
+
+
+def test_clean_sends_timestamped_body_and_accepts_fewer_lines():
+    chat = FakeChatClient(build_timestamped_reply(MERGED_CLEANED_TEXT))
     cleaner = TranscriptCleaner(chat_client=chat)
 
     cleaned = cleaner.clean(RAW_DRAFT)
 
     sent = chat.messages[0]
     assert sent[0]["role"] == "system"
-    assert "[00:01]" in sent[1]["content"]
-    assert "嗯就是说这个青蒿素呢它其实" in sent[1]["content"]
+    assert sent[1]["content"] == (
+        "[00:01] 嗯就是说这个青蒿素呢它其实\n"
+        "[00:05] 它是从黄花蒿里面提取出来的"
+    )
     assert cleaned.startswith("# 示例视频")
     assert "- Video ID: v1" in cleaned
-    assert "[00:01] 青蒿素其实" in cleaned
-    assert "[00:05] 它是从黄花蒿里面提取出来的。" in cleaned
+    assert "[00:01] 青蒿素其实，它是从黄花蒿里面提取出来的。" in cleaned
+    assert "[00:05]" not in cleaned
     assert "嗯就是说" not in cleaned
 
 
@@ -143,7 +160,7 @@ def test_clean_accepts_plain_payload_wrapped_in_bare_code_fence():
 
 
 def test_clean_with_summary_produces_summary_and_brief():
-    chat = FakeChatClient(build_timestamped_reply(CLEANED_TEXTS))
+    chat = FakeChatClient(build_timestamped_reply(CLEANED_TEXT))
     cleaner = TranscriptCleaner(chat_client=chat)
 
     cleaned, l2_summary, l3_brief = cleaner.clean_with_summary(RAW_DRAFT)
@@ -159,7 +176,7 @@ def test_clean_with_summary_produces_summary_and_brief():
 
 
 def test_clean_with_summary_accepts_json_code_fence():
-    chat = FakeChatClient(wrap_in_fence(build_timestamped_reply(CLEANED_TEXTS)))
+    chat = FakeChatClient(wrap_in_fence(build_timestamped_reply(CLEANED_TEXT)))
     cleaner = TranscriptCleaner(chat_client=chat)
 
     cleaned, l2_summary, l3_brief = cleaner.clean_with_summary(RAW_DRAFT)
@@ -171,7 +188,7 @@ def test_clean_with_summary_accepts_json_code_fence():
 
 
 def test_clean_drops_timestamp_whose_text_is_empty():
-    """空串 = 整句删除，对应时间戳同步消失。"""
+    """无意义行可删除，对应时间戳同步消失。"""
     draft = """# 示例视频
 
 ## Transcript
@@ -182,7 +199,7 @@ def test_clean_drops_timestamp_whose_text_is_empty():
 """
     chat = FakeChatClient(
         build_timestamped_reply(
-            ["哈喽大家好。", "", "今天我们讲青蒿素。"],
+            "[00:01] 哈喽大家好。\n[00:08] 今天我们讲青蒿素。",
         )
     )
     cleaner = TranscriptCleaner(chat_client=chat)
@@ -194,16 +211,68 @@ def test_clean_drops_timestamp_whose_text_is_empty():
     assert "[00:08] 今天我们讲青蒿素。" in cleaned
 
 
+def test_clean_accepts_timestamped_reply_with_fewer_lines():
+    draft = """# 示例视频
+
+## Transcript
+
+[00:01] 第一句很短
+[00:02] 第二句也很短
+[00:05] 第三句保留
+"""
+    chat = FakeChatClient(
+        build_timestamped_reply("[00:01] 第一句很短，第二句也很短。\n[00:05] 第三句保留。")
+    )
+    cleaner = TranscriptCleaner(chat_client=chat)
+
+    cleaned, _, _ = cleaner.clean_with_summary(draft)
+
+    assert "[00:01] 第一句很短，第二句也很短。" in cleaned
+    assert "[00:02]" not in cleaned
+    assert "[00:05] 第三句保留。" in cleaned
+
+
+def test_clean_rejects_timestamped_reply_with_unknown_timestamp():
+    chat = FakeChatClient(
+        build_timestamped_reply("[00:01] 青蒿素其实。\n[00:09] 生成的时间戳。")
+    )
+    cleaner = TranscriptCleaner(chat_client=chat)
+
+    with pytest.raises(CleaningError, match="source timestamps"):
+        cleaner.clean_with_summary(RAW_DRAFT)
+
+
+def test_clean_rejects_timestamped_reply_without_timestamped_lines():
+    chat = FakeChatClient(build_timestamped_reply("青蒿素其实。"))
+    cleaner = TranscriptCleaner(chat_client=chat)
+
+    with pytest.raises(CleaningError, match="timestamped lines"):
+        cleaner.clean_with_summary(RAW_DRAFT)
+
+
 def test_clean_with_summary_rejects_missing_summary_field():
     chat = FakeChatClient(
         json.dumps(
-            {"lines": CLEANED_TEXTS, "brief": BRIEF_TEXT},
+            {"cleaned_text": CLEANED_TEXT, "brief": BRIEF_TEXT},
             ensure_ascii=False,
         )
     )
     cleaner = TranscriptCleaner(chat_client=chat)
 
     with pytest.raises(CleaningError):
+        cleaner.clean_with_summary(RAW_DRAFT)
+
+
+def test_clean_with_summary_rejects_missing_brief_field():
+    chat = FakeChatClient(
+        json.dumps(
+            {"cleaned_text": CLEANED_TEXT, "summary": SUMMARY_TEXT},
+            ensure_ascii=False,
+        )
+    )
+    cleaner = TranscriptCleaner(chat_client=chat)
+
+    with pytest.raises(CleaningError, match="Missing `brief`"):
         cleaner.clean_with_summary(RAW_DRAFT)
 
 
@@ -218,7 +287,7 @@ def test_clean_with_summary_rejects_non_json_output():
 def test_clean_rejects_output_with_extra_top_level_content():
     """顶部多了非约定 key → 报错（代码靠 key 区分三件套）。"""
     chat = FakeChatClient(
-        build_timestamped_reply(CLEANED_TEXTS, notes="## 青蒿素的来源")
+        build_timestamped_reply(CLEANED_TEXT, notes="## 青蒿素的来源")
     )
     cleaner = TranscriptCleaner(chat_client=chat)
 
@@ -243,7 +312,7 @@ def test_clean_with_summary_retries_on_non_json_then_fails():
 
 def test_clean_with_summary_retries_then_succeeds():
     """第一次非 JSON，第二次正常 → 成功。"""
-    second = build_timestamped_reply(CLEANED_TEXTS)
+    second = build_timestamped_reply(CLEANED_TEXT)
 
     class RetryClient:
         def __init__(self):
@@ -256,6 +325,53 @@ def test_clean_with_summary_retries_then_succeeds():
     cleaner = TranscriptCleaner(chat_client=RetryClient())
     cleaned, _, _ = cleaner.clean_with_summary(RAW_DRAFT)
     assert "[00:01] 青蒿素其实" in cleaned
+
+
+def test_clean_with_summary_retries_on_timestamp_validation_then_succeeds():
+    valid_reply = build_timestamped_reply(CLEANED_TEXT)
+
+    class RetryClient:
+        def __init__(self):
+            self.calls = 0
+
+        def complete(self, messages):
+            self.calls += 1
+            if self.calls == 1:
+                return build_timestamped_reply("[00:09] 青蒿素其实。")
+            return valid_reply
+
+    chat = RetryClient()
+    cleaner = TranscriptCleaner(chat_client=chat)
+
+    cleaned, _, _ = cleaner.clean_with_summary(RAW_DRAFT)
+
+    assert chat.calls == 2
+    assert "[00:01] 青蒿素其实" in cleaned
+    assert "[00:05] 它是从黄花蒿里面提取出来的。" in cleaned
+
+
+def test_plain_clean_retries_on_invalid_shape_then_succeeds():
+    valid_reply = build_plain_reply("Cleaned text.")
+    invalid_reply = json.dumps(
+        {"lines": ["old shape"], "summary": SUMMARY_TEXT, "brief": BRIEF_TEXT},
+        ensure_ascii=False,
+    )
+
+    class RetryClient:
+        def __init__(self):
+            self.calls = 0
+
+        def complete(self, messages):
+            self.calls += 1
+            return invalid_reply if self.calls == 1 else valid_reply
+
+    chat = RetryClient()
+    cleaner = TranscriptCleaner(chat_client=chat)
+
+    cleaned, _, _ = cleaner.clean_with_summary("Plain transcript without timestamps.")
+
+    assert chat.calls == 2
+    assert cleaned == "Cleaned text.\n"
 
 
 def test_clean_with_summary_logs_parse_failure_clues(caplog):
