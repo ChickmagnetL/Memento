@@ -3,6 +3,7 @@
 from pathlib import Path
 
 import pytest
+from qdrant_client.models import Distance
 
 from storage.qdrant_client import QdrantStore
 
@@ -26,6 +27,12 @@ def _payload(document_id: str, index: int) -> dict:
         "text": f"chunk {index}",
         "start_timestamp": "00:01",
     }
+
+
+def _collection_distance(store: QdrantStore, name: str | None = None) -> Distance:
+    collection_name = store.collection_name if name is None else name
+    info = store._require_client().get_collection(collection_name)
+    return info.config.params.vectors.distance
 
 
 def test_upsert_and_count(store: QdrantStore):
@@ -135,3 +142,66 @@ def test_summary_collection_upsert_and_search(store: QdrantStore):
     match = next(r for r in results if r["payload"]["document_id"] == "d1")
     assert match["payload"]["title"] == "React Hooks"
     assert match["payload"]["brief"] == "useState introduction"
+
+
+def test_collection_vector_size_returns_existing_dimension(store: QdrantStore):
+    assert store.collection_vector_size("documents") == 4
+
+
+def test_collection_vector_size_defaults_to_store_collection(store: QdrantStore):
+    assert store.collection_vector_size() == 4
+
+
+def test_collection_vector_size_returns_none_for_missing_collection(
+    store: QdrantStore,
+):
+    assert store.collection_vector_size("missing") is None
+
+
+def test_recreate_collection_replaces_dimension_and_clears_points(
+    store: QdrantStore,
+):
+    store.upsert_points(
+        ids=["11111111-1111-1111-1111-111111111111"],
+        vectors=[[0.1, 0.2, 0.3, 0.4]],
+        payloads=[_payload("d1", 0)],
+    )
+    assert store.count_for_document("d1") == 1
+
+    store.recreate_collection("documents", vector_size=8)
+
+    assert store.collection_vector_size("documents") == 8
+    assert store.scroll_all_points() == []
+
+
+def test_recreate_collection_without_name_replaces_default_collection_with_cosine_distance(
+    store: QdrantStore,
+):
+    store.upsert_points(
+        ids=["11111111-1111-1111-1111-111111111111"],
+        vectors=[[0.1, 0.2, 0.3, 0.4]],
+        payloads=[_payload("d1", 0)],
+    )
+
+    store.recreate_collection(vector_size=8)
+
+    assert store.collection_vector_size() == 8
+    assert store.scroll_all_points() == []
+    assert _collection_distance(store) == Distance.COSINE
+
+
+def test_recreate_summary_collection_replaces_dimension(store: QdrantStore):
+    store.ensure_summary_collection(vector_size=4)
+    assert store.collection_vector_size(QdrantStore.SUMMARY_COLLECTION) == 4
+
+    store.recreate_summary_collection(vector_size=8)
+
+    assert store.collection_vector_size(QdrantStore.SUMMARY_COLLECTION) == 8
+
+
+def test_recreate_summary_collection_uses_cosine_distance(store: QdrantStore):
+    store.ensure_summary_collection(vector_size=4)
+
+    store.recreate_summary_collection(vector_size=8)
+
+    assert _collection_distance(store, QdrantStore.SUMMARY_COLLECTION) == Distance.COSINE

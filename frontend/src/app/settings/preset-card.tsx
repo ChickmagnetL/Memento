@@ -10,6 +10,7 @@ import type { ModelConfig, PresetResponse, ServiceStatus } from "@/lib/api";
 export interface PresetCardProps {
   preset: PresetResponse;
   isActive: boolean;
+  switchDisabled?: boolean;
   status?: ServiceStatus;
   fields: { key: keyof ModelConfig; label: string }[];
   values: ModelConfig;
@@ -46,6 +47,7 @@ function statusDotColor(status: string): string {
 export function PresetCard({
   preset,
   isActive,
+  switchDisabled = false,
   status,
   fields,
   values,
@@ -82,7 +84,7 @@ export function PresetCard({
   }, [menuOpen]);
 
   function handleCardClick() {
-    if (isActive || isRenaming || menuOpen) {
+    if (isActive || isRenaming || menuOpen || switchDisabled) {
       return;
     }
     onSwitchActivate();
@@ -98,7 +100,11 @@ export function PresetCard({
         isActive
           ? "border-primary ring-1 ring-primary/30"
           : "border-border",
-        !isActive && !isRenaming && "cursor-pointer hover:border-primary/50",
+        !isActive &&
+          !isRenaming &&
+          !switchDisabled &&
+          "cursor-pointer hover:border-primary/50",
+        !isActive && switchDisabled && "cursor-not-allowed opacity-60",
       )}
     >
       {/* Top row: preset name + active marker + status + ⋯ menu */}
@@ -230,15 +236,17 @@ export function PresetCard({
                 <span className="mb-1 block text-muted-foreground">{label}</span>
                 <div className="relative">
                   <input
-                    className="h-9 w-full rounded-md border border-input bg-background px-3 pr-9 text-sm"
+                    className="h-9 w-full rounded-md border border-input bg-background px-3 pr-9 text-sm disabled:cursor-not-allowed disabled:opacity-60"
                     value={fieldValue}
                     onChange={(event) => onFieldChange(key, event.target.value)}
+                    disabled={isSaving}
                   />
                   {isApiKey && values.api_key ? (
                     <button
                       type="button"
                       onClick={onToggleApiKey}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      disabled={isSaving}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
                       aria-label={
                         apiKeyVisible ? "Hide API key" : "Show API key"
                       }

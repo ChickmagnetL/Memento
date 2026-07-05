@@ -582,6 +582,50 @@ export interface PresetResponse {
 
 export type PresetModelName = "chat" | "embedding" | "asr";
 
+export interface EmbeddingSwitchPreview {
+  preset_id: string;
+  current_dimension: number;
+  new_dimension: number;
+  same_dimension: boolean;
+  indexed_document_count: number;
+}
+
+export interface EmbeddingReindexFailedDocument {
+  document_id: string;
+  title: string | null;
+  error: string;
+}
+
+export interface EmbeddingReindexJob {
+  id: string;
+  preset_id: string;
+  status: string;
+  stage: string;
+  total_documents: number;
+  processed_documents: number;
+  failed_documents: EmbeddingReindexFailedDocument[];
+  error: string | null;
+  started_at: string;
+  finished_at: string | null;
+}
+
+export interface EmbeddingSwitchResult {
+  preset_id: string;
+  current_dimension: number;
+  new_dimension: number;
+  same_dimension: boolean;
+  indexed_document_count: number;
+  status: string;
+  job_id: string | null;
+  stage: string;
+  total_documents?: number;
+  processed_documents?: number;
+  failed_documents?: EmbeddingReindexFailedDocument[];
+  error?: string | null;
+  started_at?: string;
+  finished_at?: string | null;
+}
+
 export async function listPresets(
   modelName: PresetModelName
 ): Promise<PresetResponse[]> {
@@ -679,6 +723,69 @@ export async function updatePreset(
     }
   );
   await assertOk(res, "Update preset");
+  return res.json();
+}
+
+export async function previewEmbeddingPresetSwitch(
+  presetId: string
+): Promise<EmbeddingSwitchPreview> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/settings/models/embedding/presets/${presetId}/switch-preview`,
+    { method: "POST" }
+  );
+  await assertOk(res, "Preview embedding preset switch");
+  return res.json();
+}
+
+export async function previewEmbeddingPresetConfigSwitch(
+  presetId: string,
+  config: PresetConfig
+): Promise<EmbeddingSwitchPreview> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/settings/models/embedding/presets/${presetId}/switch-preview-config`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ config }),
+    }
+  );
+  await assertOk(res, "Preview embedding preset config switch");
+  return res.json();
+}
+
+export async function switchEmbeddingPreset(
+  presetId: string,
+  confirmReindex = false
+): Promise<EmbeddingSwitchResult> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/settings/models/embedding/presets/${presetId}/switch`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ confirm_reindex: confirmReindex }),
+    }
+  );
+  await assertOk(res, "Switch embedding preset");
+  return res.json();
+}
+
+export async function getEmbeddingReindexJob(
+  jobId: string
+): Promise<EmbeddingReindexJob> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/settings/embedding-reindex-jobs/${jobId}`,
+    { cache: "no-store" }
+  );
+  await assertOk(res, "Get embedding reindex job");
+  return res.json();
+}
+
+export async function getActiveEmbeddingReindexJob(): Promise<EmbeddingReindexJob | null> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/settings/embedding-reindex-jobs/active`,
+    { cache: "no-store" }
+  );
+  await assertOk(res, "Get active embedding reindex job");
   return res.json();
 }
 

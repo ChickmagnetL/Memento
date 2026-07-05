@@ -5,12 +5,16 @@ import json
 import os
 import sqlite3
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from api import settings as settings_api
 from config.settings import ModelConfig, Settings
+from core.rag.embedding import EmbeddingError
+import main as main_module
 from main import app, settings as app_settings
 
 
@@ -117,8 +121,175 @@ models:
 
     monkeypatch.setattr(settings_api, "db_path", lambda: db_path)
     app.state.chat_sessions = {}
+    app.state.embedding_reindex_jobs = None
     with TestClient(app) as test_client:
         yield test_client, db_path
+
+
+def _create_preset(
+    db_path: Path,
+    *,
+    preset_id: str,
+    model_name: str,
+    name: str,
+    config: dict,
+) -> None:
+    conn = sqlite3.connect(db_path)
+    try:
+        conn.execute(
+            "INSERT INTO model_presets (id, model_name, name, config) VALUES (?, ?, ?, ?)",
+            (preset_id, model_name, name, json.dumps(config)),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def _active_preset_id(db_path: Path, model_name: str) -> str | None:
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    try:
+        row = conn.execute(
+            "SELECT preset_id FROM active_preset WHERE model_name = ?",
+            (model_name,),
+        ).fetchone()
+        return row["preset_id"] if row else None
+    finally:
+        conn.close()
+
+
+def _update_preset_config(db_path: Path, *, preset_id: str, config: dict) -> None:
+    conn = sqlite3.connect(db_path)
+    try:
+        conn.execute(
+            "UPDATE model_presets SET config = ? WHERE id = ?",
+            (json.dumps(config), preset_id),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def _preset_config(db_path: Path, preset_id: str) -> dict:
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    try:
+        row = conn.execute(
+            "SELECT config FROM model_presets WHERE id = ?",
+            (preset_id,),
+        ).fetchone()
+        return json.loads(row["config"])
+    finally:
+        conn.close()
+
+
+class FakeEmbeddingClient:
+    pass
+
+
+class PreviewManager:
+    def __init__(self, preview: dict, error: Exception | None = None):
+        self.preview = preview
+        self.error = error
+        self.calls: list[tuple[str, object]] = []
+
+    async def preview_switch(self, *, preset_id: str, embedding_client):
+        self.calls.append((preset_id, embedding_client))
+        if self.error is not None:
+            raise self.error
+        return dict(self.preview)
+
+
+class SwitchManager(PreviewManager):
+    def __init__(self, preview: dict):
+        super().__init__(preview)
+        self.start_job_calls: list[dict] = []
+
+    def start_job(
+        self,
+        *,
+        preset_id: str,
+        embedding_client_factory,
+        activate_preset,
+        runner=None,
+    ):
+        self.start_job_calls.append(
+            {
+                "preset_id": preset_id,
+                "embedding_client_factory": embedding_client_factory,
+                "activate_preset": activate_preset,
+                "runner": runner,
+            }
+        )
+        return {
+            "job": {
+                "id": "job-123",
+                "preset_id": preset_id,
+                "status": "pending",
+                "stage": "queued",
+                "total_documents": 0,
+                "processed_documents": 0,
+                "failed_documents": [],
+                "error": None,
+                "started_at": "2026-07-04T00:00:00+00:00",
+                "finished_at": None,
+            },
+            "task": object(),
+        }
+
+
+class MissingJobManager:
+    def get_job(self, job_id: str):
+        return None
+
+
+class JobLookupManager:
+    def __init__(self, job: dict):
+        self.job = job
+        self.seen_job_ids: list[str] = []
+
+    def get_job(self, job_id: str):
+        self.seen_job_ids.append(job_id)
+        if job_id != self.job["id"]:
+            return None
+        return dict(self.job)
+
+
+class RunningJobManager(PreviewManager):
+    def active_job(self):
+        return {
+            "id": "job-running",
+            "preset_id": "embedding_running",
+            "status": "running",
+            "stage": "reindexing",
+        }
+
+    def start_job(
+        self,
+        *,
+        preset_id: str,
+        embedding_client_factory,
+        activate_preset,
+        runner=None,
+    ):
+        raise RuntimeError("Embedding index rebuild is already running")
+
+
+class DelayedRunningJobManager(PreviewManager):
+    def __init__(self, preview: dict):
+        super().__init__(preview)
+        self.active_job_checks = 0
+
+    def active_job(self):
+        self.active_job_checks += 1
+        if self.active_job_checks == 1:
+            return None
+        return {
+            "id": "job-running",
+            "preset_id": "embedding_running",
+            "status": "running",
+            "stage": "reindexing",
+        }
 
 
 def test_get_settings_masks_api_keys(client):
@@ -376,6 +547,911 @@ def test_get_api_key_returns_none_when_not_set(client):
     response = test_client.get("/api/settings/models/embedding/api_key")
     assert response.status_code == 200
     assert response.json()["api_key"] is None
+
+
+def test_embedding_switch_preview_same_dimension_success(client, monkeypatch):
+    test_client, db_path = client
+    _create_preset(
+        db_path,
+        preset_id="embedding_new",
+        model_name="embedding",
+        name="New Embedding",
+        config={
+            "provider": "ollama",
+            "endpoint": "http://embedding.test:11434",
+            "model": "embed-v2",
+        },
+    )
+    manager = PreviewManager(
+        preview={
+            "preset_id": "embedding_new",
+            "current_dimension": 768,
+            "new_dimension": 768,
+            "same_dimension": True,
+            "indexed_document_count": 3,
+        }
+    )
+    app.state.embedding_reindex_jobs = manager
+    fake_client = FakeEmbeddingClient()
+    monkeypatch.setattr(
+        settings_api,
+        "_build_embedding_client_for_config",
+        lambda config: fake_client,
+    )
+
+    response = test_client.post(
+        "/api/settings/models/embedding/presets/embedding_new/switch-preview"
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "preset_id": "embedding_new",
+        "current_dimension": 768,
+        "new_dimension": 768,
+        "same_dimension": True,
+        "indexed_document_count": 3,
+    }
+    assert manager.calls == [("embedding_new", fake_client)]
+
+
+def test_embedding_switch_preview_partial_preset_uses_layered_embedding_config(
+    client, monkeypatch
+):
+    test_client, db_path = client
+    default_yaml_path = db_path.parent.parent / "backend" / "config" / "default.yaml"
+    default_yaml_path.write_text(
+        f"""
+storage:
+  data_dir: "{db_path.parent}"
+models:
+  asr:
+    provider: local
+    protocol: transcriptions
+  chat:
+    provider: cloud
+  embedding:
+    provider: ollama
+    endpoint: "http://yaml-embedding.test:11434"
+""",
+        encoding="utf-8",
+    )
+    _update_preset_config(
+        db_path,
+        preset_id="embedding_default",
+        config={
+            "provider": "openai",
+            "endpoint": "https://active-only.test/v1",
+            "api_key": "sk-active",
+            "model": "embed-active",
+        },
+    )
+    _create_preset(
+        db_path,
+        preset_id="embedding_partial",
+        model_name="embedding",
+        name="Partial Embedding",
+        config={"model": "embed-partial"},
+    )
+    manager = PreviewManager(
+        preview={
+            "preset_id": "embedding_partial",
+            "current_dimension": 768,
+            "new_dimension": 768,
+            "same_dimension": True,
+            "indexed_document_count": 1,
+        }
+    )
+    app.state.embedding_reindex_jobs = manager
+    built_configs: list[dict] = []
+
+    def fake_build_embedding_client_for_config(config):
+        built_configs.append(config.model_dump())
+        return FakeEmbeddingClient()
+
+    monkeypatch.setattr(
+        settings_api,
+        "_build_embedding_client_for_config",
+        fake_build_embedding_client_for_config,
+    )
+
+    response = test_client.post(
+        "/api/settings/models/embedding/presets/embedding_partial/switch-preview"
+    )
+
+    assert response.status_code == 200
+    assert built_configs == [
+        {
+            "provider": "ollama",
+            "endpoint": "http://yaml-embedding.test:11434",
+            "api_key": None,
+            "model": "embed-partial",
+            "protocol": None,
+        }
+    ]
+
+
+def test_embedding_switch_preview_embedding_error_returns_502(client, monkeypatch):
+    test_client, db_path = client
+    _create_preset(
+        db_path,
+        preset_id="embedding_fail",
+        model_name="embedding",
+        name="Failing Embedding",
+        config={"provider": "ollama", "endpoint": "http://embedding.test:11434", "model": "bad"},
+    )
+    app.state.embedding_reindex_jobs = PreviewManager(
+        preview={},
+        error=EmbeddingError("embedding service unavailable"),
+    )
+    monkeypatch.setattr(
+        settings_api,
+        "_build_embedding_client_for_config",
+        lambda config: FakeEmbeddingClient(),
+    )
+
+    response = test_client.post(
+        "/api/settings/models/embedding/presets/embedding_fail/switch-preview"
+    )
+
+    assert response.status_code == 502
+    assert response.json()["detail"] == "embedding service unavailable"
+
+
+def test_embedding_switch_preview_config_uses_supplied_config_without_persisting(
+    client, monkeypatch
+):
+    test_client, db_path = client
+    _update_preset_config(
+        db_path,
+        preset_id="embedding_default",
+        config={
+            "provider": "ollama",
+            "endpoint": "http://old-embedding.test:11434",
+            "api_key": "sk-old",
+            "model": "embed-old",
+        },
+    )
+    manager = PreviewManager(
+        preview={
+            "preset_id": "embedding_default",
+            "current_dimension": 768,
+            "new_dimension": 1024,
+            "same_dimension": False,
+            "indexed_document_count": 3,
+        }
+    )
+    app.state.embedding_reindex_jobs = manager
+    built_configs: list[dict] = []
+
+    def fake_build_embedding_client_for_config(config):
+        built_configs.append(config.model_dump())
+        return FakeEmbeddingClient()
+
+    monkeypatch.setattr(
+        settings_api,
+        "_build_embedding_client_for_config",
+        fake_build_embedding_client_for_config,
+    )
+
+    response = test_client.post(
+        "/api/settings/models/embedding/presets/embedding_default/switch-preview-config",
+        json={
+            "config": {
+                "provider": "ollama",
+                "endpoint": "http://new-embedding.test:11434",
+                "api_key": "sk-o***",
+                "model": "embed-new",
+            }
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["same_dimension"] is False
+    assert built_configs == [
+        {
+            "provider": "ollama",
+            "endpoint": "http://new-embedding.test:11434",
+            "api_key": "sk-old",
+            "model": "embed-new",
+            "protocol": None,
+        }
+    ]
+    assert _preset_config(db_path, "embedding_default") == {
+        "provider": "ollama",
+        "endpoint": "http://old-embedding.test:11434",
+        "api_key": "sk-old",
+        "model": "embed-old",
+    }
+
+
+def test_embedding_switch_preview_config_probe_failure_does_not_persist(
+    client, monkeypatch
+):
+    test_client, db_path = client
+    _update_preset_config(
+        db_path,
+        preset_id="embedding_default",
+        config={
+            "provider": "ollama",
+            "endpoint": "http://old-embedding.test:11434",
+            "model": "embed-old",
+        },
+    )
+    app.state.embedding_reindex_jobs = PreviewManager(
+        preview={},
+        error=EmbeddingError("embedding probe failed"),
+    )
+    monkeypatch.setattr(
+        settings_api,
+        "_build_embedding_client_for_config",
+        lambda config: FakeEmbeddingClient(),
+    )
+
+    response = test_client.post(
+        "/api/settings/models/embedding/presets/embedding_default/switch-preview-config",
+        json={
+            "config": {
+                "provider": "ollama",
+                "endpoint": "http://new-embedding.test:11434",
+                "model": "embed-new",
+            }
+        },
+    )
+
+    assert response.status_code == 502
+    assert response.json()["detail"] == "embedding probe failed"
+    assert _preset_config(db_path, "embedding_default") == {
+        "provider": "ollama",
+        "endpoint": "http://old-embedding.test:11434",
+        "model": "embed-old",
+    }
+
+
+def test_embedding_switch_preview_running_job_returns_409(client, monkeypatch):
+    test_client, db_path = client
+    _create_preset(
+        db_path,
+        preset_id="embedding_preview_blocked",
+        model_name="embedding",
+        name="Preview Blocked",
+        config={
+            "provider": "ollama",
+            "endpoint": "http://embedding.test:11434",
+            "model": "embed-preview-blocked",
+        },
+    )
+    app.state.embedding_reindex_jobs = RunningJobManager(preview={})
+
+    def fail_if_preview_attempted(_config):
+        raise AssertionError("preview should not run while a rebuild job is active")
+
+    monkeypatch.setattr(
+        settings_api,
+        "_build_embedding_client_for_config",
+        fail_if_preview_attempted,
+    )
+
+    response = test_client.post(
+        "/api/settings/models/embedding/presets/embedding_preview_blocked/switch-preview"
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "Embedding index rebuild is already running"
+
+
+def test_update_embedding_preset_while_reindex_running_returns_409(client):
+    test_client, db_path = client
+    _update_preset_config(
+        db_path,
+        preset_id="embedding_default",
+        config={
+            "provider": "ollama",
+            "endpoint": "http://old-embedding.test:11434",
+            "model": "embed-old",
+        },
+    )
+    app.state.embedding_reindex_jobs = RunningJobManager(preview={})
+
+    response = test_client.patch(
+        "/api/settings/models/embedding/presets/embedding_default",
+        json={
+            "config": {
+                "provider": "ollama",
+                "endpoint": "http://new-embedding.test:11434",
+                "model": "embed-new",
+            }
+        },
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "Embedding index rebuild is already running"
+    assert _preset_config(db_path, "embedding_default") == {
+        "provider": "ollama",
+        "endpoint": "http://old-embedding.test:11434",
+        "model": "embed-old",
+    }
+
+
+def test_embedding_switch_same_dimension_sets_active_without_job(client, monkeypatch):
+    test_client, db_path = client
+    _create_preset(
+        db_path,
+        preset_id="embedding_same",
+        model_name="embedding",
+        name="Same Dimension",
+        config={"provider": "ollama", "endpoint": "http://embedding.test:11434", "model": "embed-same"},
+    )
+    manager = SwitchManager(
+        preview={
+            "preset_id": "embedding_same",
+            "current_dimension": 768,
+            "new_dimension": 768,
+            "same_dimension": True,
+            "indexed_document_count": 2,
+        }
+    )
+    app.state.embedding_reindex_jobs = manager
+    monkeypatch.setattr(
+        settings_api,
+        "_build_embedding_client_for_config",
+        lambda config: FakeEmbeddingClient(),
+    )
+
+    response = test_client.post(
+        "/api/settings/models/embedding/presets/embedding_same/switch",
+        json={"confirm_reindex": False},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "completed"
+    assert response.json()["same_dimension"] is True
+    assert response.json()["job_id"] is None
+    assert _active_preset_id(db_path, "embedding") == "embedding_same"
+    assert manager.start_job_calls == []
+
+
+def test_embedding_switch_probe_failure_returns_502_without_switching_active(
+    client, monkeypatch
+):
+    test_client, db_path = client
+    _create_preset(
+        db_path,
+        preset_id="embedding_bad_key",
+        model_name="embedding",
+        name="Bad Key",
+        config={
+            "provider": "cloud",
+            "endpoint": "https://embedding.test/v1",
+            "api_key": "sk-bad",
+            "model": "embed-bad",
+        },
+    )
+    manager = SwitchManager(preview={})
+    manager.error = EmbeddingError("HTTP 401: Authentication failed")
+    app.state.embedding_reindex_jobs = manager
+    monkeypatch.setattr(
+        settings_api,
+        "_build_embedding_client_for_config",
+        lambda config: FakeEmbeddingClient(),
+    )
+
+    response = test_client.post(
+        "/api/settings/models/embedding/presets/embedding_bad_key/switch",
+        json={"confirm_reindex": False},
+    )
+
+    assert response.status_code == 502
+    assert response.json()["detail"] == "HTTP 401: Authentication failed"
+    assert _active_preset_id(db_path, "embedding") == "embedding_default"
+    assert manager.start_job_calls == []
+
+
+def test_set_active_preset_rejects_direct_embedding_switch(client):
+    test_client, db_path = client
+    _create_preset(
+        db_path,
+        preset_id="embedding_direct_switch",
+        model_name="embedding",
+        name="Direct Switch",
+        config={
+            "provider": "ollama",
+            "endpoint": "http://embedding.test:11434",
+            "model": "embed-direct",
+        },
+    )
+
+    response = test_client.put(
+        "/api/settings/models/embedding/active",
+        json={"preset_id": "embedding_direct_switch"},
+    )
+
+    assert response.status_code == 409
+    assert "embedding/presets" in response.json()["detail"]
+    assert _active_preset_id(db_path, "embedding") == "embedding_default"
+
+
+def test_embedding_switch_dimension_change_without_confirmation_returns_409(
+    client, monkeypatch
+):
+    test_client, db_path = client
+    _create_preset(
+        db_path,
+        preset_id="embedding_reindex_needed",
+        model_name="embedding",
+        name="Reindex Needed",
+        config={"provider": "ollama", "endpoint": "http://embedding.test:11434", "model": "embed-large"},
+    )
+    app.state.embedding_reindex_jobs = SwitchManager(
+        preview={
+            "preset_id": "embedding_reindex_needed",
+            "current_dimension": 768,
+            "new_dimension": 1024,
+            "same_dimension": False,
+            "indexed_document_count": 5,
+        }
+    )
+    monkeypatch.setattr(
+        settings_api,
+        "_build_embedding_client_for_config",
+        lambda config: FakeEmbeddingClient(),
+    )
+
+    response = test_client.post(
+        "/api/settings/models/embedding/presets/embedding_reindex_needed/switch",
+        json={"confirm_reindex": False},
+    )
+
+    assert response.status_code == 409
+    assert "confirm_reindex" in response.json()["detail"]
+    assert _active_preset_id(db_path, "embedding") == "embedding_default"
+
+
+def test_embedding_switch_dimension_change_with_confirmation_returns_202(
+    client, monkeypatch
+):
+    test_client, db_path = client
+    _create_preset(
+        db_path,
+        preset_id="embedding_reindex",
+        model_name="embedding",
+        name="Reindex",
+        config={
+            "provider": "ollama",
+            "endpoint": "http://embedding.test:11434",
+            "model": "embed-reindex",
+        },
+    )
+    manager = SwitchManager(
+        preview={
+            "preset_id": "embedding_reindex",
+            "current_dimension": 768,
+            "new_dimension": 1024,
+            "same_dimension": False,
+            "indexed_document_count": 7,
+        }
+    )
+    app.state.embedding_reindex_jobs = manager
+
+    built_configs: list[dict] = []
+
+    def fake_build_embedding_client_for_config(config):
+        config_dict = config.model_dump()
+        built_configs.append(config_dict)
+        return {"model": config_dict["model"]}
+
+    monkeypatch.setattr(
+        settings_api,
+        "_build_embedding_client_for_config",
+        fake_build_embedding_client_for_config,
+    )
+
+    response = test_client.post(
+        "/api/settings/models/embedding/presets/embedding_reindex/switch",
+        json={"confirm_reindex": True},
+    )
+
+    assert response.status_code == 202
+    assert response.json()["job_id"] == "job-123"
+    assert response.json()["status"] == "pending"
+    assert response.json()["stage"] == "queued"
+    assert response.json()["same_dimension"] is False
+    assert len(manager.start_job_calls) == 1
+    assert manager.start_job_calls[0]["preset_id"] == "embedding_reindex"
+    assert manager.start_job_calls[0]["embedding_client_factory"]() == {
+        "model": "embed-reindex"
+    }
+    assert built_configs
+    assert all(
+        config == {
+            "provider": "ollama",
+            "endpoint": "http://embedding.test:11434",
+            "api_key": None,
+            "model": "embed-reindex",
+            "protocol": None,
+        }
+        for config in built_configs
+    )
+    assert _active_preset_id(db_path, "embedding") == "embedding_default"
+
+
+def test_embedding_switch_partial_preset_reindex_uses_layered_embedding_config(
+    client, monkeypatch
+):
+    test_client, db_path = client
+    default_yaml_path = db_path.parent.parent / "backend" / "config" / "default.yaml"
+    default_yaml_path.write_text(
+        f"""
+storage:
+  data_dir: "{db_path.parent}"
+models:
+  asr:
+    provider: local
+    protocol: transcriptions
+  chat:
+    provider: cloud
+  embedding:
+    provider: ollama
+    endpoint: "http://yaml-embedding.test:11434"
+""",
+        encoding="utf-8",
+    )
+    _update_preset_config(
+        db_path,
+        preset_id="embedding_default",
+        config={
+            "provider": "openai",
+            "endpoint": "https://active-only.test/v1",
+            "api_key": "sk-active",
+            "model": "embed-active",
+        },
+    )
+    _create_preset(
+        db_path,
+        preset_id="embedding_partial_reindex",
+        model_name="embedding",
+        name="Partial Reindex",
+        config={"model": "embed-partial-reindex"},
+    )
+    manager = SwitchManager(
+        preview={
+            "preset_id": "embedding_partial_reindex",
+            "current_dimension": 768,
+            "new_dimension": 1024,
+            "same_dimension": False,
+            "indexed_document_count": 6,
+        }
+    )
+    app.state.embedding_reindex_jobs = manager
+    built_configs: list[dict] = []
+
+    def fake_build_embedding_client_for_config(config):
+        config_dict = config.model_dump()
+        built_configs.append(config_dict)
+        return {"model": config_dict["model"], "provider": config_dict["provider"]}
+
+    monkeypatch.setattr(
+        settings_api,
+        "_build_embedding_client_for_config",
+        fake_build_embedding_client_for_config,
+    )
+
+    response = test_client.post(
+        "/api/settings/models/embedding/presets/embedding_partial_reindex/switch",
+        json={"confirm_reindex": True},
+    )
+
+    assert response.status_code == 202
+    assert manager.start_job_calls[0]["embedding_client_factory"]() == {
+        "model": "embed-partial-reindex",
+        "provider": "ollama",
+    }
+    assert built_configs == [
+        {
+            "provider": "ollama",
+            "endpoint": "http://yaml-embedding.test:11434",
+            "api_key": None,
+            "model": "embed-partial-reindex",
+            "protocol": None,
+        },
+        {
+            "provider": "ollama",
+            "endpoint": "http://yaml-embedding.test:11434",
+            "api_key": None,
+            "model": "embed-partial-reindex",
+            "protocol": None,
+        },
+    ]
+
+
+def test_embedding_switch_running_job_returns_409(client, monkeypatch):
+    test_client, db_path = client
+    _create_preset(
+        db_path,
+        preset_id="embedding_busy",
+        model_name="embedding",
+        name="Busy",
+        config={"provider": "ollama", "endpoint": "http://embedding.test:11434", "model": "embed-busy"},
+    )
+    app.state.embedding_reindex_jobs = RunningJobManager(
+        preview={
+            "preset_id": "embedding_busy",
+            "current_dimension": 768,
+            "new_dimension": 1024,
+            "same_dimension": False,
+            "indexed_document_count": 4,
+        }
+    )
+    monkeypatch.setattr(
+        settings_api,
+        "_build_embedding_client_for_config",
+        lambda config: FakeEmbeddingClient(),
+    )
+
+    response = test_client.post(
+        "/api/settings/models/embedding/presets/embedding_busy/switch",
+        json={"confirm_reindex": True},
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "Embedding index rebuild is already running"
+
+
+def test_embedding_switch_running_job_same_dimension_returns_409(client, monkeypatch):
+    test_client, db_path = client
+    _create_preset(
+        db_path,
+        preset_id="embedding_busy_same_dimension",
+        model_name="embedding",
+        name="Busy Same Dimension",
+        config={
+            "provider": "ollama",
+            "endpoint": "http://embedding.test:11434",
+            "model": "embed-busy-same",
+        },
+    )
+    manager = RunningJobManager(
+        preview={
+            "preset_id": "embedding_busy_same_dimension",
+            "current_dimension": 768,
+            "new_dimension": 768,
+            "same_dimension": True,
+            "indexed_document_count": 4,
+        }
+    )
+    app.state.embedding_reindex_jobs = manager
+
+    def fail_if_preview_attempted(_config):
+        raise AssertionError("preview should not run while a rebuild job is active")
+
+    monkeypatch.setattr(
+        settings_api,
+        "_build_embedding_client_for_config",
+        fail_if_preview_attempted,
+    )
+
+    response = test_client.post(
+        "/api/settings/models/embedding/presets/embedding_busy_same_dimension/switch",
+        json={"confirm_reindex": False},
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "Embedding index rebuild is already running"
+    assert _active_preset_id(db_path, "embedding") == "embedding_default"
+    assert manager.calls == []
+
+
+def test_delete_embedding_preset_while_reindex_running_returns_409(client):
+    test_client, db_path = client
+    _create_preset(
+        db_path,
+        preset_id="embedding_delete_blocked",
+        model_name="embedding",
+        name="Delete Blocked",
+        config={
+            "provider": "ollama",
+            "endpoint": "http://embedding.test:11434",
+            "model": "embed-delete",
+        },
+    )
+    app.state.embedding_reindex_jobs = RunningJobManager(preview={})
+
+    response = test_client.delete(
+        "/api/settings/models/embedding/presets/embedding_delete_blocked"
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "Embedding index rebuild is already running"
+    assert _active_preset_id(db_path, "embedding") == "embedding_default"
+
+
+def test_embedding_switch_same_dimension_race_returns_409(client, monkeypatch):
+    test_client, db_path = client
+    _create_preset(
+        db_path,
+        preset_id="embedding_race_same_dimension",
+        model_name="embedding",
+        name="Race Same Dimension",
+        config={
+            "provider": "ollama",
+            "endpoint": "http://embedding.test:11434",
+            "model": "embed-race",
+        },
+    )
+    manager = DelayedRunningJobManager(
+        preview={
+            "preset_id": "embedding_race_same_dimension",
+            "current_dimension": 768,
+            "new_dimension": 768,
+            "same_dimension": True,
+            "indexed_document_count": 4,
+        }
+    )
+    app.state.embedding_reindex_jobs = manager
+    monkeypatch.setattr(
+        settings_api,
+        "_build_embedding_client_for_config",
+        lambda config: FakeEmbeddingClient(),
+    )
+
+    response = test_client.post(
+        "/api/settings/models/embedding/presets/embedding_race_same_dimension/switch",
+        json={"confirm_reindex": False},
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "Embedding index rebuild is already running"
+    assert _active_preset_id(db_path, "embedding") == "embedding_default"
+    assert len(manager.calls) == 1
+    assert manager.calls[0][0] == "embedding_race_same_dimension"
+
+
+def test_get_active_embedding_reindex_job_returns_running_job(client):
+    test_client, _db_path = client
+    app.state.embedding_reindex_jobs = RunningJobManager(preview={})
+
+    response = test_client.get("/api/settings/embedding-reindex-jobs/active")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "id": "job-running",
+        "preset_id": "embedding_running",
+        "status": "running",
+        "stage": "reindexing",
+    }
+
+
+def test_get_active_embedding_reindex_job_returns_none_without_running_job(client):
+    test_client, _db_path = client
+    app.state.embedding_reindex_jobs = SwitchManager(preview={})
+
+    response = test_client.get("/api/settings/embedding-reindex-jobs/active")
+
+    assert response.status_code == 200
+    assert response.json() is None
+
+
+def test_get_embedding_reindex_job_missing_returns_404(client):
+    test_client, _db_path = client
+    app.state.embedding_reindex_jobs = MissingJobManager()
+
+    response = test_client.get("/api/settings/embedding-reindex-jobs/missing-job")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Embedding reindex job not found"
+
+
+def test_get_embedding_reindex_job_returns_job_snapshot(client):
+    test_client, _db_path = client
+    app.state.embedding_reindex_jobs = JobLookupManager(
+        {
+            "id": "job-123",
+            "preset_id": "embedding_reindex",
+            "status": "running",
+            "stage": "reindexing_documents",
+            "total_documents": 7,
+            "processed_documents": 3,
+            "failed_documents": [],
+            "error": None,
+            "started_at": "2026-07-04T00:00:00+00:00",
+            "finished_at": None,
+        }
+    )
+
+    response = test_client.get("/api/settings/embedding-reindex-jobs/job-123")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "id": "job-123",
+        "preset_id": "embedding_reindex",
+        "status": "running",
+        "stage": "reindexing_documents",
+        "total_documents": 7,
+        "processed_documents": 3,
+        "failed_documents": [],
+        "error": None,
+        "started_at": "2026-07-04T00:00:00+00:00",
+        "finished_at": None,
+    }
+
+
+def test_lifespan_runs_config_migration_against_memento_db(tmp_path: Path, monkeypatch):
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    created_clients: dict[str, SimpleNamespace] = {}
+    migration_calls: list[Path] = []
+    shutdown_calls: list[str] = []
+
+    class FakeSQLiteClient:
+        def __init__(self, path: Path):
+            self.path = path
+            self.connected = False
+            self.closed = False
+            created_clients[path.name] = self
+
+        async def connect(self):
+            self.connected = True
+
+        async def close(self):
+            self.closed = True
+
+    class FakeQdrantStore:
+        def __init__(self, path: Path):
+            self.path = path
+
+        def connect(self, vector_size: int):
+            self.vector_size = vector_size
+
+        def ensure_summary_collection(self, vector_size: int):
+            self.summary_vector_size = vector_size
+
+        def close(self):
+            self.closed = True
+
+    class FakeEmbeddingReindexJobManager:
+        def __init__(self, *, sqlite, qdrant):
+            self.sqlite = sqlite
+            self.qdrant = qdrant
+
+    async def fake_migrate_config_to_db(sqlite):
+        migration_calls.append(sqlite.path)
+
+    monkeypatch.setattr(main_module, "SQLiteClient", FakeSQLiteClient)
+    monkeypatch.setattr(main_module, "QdrantStore", FakeQdrantStore)
+    monkeypatch.setattr(
+        main_module, "EmbeddingReindexJobManager", FakeEmbeddingReindexJobManager
+    )
+    monkeypatch.setattr(main_module, "migrate_config_to_db", fake_migrate_config_to_db)
+    monkeypatch.setattr(
+        main_module,
+        "settings",
+        SimpleNamespace(
+            storage=SimpleNamespace(data_dir=data_dir),
+            rag=SimpleNamespace(vector_size=768),
+            log_level="INFO",
+            cors_origins=[],
+        ),
+    )
+    monkeypatch.setattr(
+        main_module.asr_supervisor,
+        "shutdown",
+        lambda: shutdown_calls.append("shutdown"),
+    )
+
+    async def exercise_lifespan():
+        lifecycle_app = FastAPI()
+        async with main_module.lifespan(lifecycle_app):
+            assert lifecycle_app.state.sqlite.path == data_dir / "metadata.db"
+            assert created_clients["memento.db"].closed is True
+            assert lifecycle_app.state.embedding_reindex_jobs.sqlite.path == (
+                data_dir / "metadata.db"
+            )
+
+    asyncio.run(exercise_lifespan())
+
+    assert migration_calls == [data_dir / "memento.db"]
+    assert created_clients["metadata.db"].connected is True
+    assert created_clients["metadata.db"].closed is True
+    assert shutdown_calls == ["shutdown"]
 
 
 # ===== Preset Management Tests =====

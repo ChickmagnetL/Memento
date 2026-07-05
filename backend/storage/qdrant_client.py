@@ -82,6 +82,9 @@ class QdrantStore:
             raise RuntimeError("QdrantStore is not connected")
         return self._client
 
+    def _resolve_collection_name(self, name: str | None) -> str:
+        return self.collection_name if name is None else name
+
     @staticmethod
     def _document_filter(document_id: str) -> Filter:
         return Filter(
@@ -140,9 +143,35 @@ class QdrantStore:
                 vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE),
             )
 
+    def collection_vector_size(self, name: str | None = None) -> int | None:
+        """Return the dense vector size for a collection, or None if missing."""
+        client = self._require_client()
+        collection_name = self._resolve_collection_name(name)
+        existing = {c.name for c in client.get_collections().collections}
+        if collection_name not in existing:
+            return None
+        info = client.get_collection(collection_name)
+        return info.config.params.vectors.size
+
+    def recreate_collection(
+        self, name: str | None = None, *, vector_size: int
+    ) -> None:
+        """Replace a collection with a fresh cosine collection of the given size."""
+        client = self._require_client()
+        collection_name = self._resolve_collection_name(name)
+        client.delete_collection(collection_name=collection_name)
+        client.create_collection(
+            collection_name=collection_name,
+            vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE),
+        )
+
     def ensure_summary_collection(self, vector_size: int) -> None:
         """Create the document summary collection if it does not exist."""
         self._ensure_collection(self.SUMMARY_COLLECTION, vector_size)
+
+    def recreate_summary_collection(self, *, vector_size: int) -> None:
+        """Replace the document summary collection with a fresh one."""
+        self.recreate_collection(self.SUMMARY_COLLECTION, vector_size=vector_size)
 
     @staticmethod
     def _document_point_id(document_id: str) -> str:

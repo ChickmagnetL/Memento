@@ -15,6 +15,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from config.settings import get_settings
+from core.rag.embedding_reindex import EmbeddingReindexJobManager
 from core.video import asr_supervisor
 from storage.sqlite_client import SQLiteClient
 from storage.qdrant_client import QdrantStore
@@ -45,13 +46,22 @@ async def lifespan(app: FastAPI):
     await sqlite.connect()
     app.state.sqlite = sqlite
 
-    # Run config migration from config.local.yaml to DB
-    await migrate_config_to_db(sqlite)
+    # Run config migration against the runtime settings database.
+    config_sqlite = SQLiteClient(data_dir / "memento.db")
+    await config_sqlite.connect()
+    try:
+        await migrate_config_to_db(config_sqlite)
+    finally:
+        await config_sqlite.close()
 
     qdrant = QdrantStore(data_dir / "qdrant")
     qdrant.connect(vector_size=settings.rag.vector_size)
     qdrant.ensure_summary_collection(vector_size=settings.rag.vector_size)
     app.state.qdrant = qdrant
+    app.state.embedding_reindex_jobs = EmbeddingReindexJobManager(
+        sqlite=sqlite,
+        qdrant=qdrant,
+    )
 
     logger.info("Databases initialized at %s", data_dir)
     yield

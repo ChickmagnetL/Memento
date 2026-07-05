@@ -2,16 +2,27 @@
 
 import asyncio
 import json
+import sqlite3
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 from urllib.parse import urlparse
 from urllib.request import urlopen
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 
-from config.settings import get_settings, resolve_project_root
+from config import settings as settings_module
+from config.settings import (
+    ModelConfig,
+    Settings,
+    get_settings,
+)
 from core.config_store import ConfigStore
+from core.models.factory import build_embedding_client
+from core.rag.embedding import EmbeddingError
 from schemas.settings import (
+    PresetConfig,
     ModelsUpdateRequest,
     PresetCreateRequest,
     PresetResponse,
@@ -20,6 +31,14 @@ from schemas.settings import (
 from storage.sqlite_client import SQLiteClient
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
+
+
+class EmbeddingSwitchRequest(BaseModel):
+    confirm_reindex: bool = False
+
+
+class EmbeddingSwitchPreviewConfigRequest(BaseModel):
+    config: PresetConfig
 
 
 def db_path() -> Path:
@@ -152,6 +171,140 @@ def _get_sqlite_client() -> SQLiteClient:
     return SQLiteClient(db_path())
 
 
+def _get_embedding_reindex_manager(request: Request):
+    manager = getattr(request.app.state, "embedding_reindex_jobs", None)
+    if manager is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Embedding reindex manager is not initialized",
+        )
+    return manager
+
+
+def _build_embedding_client_for_config(config: ModelConfig):
+    settings = get_settings()
+    models = settings.models.model_copy(update={"embedding": config})
+    return build_embedding_client(settings.model_copy(update={"models": models}))
+
+
+def _set_active_embedding_preset_sync(preset_id: str) -> None:
+    conn = sqlite3.connect(db_path())
+    try:
+        conn.execute(
+            """
+            INSERT INTO active_preset (model_name, preset_id)
+            VALUES ('embedding', ?)
+            ON CONFLICT(model_name) DO UPDATE SET
+                preset_id = excluded.preset_id,
+                updated_at = CURRENT_TIMESTAMP
+            """,
+            (preset_id,),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+async def _load_preset_config(
+    sqlite: SQLiteClient,
+    *,
+    model_name: Literal["chat", "embedding", "asr"],
+    preset_id: str,
+) -> dict[str, Any]:
+    preset = await sqlite.get_preset(preset_id)
+    if not preset or preset["model_name"] != model_name:
+        raise HTTPException(status_code=404, detail="Preset not found")
+    config = (
+        json.loads(preset["config"])
+        if isinstance(preset["config"], str)
+        else preset["config"]
+    )
+    return config
+
+
+def _resolve_embedding_config(raw_config: dict[str, Any]) -> ModelConfig:
+    backend_dir = settings_module.resolve_backend_dir()
+    project_root = settings_module.resolve_project_root(backend_dir)
+
+    default_config_path = backend_dir / "config" / "default.yaml"
+    user_config_path = project_root / "config.yaml"
+    local_config_path = project_root / "config.local.yaml"
+
+    config_data = settings_module._load_yaml_data(default_config_path)
+    config_data = settings_module._merge_dicts(
+        config_data,
+        settings_module._load_yaml_data(user_config_path),
+    )
+    config_data = settings_module._merge_dicts(
+        config_data,
+        settings_module._load_yaml_data(local_config_path),
+    )
+
+    data_dir = config_data.get("storage", {}).get("data_dir", "~/memento_data")
+    data_dir_path = Path(data_dir).expanduser()
+    if not data_dir_path.is_absolute():
+        data_dir_path = project_root / data_dir_path
+
+    db_config = settings_module._load_db_config(data_dir_path / "memento.db")
+    db_models = dict(db_config.get("models") or {})
+    db_models.pop("embedding", None)
+    if db_models:
+        db_config = {**db_config, "models": db_models}
+    else:
+        db_config = {key: value for key, value in db_config.items() if key != "models"}
+
+    config_data = settings_module._merge_dicts(config_data, db_config)
+    config_data = settings_module._merge_dicts(
+        config_data,
+        {"models": {"embedding": raw_config}},
+    )
+
+    data_dir = config_data.get("storage", {}).get("data_dir", "~/memento_data")
+    data_dir_path = Path(data_dir).expanduser()
+    if not data_dir_path.is_absolute():
+        data_dir_path = project_root / data_dir_path
+    config_data.setdefault("storage", {})["data_dir"] = str(data_dir_path)
+
+    return Settings(**config_data).models.embedding
+
+
+def _merge_preset_config(
+    current_config: dict[str, Any],
+    update_config: PresetConfig | None,
+) -> dict[str, Any]:
+    new_config = current_config.copy()
+    if update_config is not None:
+        update_dict = update_config.model_dump(exclude_none=True)
+        if "api_key" in update_dict and _is_masked(update_dict["api_key"]):
+            update_dict["api_key"] = current_config.get("api_key")
+        new_config.update(update_dict)
+    return new_config
+
+
+def _raise_if_embedding_reindex_running(request: Request) -> None:
+    manager = _get_embedding_reindex_manager(request)
+    active_job = getattr(manager, "active_job", None)
+    if callable(active_job) and active_job() is not None:
+        raise HTTPException(
+            status_code=409,
+            detail="Embedding index rebuild is already running",
+        )
+
+
+async def _preview_embedding_switch(
+    request: Request, *, preset_id: str, config: ModelConfig
+) -> dict:
+    manager = _get_embedding_reindex_manager(request)
+    try:
+        embedding_client = _build_embedding_client_for_config(config)
+        return await manager.preview_switch(
+            preset_id=preset_id,
+            embedding_client=embedding_client,
+        )
+    except EmbeddingError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
 async def _generate_preset_name(model_name: str, sqlite: SQLiteClient) -> str:
     """Generate auto-incremented preset name like 'Preset 1', 'Preset 2', etc."""
     presets = await sqlite.list_presets(model_name)
@@ -251,11 +404,15 @@ async def get_preset(
 
 @router.patch("/models/{model_name}/presets/{preset_id}")
 async def update_preset(
+    request: Request,
     model_name: Literal["chat", "embedding", "asr"],
     preset_id: str,
     payload: PresetUpdateRequest,
 ) -> PresetResponse:
     """Update a preset. Masked API keys are preserved."""
+    if model_name == "embedding":
+        _raise_if_embedding_reindex_running(request)
+
     sqlite = _get_sqlite_client()
     await sqlite.connect()
     try:
@@ -273,13 +430,7 @@ async def update_preset(
             payload.model_name if payload.model_name is not None else current["model_name"]
         )
 
-        new_config = current_config.copy()
-        if payload.config is not None:
-            update_dict = payload.config.model_dump(exclude_none=True)
-            # If API key is masked, keep current value
-            if "api_key" in update_dict and _is_masked(update_dict["api_key"]):
-                update_dict["api_key"] = current_config.get("api_key")
-            new_config.update(update_dict)
+        new_config = _merge_preset_config(current_config, payload.config)
 
         # Update preset
         updated = await sqlite.update_preset(
@@ -305,9 +456,14 @@ async def update_preset(
 
 @router.delete("/models/{model_name}/presets/{preset_id}", status_code=204)
 async def delete_preset(
-    model_name: Literal["chat", "embedding", "asr"], preset_id: str
+    request: Request,
+    model_name: Literal["chat", "embedding", "asr"],
+    preset_id: str,
 ) -> None:
     """Delete a preset. If it was active, fallback to the first remaining preset."""
+    if model_name == "embedding":
+        _raise_if_embedding_reindex_running(request)
+
     sqlite = _get_sqlite_client()
     await sqlite.connect()
     try:
@@ -373,6 +529,16 @@ async def set_active_preset(
     model_name: Literal["chat", "embedding", "asr"], payload: dict
 ) -> dict:
     """Set the active preset for a model."""
+    if model_name == "embedding":
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Embedding active preset cannot be switched directly. "
+                "Use /api/settings/models/embedding/presets/{preset_id}/"
+                "switch-preview and /switch instead."
+            ),
+        )
+
     preset_id = payload.get("preset_id")
     if not preset_id:
         raise HTTPException(status_code=400, detail="preset_id is required")
@@ -391,3 +557,145 @@ async def set_active_preset(
         return {"preset_id": preset_id}
     finally:
         await sqlite.close()
+
+
+@router.post("/models/embedding/presets/{preset_id}/switch-preview")
+async def preview_embedding_preset_switch(
+    request: Request, preset_id: str
+) -> dict:
+    _raise_if_embedding_reindex_running(request)
+
+    sqlite = _get_sqlite_client()
+    await sqlite.connect()
+    try:
+        raw_config = await _load_preset_config(
+            sqlite,
+            model_name="embedding",
+            preset_id=preset_id,
+        )
+    finally:
+        await sqlite.close()
+    config = _resolve_embedding_config(raw_config)
+    return await _preview_embedding_switch(
+        request,
+        preset_id=preset_id,
+        config=config,
+    )
+
+
+@router.post("/models/embedding/presets/{preset_id}/switch-preview-config")
+async def preview_embedding_preset_config_switch(
+    request: Request,
+    preset_id: str,
+    payload: EmbeddingSwitchPreviewConfigRequest,
+) -> dict:
+    _raise_if_embedding_reindex_running(request)
+
+    sqlite = _get_sqlite_client()
+    await sqlite.connect()
+    try:
+        current_config = await _load_preset_config(
+            sqlite,
+            model_name="embedding",
+            preset_id=preset_id,
+        )
+    finally:
+        await sqlite.close()
+    config = _resolve_embedding_config(
+        _merge_preset_config(current_config, payload.config)
+    )
+    return await _preview_embedding_switch(
+        request,
+        preset_id=preset_id,
+        config=config,
+    )
+
+
+@router.post("/models/embedding/presets/{preset_id}/switch")
+async def switch_embedding_preset(
+    request: Request,
+    preset_id: str,
+    payload: EmbeddingSwitchRequest,
+) -> dict:
+    sqlite = _get_sqlite_client()
+    await sqlite.connect()
+    try:
+        raw_config = await _load_preset_config(
+            sqlite,
+            model_name="embedding",
+            preset_id=preset_id,
+        )
+    finally:
+        await sqlite.close()
+    config = _resolve_embedding_config(raw_config)
+
+    _raise_if_embedding_reindex_running(request)
+
+    preview = await _preview_embedding_switch(
+        request,
+        preset_id=preset_id,
+        config=config,
+    )
+    if preview["same_dimension"]:
+        _raise_if_embedding_reindex_running(request)
+        _set_active_embedding_preset_sync(preset_id)
+        return {
+            **preview,
+            "job_id": None,
+            "status": "completed",
+            "stage": "completed",
+        }
+
+    if not payload.confirm_reindex:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Embedding dimension change requires confirm_reindex=true "
+                "before starting a background reindex job"
+            ),
+        )
+
+    manager = _get_embedding_reindex_manager(request)
+    try:
+        started = manager.start_job(
+            preset_id=preset_id,
+            embedding_client_factory=lambda: _build_embedding_client_for_config(config),
+            activate_preset=_set_active_embedding_preset_sync,
+        )
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    job = started["job"]
+    return JSONResponse(
+        status_code=202,
+        content={
+            **preview,
+            "job_id": job["id"],
+            "status": job["status"],
+            "stage": job["stage"],
+            "total_documents": job["total_documents"],
+            "processed_documents": job["processed_documents"],
+            "failed_documents": job["failed_documents"],
+            "error": job["error"],
+            "started_at": job["started_at"],
+            "finished_at": job["finished_at"],
+        },
+    )
+
+
+@router.get("/embedding-reindex-jobs/active")
+async def get_active_embedding_reindex_job(request: Request) -> dict | None:
+    manager = _get_embedding_reindex_manager(request)
+    active_job = getattr(manager, "active_job", None)
+    if not callable(active_job):
+        return None
+    return active_job()
+
+
+@router.get("/embedding-reindex-jobs/{job_id}")
+async def get_embedding_reindex_job(request: Request, job_id: str) -> dict:
+    manager = _get_embedding_reindex_manager(request)
+    job = manager.get_job(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Embedding reindex job not found")
+    return job
