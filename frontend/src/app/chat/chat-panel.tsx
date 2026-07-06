@@ -75,14 +75,14 @@ export function ChatPanel() {
     <div className="flex h-full w-full flex-col overflow-hidden">
       <header className="grid h-14 shrink-0 grid-cols-[1fr_minmax(0,auto)_1fr] items-center border-b border-border px-6">
         <div />
-        <ChatSessionDropdown
-          sessions={state.sessions}
-          activeId={state.activeId}
-          onSelect={handleSelectSession}
-          onNew={handleNewChat}
-          onDeleteRequest={(session) => setPendingDelete(session)}
-        />
-        <div className="flex justify-end gap-2">
+        <div className="flex min-w-0 items-center justify-center gap-1">
+          <ChatSessionDropdown
+            sessions={state.sessions}
+            activeId={state.activeId}
+            onSelect={handleSelectSession}
+            onNew={handleNewChat}
+            onDeleteRequest={(session) => setPendingDelete(session)}
+          />
           <Button
             type="button"
             variant="ghost"
@@ -93,6 +93,8 @@ export function ChatPanel() {
           >
             <Plus className="h-4 w-4" />
           </Button>
+        </div>
+        <div className="flex justify-end">
           <MemoryPopover refreshKey={state.memoryRefreshKey} />
         </div>
       </header>
@@ -102,8 +104,8 @@ export function ChatPanel() {
           {activeMessages.length === 0 && !state.generating ? (
             <EmptyState
               icon={MessageSquare}
-              title="Ask about your indexed videos"
-              description="Answers can cite source timestamps."
+              title="The important thing is not to stop questioning."
+              description="Albert Einstein"
               className="flex-1"
             />
           ) : (
