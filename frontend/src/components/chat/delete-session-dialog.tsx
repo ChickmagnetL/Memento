@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 interface DeleteSessionDialogProps {
   open: boolean;
   sessionTitle: string;
+  deleting?: boolean;
   onCancel: () => void;
   onConfirm: () => void;
 }
@@ -12,6 +13,7 @@ interface DeleteSessionDialogProps {
 export function DeleteSessionDialog({
   open,
   sessionTitle,
+  deleting = false,
   onCancel,
   onConfirm,
 }: DeleteSessionDialogProps) {
@@ -35,11 +37,11 @@ export function DeleteSessionDialog({
           </p>
         </div>
         <div className="flex justify-end gap-2">
-          <Button onClick={onCancel} type="button" variant="ghost">
+          <Button onClick={onCancel} type="button" variant="ghost" disabled={deleting}>
             Cancel
           </Button>
-          <Button onClick={onConfirm} type="button">
-            Delete
+          <Button onClick={onConfirm} type="button" disabled={deleting}>
+            {deleting ? "Deleting..." : "Delete"}
           </Button>
         </div>
       </div>

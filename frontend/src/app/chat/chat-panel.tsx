@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { SendHorizontal, MessageSquare } from "lucide-react";
+import { MessageSquare, Plus, SendHorizontal } from "lucide-react";
 import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -9,10 +9,10 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorBanner } from "@/components/ui/error-banner";
 import { VideoTimestampLink } from "@/components/VideoTimestampLink";
-import { SessionList } from "@/components/chat/session-list";
+import { ChatSessionDropdown } from "@/components/chat/chat-session-dropdown";
 import { DeleteSessionDialog } from "@/components/chat/delete-session-dialog";
+import { MemoryPopover } from "@/components/chat/memory-popover";
 import { MemoryProposalBubble } from "@/components/chat/memory-proposal-bubble";
-import { MemoryPanel } from "@/components/chat/memory-panel";
 import { StatusIndicator } from "@/components/chat/status-indicator";
 import { useChatStore } from "@/lib/chat-store";
 
@@ -30,6 +30,7 @@ export function ChatPanel() {
   } = useChatStore();
   const [input, setInput] = useState("");
   const [pendingDelete, setPendingDelete] = useState<typeof state.sessions[number] | null>(null);
+  const [deletingSession, setDeletingSession] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -54,28 +55,56 @@ export function ChatPanel() {
     await sendMessage(message);
   }
 
+  async function handleSelectSession(id: string) {
+    if (state.pendingProposal) {
+      rejectProposal();
+    }
+    await selectSession(id);
+  }
+
+  function handleNewChat() {
+    if (state.pendingProposal) {
+      rejectProposal();
+    }
+    handleNew();
+  }
+
   const isStreaming = state.generating !== null;
 
   return (
-    <div className="flex h-full w-full">
-      <SessionList
-        sessions={state.sessions}
-        activeId={state.activeId}
-        onSelect={(id) => selectSession(id)}
-        onNew={handleNew}
-        onDeleteRequest={(session) => setPendingDelete(session)}
-      />
-      <div className="mx-auto flex h-full w-full max-w-4xl flex-col px-8 py-8">
-        <header className="space-y-1 pb-6">
-          <h1 className="text-xl font-semibold">Chat</h1>
-        </header>
+    <div className="flex h-full w-full flex-col overflow-hidden">
+      <header className="grid h-14 shrink-0 grid-cols-[1fr_minmax(0,auto)_1fr] items-center border-b border-border px-6">
+        <div />
+        <ChatSessionDropdown
+          sessions={state.sessions}
+          activeId={state.activeId}
+          onSelect={handleSelectSession}
+          onNew={handleNewChat}
+          onDeleteRequest={(session) => setPendingDelete(session)}
+        />
+        <div className="flex justify-end gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={handleNewChat}
+            aria-label="New Chat"
+            title="New Chat"
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+          <MemoryPopover refreshKey={state.memoryRefreshKey} />
+        </div>
+      </header>
 
-        <section className="flex flex-1 flex-col gap-4 overflow-y-auto pb-6">
+      <section className="min-h-0 flex-1 overflow-y-auto px-4 py-6">
+        <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col gap-4">
           {activeMessages.length === 0 && !state.generating ? (
             <EmptyState
               icon={MessageSquare}
               title="Ask about your indexed videos"
-              description="Answers cite timestamps like [02:35]."
+              description="Answers can cite source timestamps."
+              className="flex-1"
             />
           ) : (
             activeMessages.map((message, index) => (
@@ -83,12 +112,12 @@ export function ChatPanel() {
                 key={index}
                 className={
                   message.role === "user"
-                    ? "ml-auto max-w-[85%] rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground"
-                    : "mr-auto max-w-[85%] rounded-md bg-muted px-3 py-2 text-sm"
+                    ? "ml-auto max-w-[85%] break-words rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground [overflow-wrap:anywhere]"
+                    : "mr-auto max-w-full overflow-hidden rounded-md bg-muted px-3 py-2 text-sm"
                 }
               >
                 {message.role === "assistant" ? (
-                  <div className="prose prose-sm max-w-none dark:prose-invert">
+                  <div className="prose prose-sm max-w-none break-words dark:prose-invert prose-pre:overflow-x-auto prose-pre:whitespace-pre-wrap prose-code:break-words prose-table:block prose-table:overflow-x-auto [overflow-wrap:anywhere]">
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
                       urlTransform={(value) =>
@@ -99,11 +128,11 @@ export function ChatPanel() {
                           if (href?.startsWith("memento://")) {
                             return <VideoTimestampLink href={href}>{children}</VideoTimestampLink>;
                           }
-                          return <a href={href}>{children}</a>;
+                          return <a className="break-words" href={href}>{children}</a>;
                         },
                       }}
                     >
-                      {message.content || (isStreaming && index === activeMessages.length - 1 ? "" : "")}
+                      {message.content}
                     </ReactMarkdown>
                   </div>
                 ) : (
@@ -124,37 +153,51 @@ export function ChatPanel() {
             />
           ) : null}
           <div ref={scrollRef} />
-        </section>
+        </div>
+      </section>
 
-        {state.error ? <ErrorBanner message={state.error} /> : null}
+      <div className="shrink-0 px-4 pb-6">
+        <div className="mx-auto w-full max-w-3xl space-y-3">
+          {state.error ? <ErrorBanner message={state.error} /> : null}
 
-        <form className="flex gap-3" onSubmit={handleSubmit}>
-          <input
-            className="h-10 flex-1 rounded-md border border-input bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground"
-            placeholder="Ask your knowledge base..."
-            value={input}
-            onChange={(event) => setInput(event.target.value)}
-            disabled={isStreaming}
-          />
-          <Button type="submit" disabled={isStreaming || !input.trim()}>
-            <SendHorizontal className="mr-1 h-4 w-4" />
-            Send
-          </Button>
-        </form>
-      </div>
-
-      <div className="w-56">
-        <MemoryPanel refreshKey={state.memoryRefreshKey} />
+          <form className="flex gap-3" onSubmit={handleSubmit}>
+            <input
+              className="h-10 min-w-0 flex-1 rounded-md border border-input bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground"
+              aria-label="Message"
+              placeholder="Ask your knowledge base..."
+              value={input}
+              onChange={(event) => setInput(event.target.value)}
+              disabled={isStreaming}
+            />
+            <Button type="submit" disabled={isStreaming || !input.trim()}>
+              <SendHorizontal className="mr-1 h-4 w-4" />
+              Send
+            </Button>
+          </form>
+        </div>
       </div>
 
       <DeleteSessionDialog
         open={pendingDelete !== null}
         sessionTitle={pendingDelete?.title ?? ""}
-        onCancel={() => setPendingDelete(null)}
+        deleting={deletingSession}
+        onCancel={() => {
+          if (!deletingSession) {
+            setPendingDelete(null);
+          }
+        }}
         onConfirm={async () => {
-          if (pendingDelete) {
+          if (!pendingDelete || deletingSession) return;
+
+          setDeletingSession(true);
+          try {
+            if (pendingDelete.id === state.activeId && state.pendingProposal) {
+              rejectProposal();
+            }
             await requestDelete(pendingDelete);
             setPendingDelete(null);
+          } finally {
+            setDeletingSession(false);
           }
         }}
       />

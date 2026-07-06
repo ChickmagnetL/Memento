@@ -153,31 +153,43 @@ const ChatStoreContext = createContext<ChatStoreValue | null>(null);
 export function ChatStoreProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
   const activeIdRef = useRef<string | null>(null);
+  const generationTokenRef = useRef(0);
   useEffect(() => {
     activeIdRef.current = state.activeId;
   }, [state.activeId]);
 
   const selectSessionInner = useCallback(async (id: string) => {
+    const previousActiveId = activeIdRef.current;
+    activeIdRef.current = id;
+    generationTokenRef.current += 1;
+    const navigationToken = generationTokenRef.current;
+    dispatch({ type: "SET_ACTIVE", activeId: id });
+    dispatch({ type: "STOP_GENERATING" });
     try {
       const msgs = await getSessionMessages(id);
+      if (generationTokenRef.current !== navigationToken) return;
       dispatch({ type: "SET_MESSAGES", sessionId: id, messages: msgs.map((m) => ({ role: m.role, content: m.content })) });
-      dispatch({ type: "SET_ACTIVE", activeId: id });
       localStorage.setItem(LAST_SESSION_KEY, id);
     } catch (e) {
+      if (generationTokenRef.current !== navigationToken) return;
+      activeIdRef.current = previousActiveId;
+      dispatch({ type: "SET_ACTIVE", activeId: previousActiveId });
       dispatch({ type: "SET_ERROR", error: e instanceof Error ? e.message : "Operation failed" });
     }
   }, []);
 
   const loadSessions = useCallback(async () => {
+    const loadToken = generationTokenRef.current;
     try {
       const list = await listSessions();
       dispatch({ type: "SET_SESSIONS", sessions: list });
       const last = localStorage.getItem(LAST_SESSION_KEY);
       const restoreId = last && list.some((s) => s.id === last) ? last : null;
-      if (restoreId) {
+      if (restoreId && generationTokenRef.current === loadToken && activeIdRef.current === null) {
         await selectSessionInner(restoreId);
       }
     } catch (e) {
+      if (generationTokenRef.current !== loadToken) return;
       dispatch({ type: "SET_ERROR", error: e instanceof Error ? e.message : "Operation failed" });
     }
   }, [selectSessionInner]);
@@ -189,17 +201,30 @@ export function ChatStoreProvider({ children }: { children: ReactNode }) {
   const selectSession = selectSessionInner;
 
   const handleNew = useCallback(() => {
+    activeIdRef.current = null;
+    generationTokenRef.current += 1;
     dispatch({ type: "SET_MESSAGES", sessionId: "__new__", messages: [] });
     dispatch({ type: "SET_ACTIVE", activeId: null });
+    dispatch({ type: "STOP_GENERATING" });
     localStorage.removeItem(LAST_SESSION_KEY);
   }, []);
 
   const sendMessage = useCallback(
     async (message: string) => {
       if (!message.trim() || state.generating) return;
+      generationTokenRef.current += 1;
       // Determine target session: existing active, or pending-new (activeId null).
-      const sessionId = state.activeId;
+      const sessionId = activeIdRef.current;
       const bucket = sessionId ?? "__new__";
+      const generationToken = generationTokenRef.current;
+      async function refreshSessionsForCurrentToken() {
+        const refreshToken = generationTokenRef.current;
+        const sessions = await listSessions();
+        if (generationTokenRef.current === refreshToken) {
+          dispatch({ type: "SET_SESSIONS", sessions });
+        }
+      }
+
       dispatch({ type: "SET_ERROR", error: "" });
       dispatch({ type: "APPEND_MESSAGE", sessionId: bucket, message: { role: "user", content: message } });
       dispatch({ type: "APPEND_MESSAGE", sessionId: bucket, message: { role: "assistant", content: "" } });
@@ -208,52 +233,80 @@ export function ChatStoreProvider({ children }: { children: ReactNode }) {
       try {
         await sendChatMessage(message, sessionId, {
           onDelta: (delta) => {
+            if (generationTokenRef.current !== generationToken) return;
             dispatch({ type: "SET_STREAMING" });
-            dispatch({ type: "PATCH_LAST_MESSAGE", sessionId: activeIdRef.current ?? bucket, content: delta, replace: false });
+            dispatch({ type: "PATCH_LAST_MESSAGE", sessionId: bucket, content: delta, replace: false });
           },
           onStatus: (_state, tool) => {
+            if (generationTokenRef.current !== generationToken) return;
             dispatch({ type: "SET_TOOL_CALL", tool });
           },
           onTextReplace: (content) => {
-            dispatch({ type: "PATCH_LAST_MESSAGE", sessionId: activeIdRef.current ?? bucket, content, replace: true });
+            if (generationTokenRef.current !== generationToken) return;
+            dispatch({ type: "PATCH_LAST_MESSAGE", sessionId: bucket, content, replace: true });
           },
           onDone: async (newSessionId) => {
             // New session created server-side: fetch authoritative messages from backend.
             if (!sessionId) {
+              if (generationTokenRef.current !== generationToken) {
+                try {
+                  await refreshSessionsForCurrentToken();
+                } catch {
+                  /* non-fatal */
+                }
+                return;
+              }
               try {
                 const msgs = await getSessionMessages(newSessionId);
+                if (generationTokenRef.current !== generationToken) {
+                  try {
+                    await refreshSessionsForCurrentToken();
+                  } catch {
+                    /* non-fatal */
+                  }
+                  return;
+                }
                 dispatch({ type: "SET_MESSAGES", sessionId: newSessionId, messages: msgs.map((m) => ({ role: m.role, content: m.content })) });
                 dispatch({ type: "SET_MESSAGES", sessionId: "__new__", messages: [] });
                 dispatch({ type: "SET_ACTIVE", activeId: newSessionId });
                 activeIdRef.current = newSessionId;
                 localStorage.setItem(LAST_SESSION_KEY, newSessionId);
               } catch (e) {
+                if (generationTokenRef.current !== generationToken) return;
                 dispatch({ type: "SET_ERROR", error: e instanceof Error ? e.message : "Operation failed" });
                 dispatch({ type: "STOP_GENERATING" });
                 return;
               }
             }
+            if (generationTokenRef.current !== generationToken) return;
             dispatch({ type: "STOP_GENERATING" });
             try {
-              dispatch({ type: "SET_SESSIONS", sessions: await listSessions() });
+              const sessions = await listSessions();
+              if (generationTokenRef.current !== generationToken) return;
+              dispatch({ type: "SET_SESSIONS", sessions });
             } catch {
               /* non-fatal */
             }
           },
           onError: (msg) => {
+            if (generationTokenRef.current !== generationToken) return;
             dispatch({ type: "SET_ERROR", error: msg });
             dispatch({ type: "STOP_GENERATING" });
           },
           onMemoryProposal: (content) => {
-            dispatch({ type: "SET_PROPOSAL", proposal: { sessionId: activeIdRef.current ?? bucket, content } });
+            if (generationTokenRef.current !== generationToken) return;
+            const currentBucket = activeIdRef.current ?? "__new__";
+            if (currentBucket !== bucket) return;
+            dispatch({ type: "SET_PROPOSAL", proposal: { sessionId: bucket, content } });
           },
         });
       } catch (e) {
+        if (generationTokenRef.current !== generationToken) return;
         dispatch({ type: "SET_ERROR", error: e instanceof Error ? e.message : "Operation failed" });
         dispatch({ type: "STOP_GENERATING" });
       }
     },
-    [state.generating, state.activeId]
+    [state.generating]
   );
 
   const rememberCommand = useCallback(
@@ -288,11 +341,11 @@ export function ChatStoreProvider({ children }: { children: ReactNode }) {
     try {
       await deleteSession(session.id);
       dispatch({ type: "SET_SESSIONS", sessions: await listSessions() });
-      if (state.activeId === session.id) handleNew();
+      if (activeIdRef.current === session.id) handleNew();
     } catch (e) {
       dispatch({ type: "SET_ERROR", error: e instanceof Error ? e.message : "Operation failed" });
     }
-  }, [state.activeId, handleNew]);
+  }, [handleNew]);
 
   const activeMessages = state.messagesBySession[state.activeId ?? "__new__"] ?? [];
 
