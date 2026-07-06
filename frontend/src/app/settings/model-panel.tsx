@@ -11,6 +11,7 @@ import {
   createPreset,
   deletePreset,
   previewEmbeddingPresetSwitch,
+  fetchAvailableModels,
   fetchPresetApiKey,
   getActivePreset,
   listPresets,
@@ -127,6 +128,7 @@ export function ModelPanel({
   const [activePresetId, setActivePresetId] = useState<string | null>(null);
   const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
   const apiKeyRequestSeqRef = useRef(0);
+  const modelListRequestSeqRef = useRef(0);
   const [settings, setSettings] = useState<ModelConfig>(EMPTY_MODEL_CONFIG);
   const [renamingPreset, setRenamingPreset] = useState<{
     presetId: string;
@@ -145,6 +147,9 @@ export function ModelPanel({
   const [reindexJob, setReindexJob] = useState<EmbeddingReindexJob | null>(null);
   const [isSwitching, setIsSwitching] = useState(false);
   const [message, setMessage] = useState("");
+  const [modelOptions, setModelOptions] = useState<string[]>([]);
+  const [modelListMessage, setModelListMessage] = useState("");
+  const [isFetchingModels, setIsFetchingModels] = useState(false);
   const hasActiveEmbeddingReindexJob =
     modelName === "embedding" &&
     (reindexJob?.status === "pending" || reindexJob?.status === "running");
@@ -159,6 +164,13 @@ export function ModelPanel({
   ) {
     messageSourceRef.current = nextMessage ? source : null;
     setMessage(nextMessage);
+  }
+
+  function clearModelOptions() {
+    modelListRequestSeqRef.current += 1;
+    setModelOptions([]);
+    setModelListMessage("");
+    setIsFetchingModels(false);
   }
 
   function invalidateApiKeyRevealRequest() {
@@ -178,6 +190,7 @@ export function ModelPanel({
     if (!presetId) {
       setSelectedPresetId(null);
       setSettings(EMPTY_MODEL_CONFIG);
+      clearModelOptions();
       invalidateApiKeyReveal();
       return;
     }
@@ -187,6 +200,7 @@ export function ModelPanel({
     }
     setSelectedPresetId(presetId);
     setSettings(toModelConfig(preset.config));
+    clearModelOptions();
     setPendingSwitchPreview(null);
     setPendingEmbeddingAction(null);
     invalidateApiKeyReveal();
@@ -297,6 +311,9 @@ export function ModelPanel({
         setApiKeyPlain(value);
       }
     }
+    if (key === "endpoint" || key === "api_key" || key === "protocol") {
+      clearModelOptions();
+    }
     setSettings((current) => ({ ...current, [key]: value }));
   }
 
@@ -325,6 +342,42 @@ export function ModelPanel({
       setApiKeyVisible(true);
     } catch (e) {
       setInlineMessage(e instanceof Error ? e.message : "Operation failed");
+    }
+  }
+
+  async function handleFetchModels() {
+    if (!selectedPresetId || controlsDisabled || isFetchingModels) {
+      return;
+    }
+    const requestSeq = modelListRequestSeqRef.current + 1;
+    modelListRequestSeqRef.current = requestSeq;
+    setIsFetchingModels(true);
+    setModelListMessage("");
+    try {
+      const result = await fetchAvailableModels(
+        modelName,
+        selectedPresetId,
+        toPresetConfig(settings)
+      );
+      if (modelListRequestSeqRef.current !== requestSeq) {
+        return;
+      }
+      setModelOptions(result.models);
+      setModelListMessage(
+        result.models.length > 0
+          ? `${result.models.length} model${result.models.length === 1 ? "" : "s"} available.`
+          : "No models returned."
+      );
+    } catch (e) {
+      if (modelListRequestSeqRef.current !== requestSeq) {
+        return;
+      }
+      setModelOptions([]);
+      setModelListMessage(e instanceof Error ? e.message : "Operation failed");
+    } finally {
+      if (modelListRequestSeqRef.current === requestSeq) {
+        setIsFetchingModels(false);
+      }
     }
   }
 
@@ -740,6 +793,10 @@ export function ModelPanel({
             fields={fields}
             values={isSelected ? settings : toModelConfig(preset.config)}
             onFieldChange={setField}
+            modelOptions={isSelected ? modelOptions : []}
+            modelListMessage={isSelected ? modelListMessage : ""}
+            isFetchingModels={isSelected && isFetchingModels}
+            onFetchModels={isSelected ? handleFetchModels : undefined}
             fieldsDisabled={controlsDisabled}
             actionLabel={isActive ? "Save" : "Activate"}
             actionDisabled={

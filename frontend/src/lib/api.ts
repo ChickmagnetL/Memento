@@ -413,7 +413,7 @@ export async function fetchApiKey(modelName: string): Promise<string | null> {
     `${API_BASE_URL}/api/settings/models/${modelName}/api_key`,
     { cache: "no-store" }
   );
-  await assertOk(res, "Fetch api_key");
+  await assertOk(res, "Get api_key");
   const data = await res.json();
   return data.api_key;
 }
@@ -590,9 +590,30 @@ export async function fetchPresetApiKey(
     `${API_BASE_URL}/api/settings/models/${modelName}/presets/${presetId}/api_key`,
     { cache: "no-store" }
   );
-  await assertOk(res, "Fetch preset api_key");
+  await assertOk(res, "Get preset api_key");
   const data = await res.json();
   return data.api_key;
+}
+
+export interface ModelListResponse {
+  models: string[];
+}
+
+export async function fetchAvailableModels(
+  modelName: PresetModelName,
+  presetId: string,
+  config: PresetConfig
+): Promise<ModelListResponse> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/settings/models/${modelName}/presets/${presetId}/list-models`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ config }),
+    }
+  );
+  await assertOk(res, "Get Model List");
+  return res.json();
 }
 
 export interface EmbeddingSwitchPreview {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { Eye, EyeOff, MoreHorizontal } from "lucide-react";
+import { ChevronDown, Eye, EyeOff, MoreHorizontal } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -16,6 +16,10 @@ export interface PresetCardProps {
   fields: { key: keyof ModelConfig; label: string }[];
   values: ModelConfig;
   onFieldChange: (key: keyof ModelConfig, value: string) => void;
+  modelOptions?: string[];
+  modelListMessage?: string;
+  isFetchingModels?: boolean;
+  onFetchModels?: () => void;
   fieldsDisabled: boolean;
   actionLabel: "Save" | "Activate";
   actionDisabled: boolean;
@@ -58,6 +62,10 @@ export function PresetCard({
   fields,
   values,
   onFieldChange,
+  modelOptions = [],
+  modelListMessage = "",
+  isFetchingModels = false,
+  onFetchModels,
   fieldsDisabled,
   actionLabel,
   actionDisabled,
@@ -79,7 +87,10 @@ export function PresetCard({
   onRenameCancel,
 }: PresetCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   const isMenuOpen = menuOpen && !menuDisabled;
+  const isModelDropdownOpen =
+    modelDropdownOpen && !fieldsDisabled && modelOptions.length > 0;
 
   // Close the ⋯ menu on click-outside. stopPropagation on the trigger keeps
   // the opening click from immediately closing it.
@@ -98,8 +109,32 @@ export function PresetCard({
     return () => window.removeEventListener("click", handleClickOutside);
   }, [menuDisabled, menuOpen]);
 
+  useEffect(() => {
+    if (!modelDropdownOpen) {
+      return;
+    }
+    if (fieldsDisabled || modelOptions.length === 0) {
+      const timeoutId = window.setTimeout(
+        () => setModelDropdownOpen(false),
+        0
+      );
+      return () => window.clearTimeout(timeoutId);
+    }
+    function handleClickOutside() {
+      setModelDropdownOpen(false);
+    }
+    window.addEventListener("click", handleClickOutside);
+    return () => window.removeEventListener("click", handleClickOutside);
+  }, [fieldsDisabled, modelDropdownOpen, modelOptions.length]);
+
   function handleCardClick() {
-    if (isSelected || isRenaming || isMenuOpen || selectionDisabled) {
+    if (
+      isSelected ||
+      isRenaming ||
+      isMenuOpen ||
+      isModelDropdownOpen ||
+      selectionDisabled
+    ) {
       return;
     }
     onSelect();
@@ -259,17 +294,153 @@ export function PresetCard({
         <div className="mt-4 space-y-3">
           {fields.map(({ key, label }) => {
             const isApiKey = key === "api_key";
+            const isModel = key === "model";
+            const inputPadding = isApiKey ? "pr-9" : "";
             const fieldValue =
               isApiKey && apiKeyVisible
                 ? (apiKeyPlain ?? values.api_key ?? "")
                 : (values[key] ?? "");
+            if (isModel) {
+              const hasModelOptions = modelOptions.length > 0;
+              const selectOptions =
+                fieldValue && !modelOptions.includes(fieldValue)
+                  ? [fieldValue, ...modelOptions]
+                  : modelOptions;
+              return (
+                <div key={key} className="relative block text-sm">
+                  <span className="mb-1 block text-muted-foreground">
+                    {label}
+                  </span>
+                  <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+                    {hasModelOptions ? (
+                      <div
+                        className="relative"
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        <input
+                          type="text"
+                          aria-label={label}
+                          className="h-9 w-full rounded-md border border-input bg-background px-3 pr-9 text-sm disabled:cursor-not-allowed disabled:opacity-60"
+                          value={fieldValue}
+                          onChange={(event) =>
+                            onFieldChange(key, event.target.value)
+                          }
+                          disabled={fieldsDisabled}
+                        />
+                        <button
+                          type="button"
+                          aria-label="Show model options"
+                          aria-haspopup="listbox"
+                          aria-expanded={isModelDropdownOpen}
+                          disabled={fieldsDisabled}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            if (fieldsDisabled) {
+                              return;
+                            }
+                            setModelDropdownOpen((open) => !open);
+                          }}
+                          onKeyDown={(event) => {
+                            if (event.key === "Escape") {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              setModelDropdownOpen(false);
+                            }
+                          }}
+                          className="absolute right-1 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <ChevronDown
+                            size={16}
+                            className={cn(
+                              "transition-transform",
+                              isModelDropdownOpen && "rotate-180"
+                            )}
+                            aria-hidden="true"
+                          />
+                        </button>
+                        {isModelDropdownOpen ? (
+                          <div
+                            role="listbox"
+                            onClick={(event) => event.stopPropagation()}
+                            className="absolute left-0 top-full z-30 mt-1 max-h-56 w-full overflow-auto rounded-md border border-border bg-popover p-1 text-sm shadow-md"
+                          >
+                            {selectOptions.map((option) => (
+                              <button
+                                key={option}
+                                type="button"
+                                role="option"
+                                aria-selected={option === fieldValue}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  onFieldChange(key, option);
+                                  setModelDropdownOpen(false);
+                                }}
+                                onKeyDown={(event) => {
+                                  if (event.key === "Escape") {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    setModelDropdownOpen(false);
+                                  }
+                                }}
+                                className={cn(
+                                  "block w-full rounded-sm px-2 py-1.5 text-left text-foreground hover:bg-accent",
+                                  option === fieldValue && "bg-accent"
+                                )}
+                              >
+                                {option}
+                              </button>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <input
+                        type="text"
+                        aria-label={label}
+                        className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm disabled:cursor-not-allowed disabled:opacity-60"
+                        value={fieldValue}
+                        onChange={(event) =>
+                          onFieldChange(key, event.target.value)
+                        }
+                        disabled={fieldsDisabled}
+                      />
+                    )}
+                    {onFetchModels ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onFetchModels();
+                        }}
+                        disabled={fieldsDisabled || isFetchingModels}
+                        className="h-9 w-full px-3 text-xs sm:w-auto"
+                      >
+                        {isFetchingModels
+                          ? "Getting Models..."
+                          : "Get Model List"}
+                      </Button>
+                    ) : null}
+                  </div>
+                  {modelListMessage ? (
+                    <span className="mt-1 block text-xs text-muted-foreground">
+                      {modelListMessage}
+                    </span>
+                  ) : null}
+                </div>
+              );
+            }
             return (
               <label key={key} className="relative block text-sm">
                 <span className="mb-1 block text-muted-foreground">{label}</span>
                 <div className="relative">
                   <input
                     type={isApiKey && !apiKeyVisible ? "password" : "text"}
-                    className="h-9 w-full rounded-md border border-input bg-background px-3 pr-9 text-sm disabled:cursor-not-allowed disabled:opacity-60"
+                    className={cn(
+                      "h-9 w-full rounded-md border border-input bg-background px-3 text-sm disabled:cursor-not-allowed disabled:opacity-60",
+                      inputPadding
+                    )}
                     value={fieldValue}
                     onChange={(event) => onFieldChange(key, event.target.value)}
                     disabled={fieldsDisabled}

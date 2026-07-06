@@ -5,8 +5,9 @@ import json
 import sqlite3
 from pathlib import Path
 from typing import Any, Literal
+from urllib.error import HTTPError
 from urllib.parse import urlparse
-from urllib.request import urlopen
+from urllib.request import Request as UrlRequest, urlopen
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
@@ -23,6 +24,7 @@ from core.models.factory import build_embedding_client
 from core.rag.embedding import EmbeddingError
 from schemas.settings import (
     PresetConfig,
+    ModelListRequest,
     ModelsUpdateRequest,
     PresetCreateRequest,
     PresetResponse,
@@ -127,6 +129,112 @@ def _check_ollama_health(endpoint: str) -> str:
         return "ok"
     except (OSError, ValueError):
         return "unreachable"
+
+
+MODEL_LIST_TIMEOUT_SECONDS = 10
+
+
+def _read_json_url(url: str, headers: dict[str, str] | None = None) -> Any:
+    request = UrlRequest(url, headers=headers or {})
+    try:
+        with urlopen(request, timeout=MODEL_LIST_TIMEOUT_SECONDS) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")[:200]
+        raise HTTPException(
+            status_code=502,
+            detail=f"HTTP {exc.code}: {body}",
+        ) from exc
+    except OSError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(status_code=502, detail="Malformed models response") from exc
+
+
+def _parse_model_list_endpoint(endpoint: str):
+    try:
+        parsed = urlparse(endpoint)
+        parsed.port
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Endpoint is invalid") from exc
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise HTTPException(status_code=400, detail="Endpoint is invalid")
+    return parsed
+
+
+def _is_ollama_model_list_config(config: dict[str, Any]) -> bool:
+    provider = config.get("provider")
+    if provider == "ollama":
+        return True
+    if provider in {"cloud", "openai"}:
+        return False
+
+    endpoint = str(config.get("endpoint") or "")
+    if not endpoint:
+        return False
+
+    parsed = _parse_model_list_endpoint(endpoint)
+    return (
+        parsed.hostname in {"localhost", "127.0.0.1", "::1"}
+        and parsed.port == 11434
+    )
+
+
+def _ollama_tags_base(endpoint: str) -> str:
+    base = endpoint.rstrip("/")
+    parsed = _parse_model_list_endpoint(base)
+    if parsed.path.rstrip("/") == "/v1":
+        base = base[: -len(parsed.path.rstrip("/"))].rstrip("/")
+    return base
+
+
+def _model_list_requires_api_key(config: dict[str, Any]) -> bool:
+    return config.get("provider") in {"cloud", "openai"}
+
+
+def _list_openai_compatible_models(config: dict[str, Any]) -> list[str]:
+    endpoint = (config.get("endpoint") or "").rstrip("/")
+    api_key = config.get("api_key")
+    if not endpoint:
+        raise HTTPException(status_code=400, detail="Endpoint is required to fetch models")
+    _parse_model_list_endpoint(endpoint)
+    if _model_list_requires_api_key(config) and not api_key:
+        raise HTTPException(
+            status_code=400,
+            detail="API key is required to fetch models",
+        )
+
+    headers = {}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+    response = _read_json_url(
+        f"{endpoint}/models",
+        headers,
+    )
+    data = response.get("data") if isinstance(response, dict) else None
+    if not isinstance(data, list):
+        raise HTTPException(status_code=502, detail="Malformed models response")
+    return [
+        item["id"]
+        for item in data
+        if isinstance(item, dict) and isinstance(item.get("id"), str)
+    ]
+
+
+def _list_ollama_models(config: dict[str, Any]) -> list[str]:
+    endpoint = config.get("endpoint")
+    if not endpoint:
+        raise HTTPException(status_code=400, detail="Endpoint is required to fetch models")
+
+    response = _read_json_url(f"{_ollama_tags_base(str(endpoint))}/api/tags")
+    models = response.get("models") if isinstance(response, dict) else None
+    if not isinstance(models, list):
+        raise HTTPException(status_code=502, detail="Malformed Ollama models response")
+    return [
+        item["name"]
+        for item in models
+        if isinstance(item, dict) and isinstance(item.get("name"), str)
+    ]
 
 
 @router.get("/status")
@@ -418,6 +526,32 @@ async def get_preset_api_key(
         return {"api_key": config.get("api_key")}
     finally:
         await sqlite.close()
+
+
+@router.post("/models/{model_name}/presets/{preset_id}/list-models")
+async def list_available_models(
+    model_name: Literal["chat", "embedding", "asr"],
+    preset_id: str,
+    payload: ModelListRequest,
+) -> dict:
+    """Fetch available model names using a preset's draft config."""
+    sqlite = _get_sqlite_client()
+    await sqlite.connect()
+    try:
+        current_config = await _load_preset_config(
+            sqlite,
+            model_name=model_name,
+            preset_id=preset_id,
+        )
+    finally:
+        await sqlite.close()
+
+    config = _merge_preset_config(current_config, payload.config)
+    if _is_ollama_model_list_config(config):
+        models = await asyncio.to_thread(_list_ollama_models, config)
+    else:
+        models = await asyncio.to_thread(_list_openai_compatible_models, config)
+    return {"models": models}
 
 
 @router.patch("/models/{model_name}/presets/{preset_id}")

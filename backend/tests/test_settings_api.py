@@ -1,11 +1,13 @@
 """Tests for the settings API."""
 
 import asyncio
+import io
 import json
 import os
 import sqlite3
 from pathlib import Path
 from types import SimpleNamespace
+from urllib.error import HTTPError
 
 import pytest
 from fastapi import FastAPI
@@ -547,6 +549,351 @@ def test_get_api_key_returns_none_when_not_set(client):
     response = test_client.get("/api/settings/models/embedding/api_key")
     assert response.status_code == 200
     assert response.json()["api_key"] is None
+
+
+class FakeUrlResponse:
+    def __init__(self, payload: dict, status: int = 200):
+        self.payload = payload
+        self.status = status
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+    def read(self) -> bytes:
+        return json.dumps(self.payload).encode("utf-8")
+
+
+def test_list_models_openai_compatible_uses_draft_config_and_saved_masked_key(
+    client, monkeypatch
+):
+    test_client, db_path = client
+    _update_preset_config(
+        db_path,
+        preset_id="chat_default",
+        config={
+            "provider": "openai",
+            "endpoint": "https://old.example/v1",
+            "api_key": "sk-saved",
+            "model": "old-model",
+        },
+    )
+    calls = []
+
+    def fake_urlopen(request, timeout):
+        calls.append((request.full_url, dict(request.header_items()), timeout))
+        return FakeUrlResponse(
+            {"data": [{"id": "gpt-4.1"}, {"id": "gpt-4.1-mini"}]}
+        )
+
+    monkeypatch.setattr(settings_api, "urlopen", fake_urlopen)
+
+    response = test_client.post(
+        "/api/settings/models/chat/presets/chat_default/list-models",
+        json={
+            "config": {
+                "provider": "openai",
+                "endpoint": "https://new.example/v1",
+                "api_key": "sk-s***",
+                "model": "old-model",
+            }
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"models": ["gpt-4.1", "gpt-4.1-mini"]}
+    assert len(calls) == 1
+    url, headers, timeout = calls[0]
+    assert url == "https://new.example/v1/models"
+    assert timeout == 10
+    assert headers.get("Authorization") == "Bearer sk-saved"
+    assert _preset_config(db_path, "chat_default") == {
+        "provider": "openai",
+        "endpoint": "https://old.example/v1",
+        "api_key": "sk-saved",
+        "model": "old-model",
+    }
+
+
+def test_list_models_local_openai_compatible_allows_missing_api_key(
+    client, monkeypatch
+):
+    test_client, _db_path = client
+    calls = []
+
+    def fake_urlopen(request, timeout):
+        calls.append((request.full_url, dict(request.header_items()), timeout))
+        return FakeUrlResponse({"data": [{"id": "local-asr-model"}]})
+
+    monkeypatch.setattr(settings_api, "urlopen", fake_urlopen)
+
+    response = test_client.post(
+        "/api/settings/models/asr/presets/asr_default/list-models",
+        json={
+            "config": {
+                "provider": "local",
+                "endpoint": "http://localhost:8001/v1",
+                "model": "current-local",
+            }
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"models": ["local-asr-model"]}
+    assert len(calls) == 1
+    url, headers, timeout = calls[0]
+    assert url == "http://localhost:8001/v1/models"
+    assert timeout == 10
+    assert "Authorization" not in headers
+
+
+def test_list_models_runs_probe_in_thread(client, monkeypatch):
+    test_client, _db_path = client
+    calls = []
+
+    async def fake_to_thread(func, *args, **kwargs):
+        calls.append((func.__name__, args, kwargs))
+        return func(*args, **kwargs)
+
+    def fake_urlopen(request, timeout):
+        return FakeUrlResponse({"data": [{"id": "threaded-model"}]})
+
+    monkeypatch.setattr(settings_api.asyncio, "to_thread", fake_to_thread)
+    monkeypatch.setattr(settings_api, "urlopen", fake_urlopen)
+
+    response = test_client.post(
+        "/api/settings/models/chat/presets/chat_default/list-models",
+        json={
+            "config": {
+                "provider": "openai",
+                "endpoint": "https://api.example/v1",
+                "api_key": "sk-test",
+            }
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"models": ["threaded-model"]}
+    assert calls
+    assert calls[0][0] == "_list_openai_compatible_models"
+
+
+def test_list_models_ollama_strips_openai_v1_suffix(client, monkeypatch):
+    test_client, _db_path = client
+    calls = []
+
+    def fake_urlopen(request, timeout):
+        calls.append((request.full_url, dict(request.header_items()), timeout))
+        return FakeUrlResponse(
+            {"models": [{"name": "llama3.2"}, {"name": "nomic-embed-text"}]}
+        )
+
+    monkeypatch.setattr(settings_api, "urlopen", fake_urlopen)
+
+    response = test_client.post(
+        "/api/settings/models/embedding/presets/embedding_default/list-models",
+        json={
+            "config": {
+                "provider": "ollama",
+                "endpoint": "http://localhost:11434/v1",
+                "model": "nomic-embed-text",
+            }
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"models": ["llama3.2", "nomic-embed-text"]}
+    assert len(calls) == 1
+    url, headers, timeout = calls[0]
+    assert url == "http://localhost:11434/api/tags"
+    assert timeout == 10
+    assert "Authorization" not in headers
+
+
+def test_list_models_invalid_endpoint_port_returns_400(client):
+    test_client, _db_path = client
+
+    response = test_client.post(
+        "/api/settings/models/chat/presets/chat_default/list-models",
+        json={
+            "config": {
+                "provider": "openai",
+                "endpoint": "http://localhost:bad/v1",
+                "api_key": "sk-test",
+            }
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Endpoint is invalid"
+
+
+def test_list_models_invalid_ipv6_endpoint_returns_400(client):
+    test_client, _db_path = client
+
+    response = test_client.post(
+        "/api/settings/models/chat/presets/chat_default/list-models",
+        json={
+            "config": {
+                "provider": "openai",
+                "endpoint": "http://[::1",
+                "api_key": "sk-test",
+            }
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Endpoint is invalid"
+
+
+def test_list_models_invalid_endpoint_without_scheme_returns_400(client):
+    test_client, _db_path = client
+
+    response = test_client.post(
+        "/api/settings/models/chat/presets/chat_default/list-models",
+        json={
+            "config": {
+                "provider": "openai",
+                "endpoint": "localhost:8000/v1",
+                "api_key": "sk-test",
+            }
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Endpoint is invalid"
+
+
+def test_list_models_explicit_openai_provider_requires_key_for_ollama_like_endpoint(
+    client, monkeypatch
+):
+    test_client, _db_path = client
+
+    def fake_urlopen(request, timeout):
+        raise AssertionError("request should not be sent without an API key")
+
+    monkeypatch.setattr(settings_api, "urlopen", fake_urlopen)
+
+    response = test_client.post(
+        "/api/settings/models/chat/presets/chat_default/list-models",
+        json={
+            "config": {
+                "provider": "openai",
+                "endpoint": "http://localhost:11434/v1",
+            }
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "API key is required to fetch models"
+
+
+def test_list_models_requires_endpoint(client):
+    test_client, _db_path = client
+
+    response = test_client.post(
+        "/api/settings/models/chat/presets/chat_default/list-models",
+        json={"config": {"provider": "openai", "api_key": "sk-test"}},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Endpoint is required to fetch models"
+
+
+def test_list_models_requires_api_key_for_openai_compatible(client):
+    test_client, db_path = client
+    _update_preset_config(
+        db_path,
+        preset_id="chat_default",
+        config={"provider": "openai", "endpoint": "https://api.example/v1"},
+    )
+
+    response = test_client.post(
+        "/api/settings/models/chat/presets/chat_default/list-models",
+        json={"config": {"provider": "openai", "endpoint": "https://api.example/v1"}},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "API key is required to fetch models"
+
+
+def test_list_models_upstream_error_returns_502(client, monkeypatch):
+    test_client, _db_path = client
+
+    def fake_urlopen(request, timeout):
+        raise OSError("connection refused")
+
+    monkeypatch.setattr(settings_api, "urlopen", fake_urlopen)
+
+    response = test_client.post(
+        "/api/settings/models/chat/presets/chat_default/list-models",
+        json={
+            "config": {
+                "provider": "openai",
+                "endpoint": "https://api.example/v1",
+                "api_key": "sk-test",
+            }
+        },
+    )
+
+    assert response.status_code == 502
+    assert "connection refused" in response.json()["detail"]
+
+
+def test_list_models_http_error_returns_502(client, monkeypatch):
+    test_client, _db_path = client
+
+    def fake_urlopen(request, timeout):
+        raise HTTPError(
+            request.full_url,
+            401,
+            "Unauthorized",
+            {},
+            io.BytesIO(b'{"error":"bad key"}'),
+        )
+
+    monkeypatch.setattr(settings_api, "urlopen", fake_urlopen)
+
+    response = test_client.post(
+        "/api/settings/models/chat/presets/chat_default/list-models",
+        json={
+            "config": {
+                "provider": "openai",
+                "endpoint": "https://api.example/v1",
+                "api_key": "sk-test",
+            }
+        },
+    )
+
+    assert response.status_code == 502
+    detail = response.json()["detail"]
+    assert "401" in detail
+    assert "bad key" in detail
+
+
+def test_list_models_malformed_response_returns_502(client, monkeypatch):
+    test_client, _db_path = client
+
+    def fake_urlopen(request, timeout):
+        return FakeUrlResponse({"unexpected": []})
+
+    monkeypatch.setattr(settings_api, "urlopen", fake_urlopen)
+
+    response = test_client.post(
+        "/api/settings/models/chat/presets/chat_default/list-models",
+        json={
+            "config": {
+                "provider": "openai",
+                "endpoint": "https://api.example/v1",
+                "api_key": "sk-test",
+            }
+        },
+    )
+
+    assert response.status_code == 502
+    assert response.json()["detail"] == "Malformed models response"
 
 
 def test_embedding_switch_preview_same_dimension_success(client, monkeypatch):

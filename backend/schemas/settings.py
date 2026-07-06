@@ -32,6 +32,12 @@ class PresetConfig(BaseModel):
     protocol: str | None = None
 
 
+class ModelListRequest(BaseModel):
+    """Request to fetch available models for a draft preset config."""
+
+    config: PresetConfig
+
+
 class PresetCreateRequest(BaseModel):
     """Request to create a new preset."""
 
