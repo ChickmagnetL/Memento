@@ -65,7 +65,23 @@ function resolveDouyinFetcherCommand() {
   };
 }
 
-function startBackend() {
+async function isBackendHealthy() {
+  try {
+    const response = await Promise.race([
+      fetch(BACKEND_HEALTH_URL),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 1000)),
+    ]);
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+async function startBackend() {
+  if (await isBackendHealthy()) {
+    console.log("[backend] Already healthy on localhost:8000; not spawning another process.");
+    return;
+  }
   const { command, args, cwd } = resolveBackendCommand();
   backendProcess = spawn(command, args, {
     cwd,
@@ -163,7 +179,7 @@ function stopSidecars() {
 
 app.whenReady().then(async () => {
   await startDouyinFetcher();
-  startBackend();
+  await startBackend();
   try {
     await waitForHealth();
   } catch (error) {
