@@ -4,19 +4,19 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Video,
   Database,
-  MessageSquare,
-  Settings,
   HelpCircle,
-  PanelLeftClose,
-  PanelLeft,
+  Home,
   LogIn,
+  MessageSquare,
+  PanelLeft,
+  PanelLeftClose,
+  Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
-  { href: "/", label: "Video Intake", icon: Video },
+  { href: "/", label: "Home", icon: Home },
   { href: "/knowledge", label: "Knowledge Base", icon: Database },
   { href: "/chat", label: "Chat", icon: MessageSquare },
   { href: "/login", label: "Login", icon: LogIn },

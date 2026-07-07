@@ -32,11 +32,6 @@ async function assertOk(res: Response, label: string): Promise<void> {
   throw new Error(detail ?? `${label} failed (HTTP ${res.status})`);
 }
 
-export interface HealthResponse {
-  status: string;
-  service: string;
-}
-
 export type VideoStatus = "pending" | "processing" | "completed" | "failed";
 export type VideoPlatform = "bilibili" | "douyin";
 
@@ -57,17 +52,6 @@ export interface VideoRecord {
 export interface CreateVideoRequest {
   url: string;
   title?: string;
-}
-
-/**
- * Fetch backend health status.
- *
- * @throws Error if the request fails (non-2xx response).
- */
-export async function getHealth(): Promise<HealthResponse> {
-  const res = await fetch(`${API_BASE_URL}/api/health`, { cache: "no-store" });
-  await assertOk(res, "Health check");
-  return res.json();
 }
 
 export async function listVideos(): Promise<VideoRecord[]> {

@@ -46,8 +46,8 @@ Both a chat model and an embedding model are required.
 
 ### 5. First Video
 
-1. Open **Video Intake**, paste a Bilibili or Douyin URL, click *Add video*.
-2. Click *Process* to extract subtitles (or ASR-transcribe audio).
+1. Open **Home**, paste a Bilibili or Douyin URL, click *Add video*.
+2. In the imported video cards, click *Process* to extract subtitles (or ASR-transcribe audio).
 3. Go to **Knowledge Base**, select the generated document, click *Index* to
    vectorize it.
 4. Go to **Chat** and ask questions about the indexed content.
@@ -81,8 +81,8 @@ Phase 1 smoke test from the project root:
 ## Phase 2A: Video Intake
 
 With backend and frontend running, open http://localhost:3000 and submit a
-Bilibili or Douyin URL. The app creates a pending SQLite video record and
-displays it in the video list.
+Bilibili or Douyin URL from the Home page. The app creates a pending SQLite
+video record and displays it in the imported-video card carousel/list.
 
 ## Phase 2B: Video Processing Workflow
 

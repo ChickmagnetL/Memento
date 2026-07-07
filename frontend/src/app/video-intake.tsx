@@ -1,11 +1,9 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Play, Plus, Database, Trash2 } from "lucide-react";
+import { Plus } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorBanner } from "@/components/ui/error-banner";
 import { SubtitleDecisionDialog } from "@/components/ui/subtitle-decision-dialog";
 import {
@@ -18,45 +16,77 @@ import {
 } from "@/lib/api";
 
 interface VideoIntakeProps {
-  initialHealth: string;
   initialVideos: VideoRecord[];
 }
 
-export function VideoIntake({ initialHealth, initialVideos }: VideoIntakeProps) {
+function formatDate(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleString("en-US", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).replace(/\//g, "-").replace(",", "");
+}
+
+function statusBadgeClass(status: string): string {
+  if (status === "completed") return "video-badge completed";
+  if (status === "failed") return "video-badge failed";
+  return "video-badge pending";
+}
+
+function actionLabel(status: string): string {
+  if (status === "completed") return "Re-process";
+  return "Process";
+}
+
+export function VideoIntake({ initialVideos }: VideoIntakeProps) {
   const router = useRouter();
   const [url, setUrl] = useState("");
   const [videos, setVideos] = useState<VideoRecord[]>(initialVideos);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [processingVideoId, setProcessingVideoId] = useState<string | null>(
-    null
-  );
+  const [processingVideoId, setProcessingVideoId] = useState<string | null>(null);
   const [checkingVideoId, setCheckingVideoId] = useState<string | null>(null);
   const [pendingSubtitleDecision, setPendingSubtitleDecision] = useState<{
     videoId: string;
     title: string;
   } | null>(null);
 
+  // Carousel state
+  const [activeCardIndex, setActiveCardIndex] = useState(0);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const pageShellRef = useRef<HTMLDivElement>(null);
+  const heroUrlRef = useRef<HTMLDivElement>(null);
+  const cardsStageRef = useRef<HTMLDivElement>(null);
+
+  const isBusy =
+    processingVideoId !== null ||
+    checkingVideoId !== null ||
+    pendingSubtitleDecision !== null;
+
   async function refreshVideos() {
     const items = await listVideos();
     setVideos(items);
+    if (activeCardIndex >= items.length) {
+      setActiveCardIndex(Math.max(0, items.length - 1));
+    }
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-
     const trimmedUrl = url.trim();
-    if (!trimmedUrl) {
-      return;
-    }
-
+    if (!trimmedUrl) return;
     setError("");
     setIsSubmitting(true);
-
     try {
       await createVideo({ url: trimmedUrl });
       setUrl("");
       await refreshVideos();
+      // Focus the newly added video (newest is at index 0)
+      setActiveCardIndex(0);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Operation failed");
     } finally {
@@ -91,14 +121,11 @@ export function VideoIntake({ initialHealth, initialVideos }: VideoIntakeProps) 
 
   async function handleProcess(video: VideoRecord) {
     setError("");
-
     if (video.status === "completed") {
       await runProcess(video.id);
       return;
     }
-
     setCheckingVideoId(video.id);
-
     let hasSubtitles = true;
     try {
       const result = await checkSubtitles(video.id);
@@ -108,9 +135,7 @@ export function VideoIntake({ initialHealth, initialVideos }: VideoIntakeProps) 
       setCheckingVideoId(null);
       return;
     }
-
     setCheckingVideoId(null);
-
     if (hasSubtitles) {
       await runProcess(video.id);
     } else {
@@ -118,26 +143,111 @@ export function VideoIntake({ initialHealth, initialVideos }: VideoIntakeProps) 
     }
   }
 
-  return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-8 py-8">
-      <header className="space-y-1">
-        <h1 className="text-xl font-semibold">Video Intake</h1>
-        <p className="text-sm text-muted-foreground">
-          Backend: <span className="font-mono">{initialHealth}</span>
-        </p>
-      </header>
+  useLayoutEffect(() => {
+    const shell = pageShellRef.current;
+    const heroUrl = heroUrlRef.current;
+    if (!shell || !heroUrl) return;
 
-      <form className="flex flex-col gap-3 sm:flex-row" onSubmit={handleSubmit}>
+    const updateHeroHeight = () => {
+      const height = heroUrl.offsetHeight;
+      shell.style.setProperty("--hero-url-height", `${height}px`);
+      shell.style.setProperty("--hero-url-half-height", `${height / 2}px`);
+    };
+
+    updateHeroHeight();
+    const resizeObserver = new ResizeObserver(updateHeroHeight);
+    resizeObserver.observe(heroUrl);
+    return () => resizeObserver.disconnect();
+  }, []);
+
+  // Measure card heights and set --list-y (expanded position) + --stage-height.
+  // Cumulative height so cards of differing sizes (e.g. failed w/ error msg) don't overlap.
+  useLayoutEffect(() => {
+    const stage = cardsStageRef.current;
+    if (!stage) return;
+    const cards = Array.from(stage.querySelectorAll<HTMLElement>(".video-card"));
+    if (cards.length === 0) return;
+    const gap = 12;
+    let cumulative = 0;
+    cards.forEach((card) => {
+      card.style.setProperty("--list-y", `${cumulative}px`);
+      cumulative += card.offsetHeight + gap;
+    });
+    // stage height = last card's list-y + its own height
+    const last = cards[cards.length - 1];
+    const totalHeight = parseFloat(last.style.getPropertyValue("--list-y")) + last.offsetHeight;
+    stage.style.setProperty("--stage-height", `${totalHeight}px`);
+  }, [isExpanded, videos]);
+
+  // Wheel event for carousel scrolling.
+  // Trackpads emit many small continuous events per swipe; accumulate deltaY
+  // and switch one card per threshold, with a cooldown to avoid overshooting.
+  useEffect(() => {
+    const stage = cardsStageRef.current;
+    if (!stage) return;
+    let acc = 0;
+    let lastSwitch = 0;
+    const threshold = 40;
+    const cooldown = 180;
+    function onWheel(e: WheelEvent) {
+      if (isExpanded) return;
+      e.preventDefault();
+      const now = Date.now();
+      if (now - lastSwitch < cooldown) return;
+      acc += e.deltaY;
+      if (Math.abs(acc) < threshold) return;
+      const dir = acc > 0 ? 1 : -1;
+      setActiveCardIndex((prev) =>
+        Math.max(0, Math.min(videos.length - 1, prev + dir))
+      );
+      acc = 0;
+      lastSwitch = now;
+    }
+    stage.addEventListener("wheel", onWheel, { passive: false });
+    return () => stage.removeEventListener("wheel", onWheel);
+  }, [isExpanded, videos.length]);
+
+  const toggleExpand = useCallback(() => {
+    setIsExpanded((prev) => !prev);
+  }, []);
+
+  return (
+    <div ref={pageShellRef} className={`page-shell${isExpanded ? " is-expanded" : ""}`}>
+      <div ref={heroUrlRef} className="page-hero-url">
+        {/* SVG filter for handwriting roughness */}
+        <svg width="0" height="0" aria-hidden="true" focusable="false" className="absolute">
+        <filter id="handwriting-rough">
+          <feTurbulence type="fractalNoise" baseFrequency="0.045" numOctaves="2" seed="11" result="noise" />
+          <feDisplacementMap in="SourceGraphic" in2="noise" scale="1.8" xChannelSelector="R" yChannelSelector="G" />
+        </filter>
+      </svg>
+
+      {/* Hero: Memento handwriting */}
+      <section className="flex flex-col items-center gap-2.5 mb-2">
+        <div className="brand-word" aria-label="Memento">
+          <span>M</span><span>e</span><span>m</span><span>e</span><span>n</span><span>t</span><span>o</span>
+        </div>
+      </section>
+
+      {/* URL input card */}
+      <form
+        className="grid grid-cols-[1fr_auto] gap-2.5 rounded-lg border border-border bg-[hsl(240_6%_10%)] p-3 shadow-sm"
+        onSubmit={handleSubmit}
+      >
         <input
-          className="h-10 flex-1 rounded-md border border-input bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground"
-          onChange={(event) => setUrl(event.target.value)}
+          className="h-10 rounded-md border border-border bg-[hsl(240_10%_4%)] px-3 text-sm text-foreground placeholder:text-muted-foreground"
+          onChange={(e) => setUrl(e.target.value)}
           placeholder="Paste a Bilibili or Douyin URL"
           value={url}
         />
-        <Button disabled={isSubmitting || !url.trim()} type="submit">
-          <Plus />
+        <button
+          className="flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-white whitespace-nowrap disabled:opacity-50"
+          disabled={isSubmitting || !url.trim()}
+          type="submit"
+        >
+          <Plus className="h-4 w-4" />
           {isSubmitting ? "Saving..." : "Add video"}
-        </Button>
+        </button>
       </form>
 
       {error ? <ErrorBanner message={error} /> : null}
@@ -154,80 +264,139 @@ export function VideoIntake({ initialHealth, initialVideos }: VideoIntakeProps) 
           onConfigureCookie={() => router.push("/settings")}
         />
       ) : null}
+      </div>
 
-      <section className="space-y-3">
-        <h2 className="text-lg font-semibold">Videos</h2>
-        {videos.length === 0 ? (
-          <EmptyState icon={Database} title="No videos yet" description="Paste a Bilibili or Douyin URL above." />
-        ) : (
-          <ul className="space-y-3">
-            {videos.map((video) => (
-              <li className="rounded-md border border-border p-4 transition-shadow hover:shadow-sm" key={video.id}>
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="font-medium">{video.title}</p>
-                    {video.author ? (
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        {video.author}
-                      </p>
-                    ) : null}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="rounded-md bg-[var(--color-bg-hover)] px-2 py-1 text-xs text-secondary-foreground">
+      {/* Imported videos section */}
+      {videos.length > 0 ? (
+        <section className={`history-shell${isExpanded ? " is-expanded" : ""}`}>
+          <div className="history-header">
+            <div>
+              <h2>Imported videos</h2>
+              <p>
+                {isExpanded
+                  ? "All imported records, ordered by import time."
+                  : "Scroll or click a card to focus."}
+              </p>
+            </div>
+            <button
+              className="expand-toggle-btn"
+              type="button"
+              aria-label="Toggle list view"
+              onClick={toggleExpand}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <rect x="5" y="4" width="14" height="3" rx="1" />
+                <rect x="5" y="10.5" width="14" height="3" rx="1" />
+                <rect x="5" y="17" width="14" height="3" rx="1" />
+              </svg>
+            </button>
+          </div>
+
+          <div className="cards-stage" ref={cardsStageRef}>
+            {videos.map((video, index) => {
+              const offset = index - activeCardIndex;
+              const isActive = offset === 0;
+
+              return (
+                <article
+                  key={video.id}
+                  className={`video-card${isActive ? " is-active" : ""}`}
+                  style={{
+                    "--offset": offset,
+                    "--list-y": "0px",
+                  } as React.CSSProperties}
+                  onClick={() => {
+                    if (isExpanded) return;
+                    setActiveCardIndex(index);
+                  }}
+                >
+                  {/* Title + badge */}
+                  <div className="video-card-top">
+                    <div className="video-card-title">{video.title}</div>
+                    <span className={statusBadgeClass(video.status)}>
                       {video.status}
                     </span>
-                    <Button
-                      className="min-w-28"
-                      disabled={
-                        video.status === "processing" ||
-                        processingVideoId !== null ||
-                        checkingVideoId !== null ||
-                        pendingSubtitleDecision !== null
-                      }
-                      onClick={() => handleProcess(video)}
-                      size="sm"
-                      type="button"
-                      variant="outline"
-                    >
-                      <Play />
-                      {checkingVideoId === video.id
-                        ? "Checking..."
-                        : processingVideoId === video.id ||
-                            video.status === "processing"
-                          ? "Processing..."
-                          : video.status === "completed"
-                            ? "Re-process"
-                            : "Process"}
-                    </Button>
-                    <Button
-                      className="min-w-28"
-                      disabled={processingVideoId !== null}
-                      onClick={() => handleDelete(video.id)}
-                      size="sm"
-                      type="button"
-                      variant="outline"
-                    >
-                      <Trash2 />
-                      Delete
-                    </Button>
                   </div>
-                </div>
-                <p className="mt-2 break-all text-sm text-muted-foreground">
-                  {video.url}
-                </p>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  {video.platform} · {video.created_at}
-                </p>
-                {video.status === "failed" && video.error_message ? (
-                  <p className="mt-2 break-all text-xs text-destructive">
-                    {video.error_message}
-                  </p>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+
+                  {/* Info grid: Platform / Author / Imported */}
+                  <div className="video-info-grid">
+                    <div>
+                      <span className="video-info-label">Platform</span>
+                      <span className="video-info-value">
+                        {video.platform === "bilibili" ? "Bilibili" : "Douyin"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="video-info-label">Author</span>
+                      <span className="video-info-value">
+                        {video.author || "Unknown author"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="video-info-label">Imported</span>
+                      <span className="video-info-value">
+                        {formatDate(video.created_at)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* URL row + actions */}
+                  <div className="video-url-row">
+                    <a
+                      className="video-url-link"
+                      href={video.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {video.url}
+                    </a>
+                    <div className="video-actions">
+                      <button
+                        className="video-action-btn primary"
+                        type="button"
+                        disabled={isBusy}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleProcess(video);
+                        }}
+                      >
+                        {checkingVideoId === video.id
+                          ? "Checking..."
+                          : processingVideoId === video.id || video.status === "processing"
+                            ? "Processing..."
+                            : actionLabel(video.status)}
+                      </button>
+                      <button
+                        className="video-action-btn danger"
+                        type="button"
+                        disabled={processingVideoId !== null}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(video.id);
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Error message for failed videos */}
+                  {video.status === "failed" && video.error_message ? (
+                    <p className="mt-2 text-xs text-[hsl(0_40%_72%)]">{video.error_message}</p>
+                  ) : null}
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      ) : (
+        <div className="flex flex-col items-center gap-2 py-16 text-center">
+          <p className="text-sm text-muted-foreground">
+            No videos yet. Paste a Bilibili or Douyin URL above to get started.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

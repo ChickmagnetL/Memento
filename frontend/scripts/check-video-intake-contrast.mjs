@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 
 const layout = readFileSync("src/app/layout.tsx", "utf8");
 const videoIntake = readFileSync("src/app/video-intake.tsx", "utf8");
+const globals = readFileSync("src/app/globals.css", "utf8");
 
 const checks = [
   {
@@ -16,10 +17,15 @@ const checks = [
       videoIntake.includes("placeholder:text-muted-foreground"),
   },
   {
-    name: "status badge sets foreground color for secondary background",
+    name: "status badge variants set readable foreground and background colors",
     passed:
-      videoIntake.includes("bg-secondary") &&
-      videoIntake.includes("text-secondary-foreground"),
+      videoIntake.includes("video-badge") &&
+      globals.includes(".video-badge.completed") &&
+      globals.includes(".video-badge.pending") &&
+      globals.includes(".video-badge.failed") &&
+      globals.includes("color: #86efac;") &&
+      globals.includes("color: #fde68a;") &&
+      globals.includes("color: #fca5a5;"),
   },
 ];
 
