@@ -51,25 +51,31 @@ export function Sidebar() {
       className="flex flex-col border-r border-border bg-[var(--color-bg-sidebar)] transition-[width]"
       style={{ width }}
     >
-      {/* Header */}
-      <div className="flex items-center gap-2 border-b border-border px-3 pt-9 pb-2">
-        {!collapsed && (
-          <span className="flex-1 text-sm font-semibold tracking-tight">
-            Memento
-          </span>
-        )}
-        <button
-          onClick={toggle}
-          className="rounded-md p-1.5 text-muted-foreground hover:bg-[var(--color-bg-hover)] hover:text-[var(--color-text)] transition-colors"
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        >
-          {collapsed ? (
+      {/* Header: only visible when collapsed, toggle centered below traffic lights */}
+      {collapsed && (
+        <div className="flex items-center justify-center border-b border-border px-2 pt-9 pb-2">
+          <button
+            onClick={toggle}
+            className="rounded-md p-1.5 text-muted-foreground hover:bg-[var(--color-bg-hover)] hover:text-[var(--color-text)] transition-colors"
+            aria-label="Expand sidebar"
+          >
             <PanelLeft className="h-4 w-4" />
-          ) : (
+          </button>
+        </div>
+      )}
+
+      {/* Toggle button when expanded: top-right corner */}
+      {!collapsed && (
+        <div className="flex justify-end px-2 pt-2">
+          <button
+            onClick={toggle}
+            className="rounded-md p-1.5 text-muted-foreground hover:bg-[var(--color-bg-hover)] hover:text-[var(--color-text)] transition-colors"
+            aria-label="Collapse sidebar"
+          >
             <PanelLeftClose className="h-4 w-4" />
-          )}
-        </button>
-      </div>
+          </button>
+        </div>
+      )}
 
       {/* Nav items */}
       <nav className="flex-1 py-2">
@@ -80,7 +86,8 @@ export function Sidebar() {
               key={href}
               href={href}
               className={cn(
-                "flex items-center gap-3 mx-2 mb-0.5 rounded-md px-3 py-2 text-sm transition-colors",
+                "mx-2 mb-0.5 flex items-center gap-3 rounded-md py-2 text-sm transition-colors",
+                collapsed ? "justify-center px-0" : "px-3",
                 active
                   ? "bg-[var(--color-bg-hover)] text-[var(--color-text)]"
                   : "text-[var(--color-text-muted)] hover:bg-[var(--color-bg-hover)] hover:text-[var(--color-text)]"
@@ -102,7 +109,8 @@ export function Sidebar() {
             <Link
               href={helpHref}
               className={cn(
-                "flex items-center gap-3 mx-2 mb-0.5 rounded-md px-3 py-2 text-sm transition-colors",
+                "mx-2 mb-0.5 flex items-center gap-3 rounded-md py-2 text-sm transition-colors",
+                collapsed ? "justify-center px-0" : "px-3",
                 helpActive
                   ? "bg-[var(--color-bg-hover)] text-[var(--color-text)]"
                   : "text-[var(--color-text-muted)] hover:bg-[var(--color-bg-hover)] hover:text-[var(--color-text)]"
