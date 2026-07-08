@@ -79,6 +79,13 @@ def _duration_seconds(value) -> int | None:
     return int(value / 1000)
 
 
+def _use_fake_ms_token_for_f2_import() -> None:
+    """Avoid F2's import-time dependency on the real msToken endpoint."""
+    from f2.apps.douyin.utils import TokenManager
+
+    TokenManager.gen_real_msToken = classmethod(lambda cls: cls.gen_false_msToken())
+
+
 def _build_resolve_payload(detail: dict) -> dict:
     video = detail.get("video") or {}
     if not isinstance(video, dict):
@@ -100,6 +107,7 @@ def _build_resolve_payload(detail: dict) -> dict:
 @app.post("/resolve", response_model=ResolveResponse)
 async def resolve(payload: ResolveRequest) -> dict:
     try:
+        _use_fake_ms_token_for_f2_import()
         from f2.apps.douyin.handler import DouyinHandler
         from f2.apps.douyin.utils import ClientConfManager
     except ModuleNotFoundError as exc:

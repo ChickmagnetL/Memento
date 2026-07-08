@@ -1,9 +1,42 @@
 """Tests for Douyin fetcher metadata extraction."""
 
+import sys
+import types
+
 import pytest
 from fastapi import HTTPException
 
-from services.douyin_fetcher.server import _build_resolve_payload
+from services.douyin_fetcher.server import (
+    _build_resolve_payload,
+    _use_fake_ms_token_for_f2_import,
+)
+
+
+def test_use_fake_ms_token_for_f2_import(monkeypatch):
+    class FakeTokenManager:
+        @classmethod
+        def gen_false_msToken(cls):
+            return "fake-token"
+
+        @classmethod
+        def gen_real_msToken(cls):
+            raise AssertionError("real msToken should not be used")
+
+    utils_module = types.ModuleType("f2.apps.douyin.utils")
+    utils_module.TokenManager = FakeTokenManager
+
+    monkeypatch.setitem(sys.modules, "f2", types.ModuleType("f2"))
+    monkeypatch.setitem(sys.modules, "f2.apps", types.ModuleType("f2.apps"))
+    monkeypatch.setitem(
+        sys.modules,
+        "f2.apps.douyin",
+        types.ModuleType("f2.apps.douyin"),
+    )
+    monkeypatch.setitem(sys.modules, "f2.apps.douyin.utils", utils_module)
+
+    _use_fake_ms_token_for_f2_import()
+
+    assert FakeTokenManager.gen_real_msToken() == "fake-token"
 
 
 def test_build_resolve_payload_includes_metadata():
