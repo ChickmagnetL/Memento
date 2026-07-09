@@ -4,6 +4,8 @@ Single switch point for cloud vs ollama. API modules import these and
 keep module-level names so tests can monkeypatch per-module.
 """
 
+from urllib.parse import urlparse
+
 from config.settings import Settings, get_settings
 from core.models.chat_completion import ChatCompletionError
 from core.models.chat_model_adapter import (
@@ -16,10 +18,43 @@ from core.rag.ollama_embedding import (
 )
 
 
+def _looks_like_ollama_endpoint(endpoint: str | None) -> bool:
+    """Return True only when *endpoint* points at a local Ollama daemon
+    (localhost/127.0.0.1/::1 on port 11434). Mirrors the endpoint check in
+    backend/api/settings.py:_is_ollama_model_list_config so the embedding
+    client and the model-list fetch agree on what counts as Ollama.
+    """
+    if not endpoint:
+        return False
+    try:
+        parsed = urlparse(endpoint)
+    except ValueError:
+        return False
+    return (
+        parsed.hostname in {"localhost", "127.0.0.1", "::1"}
+        and parsed.port == 11434
+    )
+
+
 def build_embedding_client(settings: Settings | None = None):
-    """Build the embedding client according to models.embedding.provider."""
+    """Build the embedding client.
+
+    Protocol selection mirrors backend/api/settings.py:_is_ollama_model_list_config:
+    the endpoint is authoritative when present -- localhost:11434 means Ollama,
+    anything else means an OpenAI-compatible (cloud) service. This makes
+    ``provider`` decorative, matching the Settings UI which intentionally omits
+    the field. An explicit ``cloud``/``openai`` provider is still honored for
+    back-compat; when no endpoint is set, ``provider`` is used as a fallback.
+    """
     embedding = (settings or get_settings()).models.embedding
-    if embedding.provider == "ollama":
+    if embedding.provider in {"cloud", "openai"}:
+        use_ollama = False
+    elif embedding.endpoint:
+        use_ollama = _looks_like_ollama_endpoint(embedding.endpoint)
+    else:
+        use_ollama = embedding.provider == "ollama"
+
+    if use_ollama:
         return OllamaEmbeddingClient(
             endpoint=embedding.endpoint, model=embedding.model
         )
