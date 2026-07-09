@@ -57,7 +57,7 @@ def diag_embedding() -> None:
         try:
             device_str = str(next(model.parameters()).device)
         except Exception:
-            device_str = str(model.device) if hasattr(model, 'device') else "unknown"
+            device_str = "unknown"
         print(f"  Model actual device: {device_str}")
 
         # Benchmark
@@ -115,11 +115,13 @@ def diag_asr() -> None:
             sf.write(f.name, silence, sample_rate)
             tmp_path = f.name
 
-        t0 = time.time()
-        result = model.generate(input=tmp_path, fs=sample_rate, use_itn=True)
-        encode_time = time.time() - t0
-        print(f"  Transcribe latency (3s silence): {encode_time:.3f}s")
-        Path(tmp_path).unlink()
+        try:
+            t0 = time.time()
+            _ = model.generate(input=tmp_path, fs=sample_rate, use_itn=True)
+            encode_time = time.time() - t0
+            print(f"  Transcribe latency (3s silence): {encode_time:.3f}s")
+        finally:
+            Path(tmp_path).unlink(missing_ok=True)
     except Exception as e:
         print(f"  ERROR: {e}")
 

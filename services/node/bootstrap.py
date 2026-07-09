@@ -78,15 +78,14 @@ def start_asr(device: str) -> subprocess.Popen:
     """Start the ASR service in the background. Returns the Popen handle."""
     venv_uvicorn = ASR_DIR / ".venv" / "bin" / "uvicorn"
     if not venv_uvicorn.exists():
-        print(f"ERROR: ASR venv not found at {ASR_DIR / '.venv'}. Run 'deploy' first.")
-        sys.exit(1)
+        raise FileNotFoundError(f"ASR venv not found at {ASR_DIR / '.venv'}. Run 'deploy' first.")
 
     proc = subprocess.Popen(
         [str(venv_uvicorn), "server:app", "--host", "0.0.0.0", "--port", str(ASR_PORT)],
         cwd=str(ASR_DIR),
         env={**os.environ, "ASR_HOST": "0.0.0.0", "ASR_PORT": str(ASR_PORT), "ASR_DEVICE": device},
         stdout=subprocess.DEVNULL,
-        stderr=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
         start_new_session=True,
     )
     return proc
@@ -96,15 +95,14 @@ def start_embedding(device: str) -> subprocess.Popen:
     """Start the embedding service in the background. Returns the Popen handle."""
     venv_uvicorn = EMBEDDING_DIR / ".venv" / "bin" / "uvicorn"
     if not venv_uvicorn.exists():
-        print(f"ERROR: Embedding venv not found at {EMBEDDING_DIR / '.venv'}. Run 'deploy' first.")
-        sys.exit(1)
+        raise FileNotFoundError(f"Embedding venv not found at {EMBEDDING_DIR / '.venv'}. Run 'deploy' first.")
 
     proc = subprocess.Popen(
         [str(venv_uvicorn), "server:app", "--host", "0.0.0.0", "--port", str(EMBEDDING_PORT)],
         cwd=str(EMBEDDING_DIR),
         env={**os.environ, "EMBEDDING_HOST": "0.0.0.0", "EMBEDDING_PORT": str(EMBEDDING_PORT), "EMBEDDING_DEVICE": device},
         stdout=subprocess.DEVNULL,
-        stderr=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
         start_new_session=True,
     )
     return proc
@@ -222,19 +220,40 @@ def cmd_deploy() -> None:
     print("Deploy complete.")
 
 
+def _cleanup_procs(procs: list) -> None:
+    """Terminate all child processes and wait for them to exit."""
+    for proc in procs:
+        try:
+            proc.terminate()
+        except Exception:
+            pass
+    for proc in procs:
+        try:
+            proc.wait(timeout=5)
+        except Exception:
+            try:
+                proc.kill()
+            except Exception:
+                pass
+
+
 def cmd_serve() -> None:
     """Start both services."""
     device = detect_best_device()
     print(f"Starting services (device={device})...")
+
+    procs = []
 
     # Check if already running
     if check_health(ASR_PORT):
         print(f"  ASR service already running on port {ASR_PORT}")
     else:
         print(f"  Starting ASR service on port {ASR_PORT}...")
-        start_asr(device)
+        asr_proc = start_asr(device)
+        procs.append(asr_proc)
         if not wait_for_health(ASR_PORT):
             print(f"  ERROR: ASR service failed to start on port {ASR_PORT}")
+            _cleanup_procs(procs)
             sys.exit(1)
         print(f"  ASR service ready on port {ASR_PORT}")
 
@@ -242,9 +261,11 @@ def cmd_serve() -> None:
         print(f"  Embedding service already running on port {EMBEDDING_PORT}")
     else:
         print(f"  Starting embedding service on port {EMBEDDING_PORT}...")
-        start_embedding(device)
+        emb_proc = start_embedding(device)
+        procs.append(emb_proc)
         if not wait_for_health(EMBEDDING_PORT):
             print(f"  ERROR: Embedding service failed to start on port {EMBEDDING_PORT}")
+            _cleanup_procs(procs)
             sys.exit(1)
         print(f"  Embedding service ready on port {EMBEDDING_PORT}")
 
@@ -267,6 +288,7 @@ def cmd_serve() -> None:
             time.sleep(1)
     except KeyboardInterrupt:
         print("\nShutting down...")
+        _cleanup_procs(procs)
 
 
 def cmd_run() -> None:
