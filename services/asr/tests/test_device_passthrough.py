@@ -141,3 +141,10 @@ def test_server_get_transcriber_defaults_device_to_cpu(monkeypatch):
 
     tc = server.get_transcriber("iic/SenseVoiceSmall")
     assert captured_device == "cpu", f"Expected 'cpu', got {captured_device!r}"
+
+
+def test_detect_best_device_returns_valid_device():
+    """detect_best_device must return one of 'cuda', 'mps', 'cpu'."""
+    from deploy import detect_best_device
+    device = detect_best_device()
+    assert device in ("cuda", "mps", "cpu"), f"Unexpected device: {device!r}"

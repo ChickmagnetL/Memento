@@ -43,14 +43,24 @@ def run_command(args: list[str | Path], cwd: Path | None = None) -> None:
     )
 
 
-def has_nvidia_gpu() -> bool:
-    return shutil.which("nvidia-smi") is not None
+def detect_best_device() -> str:
+    """Detect the best available torch device on this machine.
+
+    Priority: cuda > mps > cpu.
+    """
+    if shutil.which("nvidia-smi") is not None:
+        return "cuda"
+    try:
+        import torch
+        if torch.backends.mps.is_available():
+            return "mps"
+    except ImportError:
+        pass
+    return "cpu"
 
 
-def torch_install_command(device: str | None = None) -> list[str]:
-    use_cuda = device == "cuda" or (
-        device is None and sys.platform in {"linux", "win32"} and has_nvidia_gpu()
-    )
+def torch_install_command(use_cuda: bool = False) -> list[str]:
+    """Return the pip install command for torch (+torchaudio), with CUDA index if needed."""
     command = [str(python_bin()), "-m", "pip", "install", "torch", "torchaudio"]
     if use_cuda:
         command.extend(["--index-url", CUDA_TORCH_INDEX_URL])
@@ -111,7 +121,8 @@ def ensure_environment(
         )
 
         _progress(on_progress, "torch", "Installing platform torch wheel", 45)
-        run_command(torch_install_command(device=device))
+        use_cuda = bool(device == "cuda")
+        run_command(torch_install_command(use_cuda=use_cuda))
 
         _progress(on_progress, "environment", "ASR environment ready", 50)
     except Exception:
@@ -215,6 +226,8 @@ def install_model(
     on_progress: ProgressCallback | None = None,
 ) -> None:
     """Ensure environment and download a single model by *slug*."""
+    if device is None:
+        device = detect_best_device()
     ensure_environment(device=device, on_progress=on_progress)
     python = python_bin()
     download_model(
@@ -255,6 +268,8 @@ def deploy(
     on_progress: ProgressCallback | None = None,
 ) -> None:
     """Full deploy: venv + deps + torch + ALL models."""
+    if device is None:
+        device = detect_best_device()
     ensure_environment(device=device, on_progress=on_progress)
     python = python_bin()
     _progress(on_progress, "models", "Downloading ASR models", 50)
@@ -264,10 +279,11 @@ def deploy(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Deploy Memento ASR service")
-    parser.add_argument("--device", choices=["cpu", "cuda"], default=None)
+    parser.add_argument("--device", choices=["cpu", "cuda", "mps", "auto"], default="auto")
     args = parser.parse_args()
+    device = args.device if args.device != "auto" else detect_best_device()
     deploy(
-        device=args.device,
+        device=device,
         on_progress=lambda stage, detail, percent=None: print(f"{stage}: {detail}"),
     )
 
