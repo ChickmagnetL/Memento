@@ -90,6 +90,25 @@ def health() -> dict:
     return {"status": "ok"}
 
 
+@app.get("/v1/models")
+async def list_models() -> dict:
+    """List supported ASR models (OpenAI-compatible).
+
+    Shape matches what backend/api/settings.py:_list_openai_compatible_models
+    parses (``data[].id``).
+    """
+    model_ids = sorted(
+        _SENSEVOICE_MODELS
+        | {f"moonshine_voice/{spec}" for spec in _MOONSHINE_SPECS}
+    )
+    return {
+        "data": [
+            {"id": mid, "object": "model", "created": 0, "owned_by": "memento"}
+            for mid in model_ids
+        ]
+    }
+
+
 @app.post("/v1/audio/transcriptions")
 def transcribe(
     file: UploadFile = File(...),

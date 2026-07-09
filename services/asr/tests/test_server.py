@@ -70,6 +70,16 @@ def test_legacy_transcribe_endpoint_is_removed():
     assert response.status_code == 404
 
 
+def test_list_models_returns_supported_asr_models():
+    response = TestClient(server.app).get("/v1/models")
+    assert response.status_code == 200
+    body = response.json()
+    assert "data" in body and isinstance(body["data"], list)
+    ids = {item["id"] for item in body["data"]}
+    assert "iic/SenseVoiceSmall" in ids
+    assert any("moonshine_voice/" in mid for mid in ids)
+
+
 def test_get_transcriber_cache_is_keyed_by_model(monkeypatch):
     server._transcribers.clear()
     seen_models = []
