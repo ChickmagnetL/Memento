@@ -22,12 +22,46 @@ import sqlite3
 import sys
 from pathlib import Path
 from typing import Any, Literal
+from urllib.parse import urlparse
 
 import yaml
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource
 
 logger = logging.getLogger(__name__)
+
+
+def _is_ollama_endpoint(endpoint: str | None) -> bool:
+    """True only when *endpoint* points at a local Ollama daemon
+    (localhost/127.0.0.1/::1 on port 11434). Selects the Ollama-native
+    protocol (/api/embed, /api/tags) over the OpenAI-compatible one.
+    """
+    if not endpoint:
+        return False
+    try:
+        parsed = urlparse(endpoint)
+        port = parsed.port
+    except ValueError:
+        # Non-numeric port (e.g. "localhost:bad") -- not a valid Ollama URL.
+        return False
+    return (
+        parsed.hostname in {"localhost", "127.0.0.1", "::1"}
+        and port == 11434
+    )
+
+
+def _is_local_endpoint(endpoint: str | None) -> bool:
+    """True when *endpoint* is on the loopback (any port). Local services
+    (Ollama on 11434, a local ASR/embedding server on another port) don't
+    require an api_key; cloud/LAN endpoints do.
+    """
+    if not endpoint:
+        return False
+    try:
+        parsed = urlparse(endpoint)
+    except ValueError:
+        return False
+    return parsed.hostname in {"localhost", "127.0.0.1", "::1"}
 
 
 def resolve_backend_dir() -> Path:
@@ -69,9 +103,16 @@ def _merge_dicts(base: dict[str, Any], override: dict[str, Any]) -> dict[str, An
 # ============================================================
 
 class ModelConfig(BaseModel):
-    """Configuration for a model service (ASR/Embedding/Chat)."""
+    """Configuration for a model service (ASR/Embedding/Chat).
 
-    provider: Literal["local", "ollama", "openai", "cloud"] = "cloud"
+    The protocol (Ollama-native vs OpenAI-compatible) is auto-detected from
+    the endpoint -- see ``_is_ollama_endpoint``. Extra keys (e.g. a stale
+    ``provider`` left in stored presets) are ignored so no data migration is
+    needed.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
     endpoint: str | None = None
     api_key: str | None = None
     model: str | None = None
@@ -81,9 +122,9 @@ class ModelConfig(BaseModel):
 class ModelsConfig(BaseModel):
     """All model service configurations."""
 
-    asr: ModelConfig = Field(default_factory=lambda: ModelConfig(provider="local"))
-    embedding: ModelConfig = Field(default_factory=lambda: ModelConfig(provider="ollama"))
-    chat: ModelConfig = Field(default_factory=lambda: ModelConfig(provider="cloud"))
+    asr: ModelConfig = Field(default_factory=ModelConfig)
+    embedding: ModelConfig = Field(default_factory=ModelConfig)
+    chat: ModelConfig = Field(default_factory=ModelConfig)
 
 
 # ============================================================

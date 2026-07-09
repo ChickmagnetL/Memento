@@ -20,17 +20,14 @@ SETTINGS_ENV_VARS = (
     "STORAGE__DATA_DIR",
     "STORAGE__KEEP_VIDEOS",
     "MODELS",
-    "MODELS__ASR__PROVIDER",
     "MODELS__ASR__ENDPOINT",
     "MODELS__ASR__API_KEY",
     "MODELS__ASR__MODEL",
     "MODELS__ASR__PROTOCOL",
-    "MODELS__EMBEDDING__PROVIDER",
     "MODELS__EMBEDDING__ENDPOINT",
     "MODELS__EMBEDDING__API_KEY",
     "MODELS__EMBEDDING__MODEL",
     "MODELS__EMBEDDING__PROTOCOL",
-    "MODELS__CHAT__PROVIDER",
     "MODELS__CHAT__ENDPOINT",
     "MODELS__CHAT__API_KEY",
     "MODELS__CHAT__MODEL",
@@ -90,7 +87,7 @@ video_processing:
 
 
 def test_model_protocol_defaults():
-    config = ModelConfig(provider="local")
+    config = ModelConfig()
 
     assert config.protocol is None
 
@@ -223,7 +220,6 @@ storage:
   data_dir: "{data_dir}"
 models:
   chat:
-    provider: cloud
     model: claude-3-5-sonnet
 """,
         encoding="utf-8",
@@ -252,7 +248,6 @@ models:
         """
     )
     chat_config = {
-        "provider": "openai",
         "endpoint": "https://api.openai.com/v1",
         "model": "gpt-4",
         "api_key": "test_key",
@@ -271,7 +266,6 @@ models:
     settings = get_settings()
 
     # DB should override YAML
-    assert settings.models.chat.provider == "openai"
     assert settings.models.chat.model == "gpt-4"
     assert settings.models.chat.endpoint == "https://api.openai.com/v1"
     assert settings.models.chat.api_key == "test_key"
@@ -335,17 +329,11 @@ def test_db_missing_falls_back_to_yaml(tmp_path, monkeypatch):
         f"""
 storage:
   data_dir: "{data_dir}"
-models:
-  asr:
-    provider: local
 """,
         encoding="utf-8",
     )
 
     settings = get_settings()
-
-    # Should use YAML values
-    assert settings.models.asr.provider == "local"
 
 
 def test_db_partial_override_preserves_yaml_values(tmp_path, monkeypatch):
@@ -359,13 +347,6 @@ def test_db_partial_override_preserves_yaml_values(tmp_path, monkeypatch):
         f"""
 storage:
   data_dir: "{data_dir}"
-models:
-  asr:
-    provider: local
-  chat:
-    provider: cloud
-  embedding:
-    provider: ollama
 """,
         encoding="utf-8",
     )
@@ -392,7 +373,7 @@ models:
         );
         """
     )
-    chat_config = {"provider": "openai", "model": "gpt-4"}
+    chat_config = {"model": "gpt-4"}
     conn.execute(
         "INSERT INTO model_presets (id, model_name, name, config) VALUES (?, ?, ?, ?)",
         ("preset_1", "chat", "OpenAI", json.dumps(chat_config)),
@@ -407,10 +388,7 @@ models:
     settings = get_settings()
 
     # asr and embedding should use YAML values
-    assert settings.models.asr.provider == "local"
-    assert settings.models.embedding.provider == "ollama"
     # chat should use DB value
-    assert settings.models.chat.provider == "openai"
     assert settings.models.chat.model == "gpt-4"
 
 
@@ -429,7 +407,6 @@ storage:
   data_dir: "{data_dir}"
 models:
   chat:
-    provider: cloud
     model: claude-3-5-sonnet
 """,
         encoding="utf-8",
@@ -469,7 +446,7 @@ models:
         );
         """
     )
-    chat_config = {"provider": "openai", "model": "gpt-4", "api_key": "test_key"}
+    chat_config = {"model": "gpt-4", "api_key": "test_key"}
     conn.execute(
         "INSERT INTO model_presets (id, model_name, name, config) VALUES (?, ?, ?, ?)",
         ("preset_1", "chat", "Custom Preset", json.dumps(chat_config)),
@@ -503,7 +480,6 @@ models:
     updated_config = json.loads(row["config"])
     assert updated_config["model"] == "gpt-4-turbo"
     assert updated_config["api_key"] == "new_key"
-    assert updated_config["provider"] == "openai"  # unchanged
 
     # Verify config.local.yaml was NOT modified
     assert config_local.stat().st_mtime == original_config_local_mtime
@@ -547,7 +523,7 @@ storage:
         );
         """
     )
-    chat_config = {"provider": "openai", "model": "gpt-4", "api_key": "secret_original_key"}
+    chat_config = {"model": "gpt-4", "api_key": "secret_original_key"}
     conn.execute(
         "INSERT INTO model_presets (id, model_name, name, config) VALUES (?, ?, ?, ?)",
         ("preset_1", "chat", "Custom", json.dumps(chat_config)),
@@ -622,8 +598,8 @@ storage:
         """
     )
     # Create two chat presets
-    preset1_config = {"provider": "openai", "model": "gpt-4"}
-    preset2_config = {"provider": "openai", "model": "gpt-3.5-turbo"}
+    preset1_config = {"model": "gpt-4"}
+    preset2_config = {"model": "gpt-3.5-turbo"}
     conn.execute(
         "INSERT INTO model_presets (id, model_name, name, config) VALUES (?, ?, ?, ?)",
         ("preset_1", "chat", "GPT-4", json.dumps(preset1_config)),

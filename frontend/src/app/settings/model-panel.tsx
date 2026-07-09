@@ -50,7 +50,6 @@ export interface ModelPanelProps {
 }
 
 const EMPTY_MODEL_CONFIG: ModelConfig = {
-  provider: null,
   endpoint: null,
   api_key: null,
   model: null,
@@ -64,7 +63,6 @@ const EMPTY_MODEL_CONFIG: ModelConfig = {
 // `useState<ModelConfig>` (and PresetCard's `values` prop) satisfies tsc.
 function toModelConfig(config: PresetConfig): ModelConfig {
   return {
-    provider: config.provider ?? null,
     endpoint: config.endpoint ?? null,
     api_key: config.api_key ?? null,
     model: config.model ?? null,
@@ -74,7 +72,6 @@ function toModelConfig(config: PresetConfig): ModelConfig {
 
 function toPresetConfig(config: ModelConfig): PresetConfig {
   return {
-    provider: config.provider,
     endpoint: config.endpoint,
     api_key: config.api_key,
     model: config.model,
@@ -84,7 +81,6 @@ function toPresetConfig(config: ModelConfig): PresetConfig {
 
 function normalizeConfig(config: PresetConfig | ModelConfig) {
   return {
-    provider: config.provider ?? null,
     endpoint: config.endpoint ?? null,
     api_key: config.api_key ?? null,
     model: config.model ?? null,
@@ -99,7 +95,6 @@ function configsEqual(
   const a = normalizeConfig(left);
   const b = normalizeConfig(right);
   return (
-    a.provider === b.provider &&
     a.endpoint === b.endpoint &&
     a.api_key === b.api_key &&
     a.model === b.model &&

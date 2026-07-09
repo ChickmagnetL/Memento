@@ -352,7 +352,6 @@ export async function deleteSession(sessionId: string): Promise<void> {
 }
 
 export interface ModelConfig {
-  provider: string | null;
   endpoint: string | null;
   api_key: string | null;
   model: string | null;
@@ -548,7 +547,6 @@ export async function getLocalAsrProgress(): Promise<AsrManagerProgress> {
 // ── Model Presets ────────────────────────────────────────────────────────────
 
 export interface PresetConfig {
-  provider?: string | null;
   endpoint?: string | null;
   api_key?: string | null;
   model?: string | null;

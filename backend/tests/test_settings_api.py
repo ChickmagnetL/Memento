@@ -70,12 +70,7 @@ storage:
   data_dir: "{data_dir}"
 models:
   asr:
-    provider: local
     protocol: transcriptions
-  chat:
-    provider: cloud
-  embedding:
-    provider: ollama
 """,
         encoding="utf-8",
     )
@@ -311,7 +306,7 @@ def test_put_settings_persists_to_db(client):
 
     response = test_client.put(
         "/api/settings/models",
-        json={"chat": {"provider": "cloud", "api_key": "sk-real", "model": "m1"}},
+        json={"chat": {"api_key": "sk-real", "model": "m1"}},
     )
 
     assert response.status_code == 200
@@ -357,7 +352,6 @@ def test_put_settings_round_trips_db(client):
         "/api/settings/models",
         json={
             "chat": {
-                "provider": "cloud",
                 "endpoint": "https://example.invalid/v1",
                 "api_key": "sk-roundtrip",
                 "model": "roundtrip-model",
@@ -461,8 +455,8 @@ def test_status_reports_configuration_state(client):
     test_client.put(
         "/api/settings/models",
         json={
-            "chat": {"provider": "cloud", "api_key": "sk-test", "model": "gpt-4"},
-            "embedding": {"provider": "ollama", "endpoint": "http://localhost:11434", "model": "nomic-embed-text"},
+            "chat": {"api_key": "sk-test", "model": "gpt-4"},
+            "embedding": {"endpoint": "http://localhost:11434", "model": "nomic-embed-text"},
         },
     )
 
@@ -474,19 +468,18 @@ def test_status_reports_configuration_state(client):
     assert status["embedding"]["status"] in ("ok", "unreachable")
 
 
-def test_local_provider_configured_without_api_key():
-    config = ModelConfig(provider="local", endpoint="http://localhost:8001", model="moonshine-base")
+def test_local_endpoint_configured_without_api_key():
+    config = ModelConfig(endpoint="http://localhost:8001", model="moonshine-base")
     assert settings_api._configured(config) == "configured"
 
 
-def test_cloud_provider_not_configured_without_api_key():
-    config = ModelConfig(provider="cloud", endpoint="https://api.anthropic.com", model="claude-3-5-sonnet")
+def test_cloud_endpoint_not_configured_without_api_key():
+    config = ModelConfig(endpoint="https://api.anthropic.com", model="claude-3-5-sonnet")
     assert settings_api._configured(config) == "not_configured"
 
 
-def test_cloud_provider_configured_with_api_key():
+def test_cloud_endpoint_configured_with_api_key():
     config = ModelConfig(
-        provider="cloud",
         endpoint="https://api.anthropic.com",
         model="claude-3-5-sonnet",
         api_key="sk-test",
@@ -494,11 +487,11 @@ def test_cloud_provider_configured_with_api_key():
     assert settings_api._configured(config) == "configured"
 
 
-def test_status_ollama_provider_probes_endpoint(client, monkeypatch):
+def test_status_ollama_endpoint_probes_health(client, monkeypatch):
     test_client, _db_path = client
 
     def mock_check_ollama(endpoint: str) -> str:
-        return "ok" if endpoint == "http://test-ollama:11434" else "unreachable"
+        return "ok" if endpoint == "http://localhost:11434" else "unreachable"
 
     monkeypatch.setattr(settings_api, "_check_ollama_health", mock_check_ollama)
 
@@ -506,8 +499,7 @@ def test_status_ollama_provider_probes_endpoint(client, monkeypatch):
         "/api/settings/models",
         json={
             "embedding": {
-                "provider": "ollama",
-                "endpoint": "http://test-ollama:11434",
+                "endpoint": "http://localhost:11434",
                 "model": "nomic-embed-text",
             }
         },
@@ -516,12 +508,12 @@ def test_status_ollama_provider_probes_endpoint(client, monkeypatch):
     response = test_client.get("/api/settings/status")
     assert response.status_code == 200
     assert response.json()["embedding"]["status"] == "ok"
-    assert response.json()["embedding"]["endpoint"] == "http://test-ollama:11434"
+    assert response.json()["embedding"]["endpoint"] == "http://localhost:11434"
 
 
 def test_asr_health_non_json_is_unreachable():
     # Simulated by ValueError in real code
-    assert settings_api._configured(ModelConfig(provider="local", model="test")) == "not_configured"
+    assert settings_api._configured(ModelConfig(model="test")) == "not_configured"
 
 
 def test_asr_health_strips_openai_v1_base_path():
@@ -574,7 +566,6 @@ def test_list_models_openai_compatible_uses_draft_config_and_saved_masked_key(
         db_path,
         preset_id="chat_default",
         config={
-            "provider": "openai",
             "endpoint": "https://old.example/v1",
             "api_key": "sk-saved",
             "model": "old-model",
@@ -594,7 +585,6 @@ def test_list_models_openai_compatible_uses_draft_config_and_saved_masked_key(
         "/api/settings/models/chat/presets/chat_default/list-models",
         json={
             "config": {
-                "provider": "openai",
                 "endpoint": "https://new.example/v1",
                 "api_key": "sk-s***",
                 "model": "old-model",
@@ -610,7 +600,6 @@ def test_list_models_openai_compatible_uses_draft_config_and_saved_masked_key(
     assert timeout == 10
     assert headers.get("Authorization") == "Bearer sk-saved"
     assert _preset_config(db_path, "chat_default") == {
-        "provider": "openai",
         "endpoint": "https://old.example/v1",
         "api_key": "sk-saved",
         "model": "old-model",
@@ -633,7 +622,6 @@ def test_list_models_local_openai_compatible_allows_missing_api_key(
         "/api/settings/models/asr/presets/asr_default/list-models",
         json={
             "config": {
-                "provider": "local",
                 "endpoint": "http://localhost:8001/v1",
                 "model": "current-local",
             }
@@ -667,7 +655,6 @@ def test_list_models_runs_probe_in_thread(client, monkeypatch):
         "/api/settings/models/chat/presets/chat_default/list-models",
         json={
             "config": {
-                "provider": "openai",
                 "endpoint": "https://api.example/v1",
                 "api_key": "sk-test",
             }
@@ -696,7 +683,6 @@ def test_list_models_ollama_strips_openai_v1_suffix(client, monkeypatch):
         "/api/settings/models/embedding/presets/embedding_default/list-models",
         json={
             "config": {
-                "provider": "ollama",
                 "endpoint": "http://localhost:11434/v1",
                 "model": "nomic-embed-text",
             }
@@ -719,7 +705,6 @@ def test_list_models_invalid_endpoint_port_returns_400(client):
         "/api/settings/models/chat/presets/chat_default/list-models",
         json={
             "config": {
-                "provider": "openai",
                 "endpoint": "http://localhost:bad/v1",
                 "api_key": "sk-test",
             }
@@ -737,7 +722,6 @@ def test_list_models_invalid_ipv6_endpoint_returns_400(client):
         "/api/settings/models/chat/presets/chat_default/list-models",
         json={
             "config": {
-                "provider": "openai",
                 "endpoint": "http://[::1",
                 "api_key": "sk-test",
             }
@@ -755,7 +739,6 @@ def test_list_models_invalid_endpoint_without_scheme_returns_400(client):
         "/api/settings/models/chat/presets/chat_default/list-models",
         json={
             "config": {
-                "provider": "openai",
                 "endpoint": "localhost:8000/v1",
                 "api_key": "sk-test",
             }
@@ -766,36 +749,12 @@ def test_list_models_invalid_endpoint_without_scheme_returns_400(client):
     assert response.json()["detail"] == "Endpoint is invalid"
 
 
-def test_list_models_explicit_openai_provider_requires_key_for_ollama_like_endpoint(
-    client, monkeypatch
-):
-    test_client, _db_path = client
-
-    def fake_urlopen(request, timeout):
-        raise AssertionError("request should not be sent without an API key")
-
-    monkeypatch.setattr(settings_api, "urlopen", fake_urlopen)
-
-    response = test_client.post(
-        "/api/settings/models/chat/presets/chat_default/list-models",
-        json={
-            "config": {
-                "provider": "openai",
-                "endpoint": "http://localhost:11434/v1",
-            }
-        },
-    )
-
-    assert response.status_code == 400
-    assert response.json()["detail"] == "API key is required to fetch models"
-
-
 def test_list_models_requires_endpoint(client):
     test_client, _db_path = client
 
     response = test_client.post(
         "/api/settings/models/chat/presets/chat_default/list-models",
-        json={"config": {"provider": "openai", "api_key": "sk-test"}},
+        json={"config": {"api_key": "sk-test"}},
     )
 
     assert response.status_code == 400
@@ -807,12 +766,12 @@ def test_list_models_requires_api_key_for_openai_compatible(client):
     _update_preset_config(
         db_path,
         preset_id="chat_default",
-        config={"provider": "openai", "endpoint": "https://api.example/v1"},
+        config={"endpoint": "https://api.example/v1"},
     )
 
     response = test_client.post(
         "/api/settings/models/chat/presets/chat_default/list-models",
-        json={"config": {"provider": "openai", "endpoint": "https://api.example/v1"}},
+        json={"config": {"endpoint": "https://api.example/v1"}},
     )
 
     assert response.status_code == 400
@@ -831,7 +790,6 @@ def test_list_models_upstream_error_returns_502(client, monkeypatch):
         "/api/settings/models/chat/presets/chat_default/list-models",
         json={
             "config": {
-                "provider": "openai",
                 "endpoint": "https://api.example/v1",
                 "api_key": "sk-test",
             }
@@ -860,7 +818,6 @@ def test_list_models_http_error_returns_502(client, monkeypatch):
         "/api/settings/models/chat/presets/chat_default/list-models",
         json={
             "config": {
-                "provider": "openai",
                 "endpoint": "https://api.example/v1",
                 "api_key": "sk-test",
             }
@@ -885,7 +842,6 @@ def test_list_models_malformed_response_returns_502(client, monkeypatch):
         "/api/settings/models/chat/presets/chat_default/list-models",
         json={
             "config": {
-                "provider": "openai",
                 "endpoint": "https://api.example/v1",
                 "api_key": "sk-test",
             }
@@ -904,7 +860,6 @@ def test_embedding_switch_preview_same_dimension_success(client, monkeypatch):
         model_name="embedding",
         name="New Embedding",
         config={
-            "provider": "ollama",
             "endpoint": "http://embedding.test:11434",
             "model": "embed-v2",
         },
@@ -952,12 +907,8 @@ storage:
   data_dir: "{db_path.parent}"
 models:
   asr:
-    provider: local
     protocol: transcriptions
-  chat:
-    provider: cloud
   embedding:
-    provider: ollama
     endpoint: "http://yaml-embedding.test:11434"
 """,
         encoding="utf-8",
@@ -966,7 +917,6 @@ models:
         db_path,
         preset_id="embedding_default",
         config={
-            "provider": "openai",
             "endpoint": "https://active-only.test/v1",
             "api_key": "sk-active",
             "model": "embed-active",
@@ -1008,7 +958,6 @@ models:
     assert response.status_code == 200
     assert built_configs == [
         {
-            "provider": "ollama",
             "endpoint": "http://yaml-embedding.test:11434",
             "api_key": None,
             "model": "embed-partial",
@@ -1024,7 +973,7 @@ def test_embedding_switch_preview_embedding_error_returns_502(client, monkeypatc
         preset_id="embedding_fail",
         model_name="embedding",
         name="Failing Embedding",
-        config={"provider": "ollama", "endpoint": "http://embedding.test:11434", "model": "bad"},
+        config={"endpoint": "http://embedding.test:11434", "model": "bad"},
     )
     app.state.embedding_reindex_jobs = PreviewManager(
         preview={},
@@ -1052,7 +1001,6 @@ def test_embedding_switch_preview_config_uses_supplied_config_without_persisting
         db_path,
         preset_id="embedding_default",
         config={
-            "provider": "ollama",
             "endpoint": "http://old-embedding.test:11434",
             "api_key": "sk-old",
             "model": "embed-old",
@@ -1084,7 +1032,6 @@ def test_embedding_switch_preview_config_uses_supplied_config_without_persisting
         "/api/settings/models/embedding/presets/embedding_default/switch-preview-config",
         json={
             "config": {
-                "provider": "ollama",
                 "endpoint": "http://new-embedding.test:11434",
                 "api_key": "sk-o***",
                 "model": "embed-new",
@@ -1096,7 +1043,6 @@ def test_embedding_switch_preview_config_uses_supplied_config_without_persisting
     assert response.json()["same_dimension"] is False
     assert built_configs == [
         {
-            "provider": "ollama",
             "endpoint": "http://new-embedding.test:11434",
             "api_key": "sk-old",
             "model": "embed-new",
@@ -1104,7 +1050,6 @@ def test_embedding_switch_preview_config_uses_supplied_config_without_persisting
         }
     ]
     assert _preset_config(db_path, "embedding_default") == {
-        "provider": "ollama",
         "endpoint": "http://old-embedding.test:11434",
         "api_key": "sk-old",
         "model": "embed-old",
@@ -1119,7 +1064,6 @@ def test_embedding_switch_preview_config_probe_failure_does_not_persist(
         db_path,
         preset_id="embedding_default",
         config={
-            "provider": "ollama",
             "endpoint": "http://old-embedding.test:11434",
             "model": "embed-old",
         },
@@ -1138,7 +1082,6 @@ def test_embedding_switch_preview_config_probe_failure_does_not_persist(
         "/api/settings/models/embedding/presets/embedding_default/switch-preview-config",
         json={
             "config": {
-                "provider": "ollama",
                 "endpoint": "http://new-embedding.test:11434",
                 "model": "embed-new",
             }
@@ -1148,7 +1091,6 @@ def test_embedding_switch_preview_config_probe_failure_does_not_persist(
     assert response.status_code == 502
     assert response.json()["detail"] == "embedding probe failed"
     assert _preset_config(db_path, "embedding_default") == {
-        "provider": "ollama",
         "endpoint": "http://old-embedding.test:11434",
         "model": "embed-old",
     }
@@ -1162,7 +1104,6 @@ def test_embedding_switch_preview_running_job_returns_409(client, monkeypatch):
         model_name="embedding",
         name="Preview Blocked",
         config={
-            "provider": "ollama",
             "endpoint": "http://embedding.test:11434",
             "model": "embed-preview-blocked",
         },
@@ -1192,7 +1133,6 @@ def test_update_embedding_preset_while_reindex_running_returns_409(client):
         db_path,
         preset_id="embedding_default",
         config={
-            "provider": "ollama",
             "endpoint": "http://old-embedding.test:11434",
             "model": "embed-old",
         },
@@ -1203,7 +1143,6 @@ def test_update_embedding_preset_while_reindex_running_returns_409(client):
         "/api/settings/models/embedding/presets/embedding_default",
         json={
             "config": {
-                "provider": "ollama",
                 "endpoint": "http://new-embedding.test:11434",
                 "model": "embed-new",
             }
@@ -1213,7 +1152,6 @@ def test_update_embedding_preset_while_reindex_running_returns_409(client):
     assert response.status_code == 409
     assert response.json()["detail"] == "Embedding index rebuild is already running"
     assert _preset_config(db_path, "embedding_default") == {
-        "provider": "ollama",
         "endpoint": "http://old-embedding.test:11434",
         "model": "embed-old",
     }
@@ -1226,7 +1164,7 @@ def test_embedding_switch_same_dimension_sets_active_without_job(client, monkeyp
         preset_id="embedding_same",
         model_name="embedding",
         name="Same Dimension",
-        config={"provider": "ollama", "endpoint": "http://embedding.test:11434", "model": "embed-same"},
+        config={"endpoint": "http://embedding.test:11434", "model": "embed-same"},
     )
     manager = SwitchManager(
         preview={
@@ -1267,7 +1205,6 @@ def test_embedding_switch_probe_failure_returns_502_without_switching_active(
         model_name="embedding",
         name="Bad Key",
         config={
-            "provider": "cloud",
             "endpoint": "https://embedding.test/v1",
             "api_key": "sk-bad",
             "model": "embed-bad",
@@ -1301,7 +1238,6 @@ def test_set_active_preset_rejects_direct_embedding_switch(client):
         model_name="embedding",
         name="Direct Switch",
         config={
-            "provider": "ollama",
             "endpoint": "http://embedding.test:11434",
             "model": "embed-direct",
         },
@@ -1326,7 +1262,7 @@ def test_embedding_switch_dimension_change_without_confirmation_returns_409(
         preset_id="embedding_reindex_needed",
         model_name="embedding",
         name="Reindex Needed",
-        config={"provider": "ollama", "endpoint": "http://embedding.test:11434", "model": "embed-large"},
+        config={"endpoint": "http://embedding.test:11434", "model": "embed-large"},
     )
     app.state.embedding_reindex_jobs = SwitchManager(
         preview={
@@ -1363,7 +1299,6 @@ def test_embedding_switch_dimension_change_with_confirmation_returns_202(
         model_name="embedding",
         name="Reindex",
         config={
-            "provider": "ollama",
             "endpoint": "http://embedding.test:11434",
             "model": "embed-reindex",
         },
@@ -1410,7 +1345,6 @@ def test_embedding_switch_dimension_change_with_confirmation_returns_202(
     assert built_configs
     assert all(
         config == {
-            "provider": "ollama",
             "endpoint": "http://embedding.test:11434",
             "api_key": None,
             "model": "embed-reindex",
@@ -1432,12 +1366,8 @@ storage:
   data_dir: "{db_path.parent}"
 models:
   asr:
-    provider: local
     protocol: transcriptions
-  chat:
-    provider: cloud
   embedding:
-    provider: ollama
     endpoint: "http://yaml-embedding.test:11434"
 """,
         encoding="utf-8",
@@ -1446,7 +1376,6 @@ models:
         db_path,
         preset_id="embedding_default",
         config={
-            "provider": "openai",
             "endpoint": "https://active-only.test/v1",
             "api_key": "sk-active",
             "model": "embed-active",
@@ -1474,7 +1403,7 @@ models:
     def fake_build_embedding_client_for_config(config):
         config_dict = config.model_dump()
         built_configs.append(config_dict)
-        return {"model": config_dict["model"], "provider": config_dict["provider"]}
+        return {"model": config_dict["model"]}
 
     monkeypatch.setattr(
         settings_api,
@@ -1490,18 +1419,15 @@ models:
     assert response.status_code == 202
     assert manager.start_job_calls[0]["embedding_client_factory"]() == {
         "model": "embed-partial-reindex",
-        "provider": "ollama",
     }
     assert built_configs == [
         {
-            "provider": "ollama",
             "endpoint": "http://yaml-embedding.test:11434",
             "api_key": None,
             "model": "embed-partial-reindex",
             "protocol": None,
         },
         {
-            "provider": "ollama",
             "endpoint": "http://yaml-embedding.test:11434",
             "api_key": None,
             "model": "embed-partial-reindex",
@@ -1517,7 +1443,7 @@ def test_embedding_switch_running_job_returns_409(client, monkeypatch):
         preset_id="embedding_busy",
         model_name="embedding",
         name="Busy",
-        config={"provider": "ollama", "endpoint": "http://embedding.test:11434", "model": "embed-busy"},
+        config={"endpoint": "http://embedding.test:11434", "model": "embed-busy"},
     )
     app.state.embedding_reindex_jobs = RunningJobManager(
         preview={
@@ -1551,7 +1477,6 @@ def test_embedding_switch_running_job_same_dimension_returns_409(client, monkeyp
         model_name="embedding",
         name="Busy Same Dimension",
         config={
-            "provider": "ollama",
             "endpoint": "http://embedding.test:11434",
             "model": "embed-busy-same",
         },
@@ -1595,7 +1520,6 @@ def test_delete_embedding_preset_while_reindex_running_returns_409(client):
         model_name="embedding",
         name="Delete Blocked",
         config={
-            "provider": "ollama",
             "endpoint": "http://embedding.test:11434",
             "model": "embed-delete",
         },
@@ -1619,7 +1543,6 @@ def test_embedding_switch_same_dimension_race_returns_409(client, monkeypatch):
         model_name="embedding",
         name="Race Same Dimension",
         config={
-            "provider": "ollama",
             "endpoint": "http://embedding.test:11434",
             "model": "embed-race",
         },
@@ -1819,7 +1742,7 @@ def test_create_preset_with_auto_name(client):
 
     response = test_client.post(
         "/api/settings/models/chat/presets",
-        json={"config": {"provider": "cloud", "model": "claude-3-5-sonnet"}},
+        json={"config": {"model": "claude-3-5-sonnet"}},
     )
     assert response.status_code == 201
     preset = response.json()
@@ -1835,7 +1758,7 @@ def test_create_preset_with_custom_name(client):
         "/api/settings/models/chat/presets",
         json={
             "name": "我的预设",
-            "config": {"provider": "cloud", "model": "claude-3-5-sonnet"},
+            "config": {"model": "claude-3-5-sonnet"},
         },
     )
     assert response.status_code == 201
@@ -1871,7 +1794,7 @@ def test_get_preset(client):
     # Create a preset
     create_response = test_client.post(
         "/api/settings/models/chat/presets",
-        json={"config": {"provider": "cloud", "model": "test-model"}},
+        json={"config": {"model": "test-model"}},
     )
     preset_id = create_response.json()["id"]
 
@@ -1889,7 +1812,7 @@ def test_update_preset(client):
     # Create a preset
     create_response = test_client.post(
         "/api/settings/models/chat/presets",
-        json={"config": {"provider": "cloud", "model": "old-model"}},
+        json={"config": {"model": "old-model"}},
     )
     preset_id = create_response.json()["id"]
 
@@ -1910,7 +1833,7 @@ def test_delete_preset(client):
     # Create a second preset (so we can delete one)
     create_response = test_client.post(
         "/api/settings/models/chat/presets",
-        json={"config": {"provider": "cloud", "model": "test-model"}},
+        json={"config": {"model": "test-model"}},
     )
     preset_id = create_response.json()["id"]
 
@@ -1958,7 +1881,7 @@ def test_set_active_preset(client):
     # Create a new preset
     create_response = test_client.post(
         "/api/settings/models/chat/presets",
-        json={"config": {"provider": "cloud", "model": "test-model"}},
+        json={"config": {"model": "test-model"}},
     )
     preset_id = create_response.json()["id"]
 

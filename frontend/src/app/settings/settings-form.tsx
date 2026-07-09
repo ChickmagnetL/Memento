@@ -24,9 +24,6 @@ const TABS: { name: PresetModelName; label: string }[] = [
   { name: "asr", label: "ASR" },
 ];
 
-// provider is intentionally omitted: it is not yet wired to any behavior
-// (clients are built from endpoint/api_key/model). Editing it as free text
-// could persist an invalid value and break get_settings(). Defer to 5B.
 const FIELDS: { key: keyof ModelConfig; label: string }[] = [
   { key: "endpoint", label: "Endpoint" },
   { key: "api_key", label: "API Key" },

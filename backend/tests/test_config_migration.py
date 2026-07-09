@@ -247,10 +247,10 @@ async def test_clear_active_preset_removes_entry(sqlite: SQLiteClient):
 
 @pytest.mark.asyncio
 async def test_set_app_config_stores_text_value(sqlite: SQLiteClient):
-    await sqlite.set_app_config("embedding", '{"provider": "openai", "model": "text-embedding-3-small"}')
+    await sqlite.set_app_config("embedding", '{"model": "text-embedding-3-small"}')
 
     value = await sqlite.get_app_config("embedding")
-    assert value == '{"provider": "openai", "model": "text-embedding-3-small"}'
+    assert value == '{"model": "text-embedding-3-small"}'
 
 
 @pytest.mark.asyncio
@@ -308,7 +308,7 @@ async def test_migration_skipped_when_presets_exist(sqlite: SQLiteClient, mock_p
 
     # Create a config.local.yaml file
     config_file = mock_project_root / "config.local.yaml"
-    config_file.write_text("models:\n  asr:\n    provider: local\n")
+    config_file.write_text("models:\n  asr:\n    model: whisper-base\n")
 
     # Run migration
     await migrate_config_to_db(sqlite)
@@ -351,18 +351,15 @@ async def test_migration_creates_presets_and_sets_active(sqlite: SQLiteClient, m
     config_data = {
         "models": {
             "asr": {
-                "provider": "local",
                 "endpoint": "http://localhost:8001",
                 "model": "whisper-large-v3",
                 "protocol": "transcriptions",
             },
             "chat": {
-                "provider": "cloud",
                 "api_key": "sk-test123",
                 "model": "gpt-4",
             },
             "embedding": {
-                "provider": "ollama",
                 "endpoint": "http://localhost:11434",
                 "model": "qwen3-embedding:0.6b",
             },
@@ -384,7 +381,6 @@ async def test_migration_creates_presets_and_sets_active(sqlite: SQLiteClient, m
     assert len(asr_presets) == 1
     assert asr_presets[0]["name"] == "Default"
     asr_config = json.loads(asr_presets[0]["config"])
-    assert asr_config["provider"] == "local"
     assert asr_config["model"] == "whisper-large-v3"
 
     # Verify: active presets set for all 3 models
@@ -451,7 +447,7 @@ async def test_migration_renames_config_file(sqlite: SQLiteClient, mock_project_
     """Migration should rename config.local.yaml to .bak after success."""
     config_data = {
         "models": {
-            "asr": {"provider": "local", "model": "whisper-base"},
+            "asr": {"model": "whisper-base"},
         }
     }
 
@@ -479,7 +475,7 @@ async def test_migration_handles_partial_config(sqlite: SQLiteClient, mock_proje
     # Config with only 1 model and 1 app section
     config_data = {
         "models": {
-            "chat": {"provider": "cloud", "model": "gpt-4"},
+            "chat": {"model": "gpt-4"},
         },
         "storage": {"data_dir": "/data"},
     }
@@ -514,13 +510,11 @@ async def test_migration_full_workflow(sqlite: SQLiteClient, mock_project_root: 
     config_data = {
         "models": {
             "asr": {
-                "provider": "local",
                 "endpoint": "http://localhost:8001",
                 "model": "whisper-large-v3",
                 "protocol": "transcriptions",
             },
             "chat": {
-                "provider": "cloud",
                 "api_key": "sk-test123",
                 "model": "gpt-4",
             },
@@ -581,13 +575,13 @@ async def test_migration_idempotent_on_repeated_runs(sqlite: SQLiteClient, mock_
     """Test that migration is idempotent on repeated runs."""
     # Create initial preset directly in DB
     await sqlite.create_preset(
-        name="手动预设", model_name="asr", config={"provider": "local"}
+        name="手动预设", model_name="asr", config={}
     )
 
     # Now create a config.local.yaml (should be ignored)
     config_data = {
         "models": {
-            "chat": {"provider": "cloud", "model": "gpt-4"},
+            "chat": {"model": "gpt-4"},
         }
     }
 

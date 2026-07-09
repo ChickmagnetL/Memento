@@ -61,7 +61,6 @@ def test_create_preset_with_auto_name(client):
         "/api/settings/models/chat/presets",
         json={
             "config": {
-                "provider": "cloud",
                 "model": "claude-3-5-sonnet-20241022",
                 "api_key": "sk-test123",
             }
@@ -71,7 +70,6 @@ def test_create_preset_with_auto_name(client):
     data = response.json()
     assert data["name"] == "Preset 1"
     assert data["model_name"] == "chat"
-    assert data["config"]["provider"] == "cloud"
     assert data["config"]["api_key"] == "sk-t***"  # masked
 
 
@@ -82,7 +80,6 @@ def test_create_preset_with_custom_name(client):
         json={
             "name": "我的预设",
             "config": {
-                "provider": "openai",
                 "model": "text-embedding-3-small",
                 "api_key": "sk-abc456",
             },
@@ -99,12 +96,12 @@ def test_auto_name_increments(client):
     # Create first preset
     client.post(
         "/api/settings/models/chat/presets",
-        json={"config": {"provider": "cloud", "model": "test1"}},
+        json={"config": {"model": "test1"}},
     )
     # Create second preset
     response = client.post(
         "/api/settings/models/chat/presets",
-        json={"config": {"provider": "cloud", "model": "test2"}},
+        json={"config": {"model": "test2"}},
     )
     assert response.json()["name"] == "Preset 2"
 
@@ -114,11 +111,11 @@ def test_list_presets(client):
     # Create two presets
     client.post(
         "/api/settings/models/chat/presets",
-        json={"config": {"provider": "cloud", "model": "test1"}},
+        json={"config": {"model": "test1"}},
     )
     client.post(
         "/api/settings/models/chat/presets",
-        json={"config": {"provider": "ollama", "model": "test2"}},
+        json={"config": {"model": "test2"}},
     )
 
     response = client.get("/api/settings/models/chat/presets")
@@ -135,7 +132,7 @@ def test_get_preset(client):
     # Create preset
     create_response = client.post(
         "/api/settings/models/chat/presets",
-        json={"name": "测试", "config": {"provider": "cloud", "model": "test"}},
+        json={"name": "测试", "config": {"model": "test"}},
     )
     preset_id = create_response.json()["id"]
 
@@ -152,7 +149,7 @@ def test_get_preset_wrong_model(client):
     # Create chat preset
     create_response = client.post(
         "/api/settings/models/chat/presets",
-        json={"config": {"provider": "cloud", "model": "test"}},
+        json={"config": {"model": "test"}},
     )
     preset_id = create_response.json()["id"]
 
@@ -167,7 +164,6 @@ def test_get_preset_api_key_returns_plaintext(client):
         "/api/settings/models/chat/presets",
         json={
             "config": {
-                "provider": "cloud",
                 "model": "test",
                 "api_key": "sk-secret123",
             }
@@ -184,7 +180,7 @@ def test_get_preset_api_key_returns_none_when_not_set(client):
     """Test getting a preset API key when the preset has no API key."""
     create_response = client.post(
         "/api/settings/models/chat/presets",
-        json={"config": {"provider": "ollama", "model": "test"}},
+        json={"config": {"model": "test"}},
     )
     preset_id = create_response.json()["id"]
 
@@ -197,7 +193,7 @@ def test_get_preset_api_key_wrong_model_returns_404(client):
     """Test getting a preset API key with wrong model_name returns 404."""
     create_response = client.post(
         "/api/settings/models/chat/presets",
-        json={"config": {"provider": "cloud", "model": "test"}},
+        json={"config": {"model": "test"}},
     )
     preset_id = create_response.json()["id"]
 
@@ -220,7 +216,7 @@ def test_update_preset(client):
         "/api/settings/models/chat/presets",
         json={
             "name": "原始",
-            "config": {"provider": "cloud", "model": "test", "api_key": "sk-old"},
+            "config": {"model": "test", "api_key": "sk-old"},
         },
     )
     preset_id = create_response.json()["id"]
@@ -230,13 +226,12 @@ def test_update_preset(client):
         f"/api/settings/models/chat/presets/{preset_id}",
         json={
             "name": "更新后",
-            "config": {"provider": "ollama", "model": "llama3", "endpoint": "http://localhost:11434"},
+            "config": {"model": "llama3", "endpoint": "http://localhost:11434"},
         },
     )
     assert response.status_code == 200
     data = response.json()
     assert data["name"] == "更新后"
-    assert data["config"]["provider"] == "ollama"
     assert data["config"]["model"] == "llama3"
 
 
@@ -245,14 +240,14 @@ def test_update_preset_masked_key_preserved(client):
     # Create preset with API key
     create_response = client.post(
         "/api/settings/models/chat/presets",
-        json={"config": {"provider": "cloud", "model": "test", "api_key": "sk-secret123"}},
+        json={"config": {"model": "test", "api_key": "sk-secret123"}},
     )
     preset_id = create_response.json()["id"]
 
     # Update with masked key (should preserve original)
     response = client.patch(
         f"/api/settings/models/chat/presets/{preset_id}",
-        json={"config": {"provider": "cloud", "model": "updated", "api_key": "sk-s***"}},
+        json={"config": {"model": "updated", "api_key": "sk-s***"}},
     )
     assert response.status_code == 200
 
@@ -266,11 +261,11 @@ def test_delete_preset(client):
     # Create two presets (need at least two to delete one)
     client.post(
         "/api/settings/models/chat/presets",
-        json={"config": {"provider": "cloud", "model": "test1"}},
+        json={"config": {"model": "test1"}},
     )
     create_response = client.post(
         "/api/settings/models/chat/presets",
-        json={"config": {"provider": "cloud", "model": "test2"}},
+        json={"config": {"model": "test2"}},
     )
     preset_id = create_response.json()["id"]
 
@@ -288,13 +283,13 @@ def test_delete_active_preset_fallback(client):
     # Create two presets
     resp1 = client.post(
         "/api/settings/models/chat/presets",
-        json={"config": {"provider": "cloud", "model": "test1"}},
+        json={"config": {"model": "test1"}},
     )
     preset1_id = resp1.json()["id"]
 
     resp2 = client.post(
         "/api/settings/models/chat/presets",
-        json={"config": {"provider": "cloud", "model": "test2"}},
+        json={"config": {"model": "test2"}},
     )
     preset2_id = resp2.json()["id"]
 
@@ -319,7 +314,7 @@ def test_set_active_preset(client):
     # Create preset
     create_response = client.post(
         "/api/settings/models/chat/presets",
-        json={"config": {"provider": "cloud", "model": "test"}},
+        json={"config": {"model": "test"}},
     )
     preset_id = create_response.json()["id"]
 
@@ -337,7 +332,7 @@ def test_get_active_preset(client):
     # Create and activate preset
     create_response = client.post(
         "/api/settings/models/chat/presets",
-        json={"name": "活动预设", "config": {"provider": "cloud", "model": "test"}},
+        json={"name": "活动预设", "config": {"model": "test"}},
     )
     preset_id = create_response.json()["id"]
     client.put(

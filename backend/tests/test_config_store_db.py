@@ -42,7 +42,6 @@ def db_path(tmp_path: Path) -> Path:
     for model_name in ["chat", "embedding", "asr"]:
         preset_id = f"{model_name}_default"
         config = {
-            "provider": "cloud",
             "model": f"{model_name}-model-v1",
             "api_key": "test_key",
         }
@@ -83,7 +82,6 @@ def test_update_models_modifies_active_preset(db_path: Path):
     config = json.loads(row["config"])
     assert config["model"] == "gpt-4"
     assert config["api_key"] == "new_key"
-    assert config["provider"] == "cloud"  # preserved
 
 
 def test_update_models_ignores_none_values(db_path: Path):
@@ -118,7 +116,7 @@ def test_update_models_handles_multiple_models(db_path: Path):
     store.update_models(
         {
             "chat": {"model": "gpt-4"},
-            "embedding": {"provider": "ollama", "endpoint": "http://localhost:11434"},
+            "embedding": {"endpoint": "http://localhost:11434"},
         }
     )
 
@@ -149,7 +147,6 @@ def test_update_models_handles_multiple_models(db_path: Path):
         ("embedding",),
     )
     embedding_config = json.loads(cursor.fetchone()["config"])
-    assert embedding_config["provider"] == "ollama"
     assert embedding_config["endpoint"] == "http://localhost:11434"
 
     # Check asr unchanged
@@ -172,7 +169,7 @@ def test_update_models_only_modifies_active_preset(db_path: Path):
     """Test that update_models only modifies the active preset, not others."""
     # Create a second preset for chat
     conn = sqlite3.connect(db_path)
-    other_config = {"provider": "openai", "model": "gpt-3.5", "api_key": "other_key"}
+    other_config = {"model": "gpt-3.5", "api_key": "other_key"}
     conn.execute(
         "INSERT INTO model_presets (id, model_name, name, config) VALUES (?, ?, ?, ?)",
         ("chat_other", "chat", "Other Preset", json.dumps(other_config)),

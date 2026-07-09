@@ -17,6 +17,8 @@ from config import settings as settings_module
 from config.settings import (
     ModelConfig,
     Settings,
+    _is_local_endpoint,
+    _is_ollama_endpoint,
     get_settings,
 )
 from core.config_store import ConfigStore
@@ -60,14 +62,15 @@ def _is_masked(api_key: str | None) -> bool:
 
 
 def _configured(config) -> str:
-    """Configuration completeness for a model service. All providers need a
-    model; cloud/openai additionally need an api_key, while local/ollama need
-    an endpoint instead (they require no key)."""
+    """Configuration completeness for a model service. Every service needs a
+    model; a non-local (cloud/LAN) endpoint additionally needs an api_key.
+    Local loopback endpoints (Ollama, a local ASR/embedding server) require
+    no key."""
     if not config.model:
         return "not_configured"
-    if config.provider in ("cloud", "openai"):
-        return "configured" if config.api_key else "not_configured"
-    return "configured" if config.endpoint else "not_configured"
+    if _is_local_endpoint(config.endpoint):
+        return "configured"
+    return "configured" if config.api_key else "not_configured"
 
 
 @router.get("/models")
@@ -76,7 +79,6 @@ async def get_model_settings() -> dict:
     models = get_settings().models
     return {
         name: {
-            "provider": config.provider,
             "endpoint": config.endpoint,
             "api_key": _mask_key(config.api_key),
             "model": config.model,
@@ -163,21 +165,7 @@ def _parse_model_list_endpoint(endpoint: str):
 
 
 def _is_ollama_model_list_config(config: dict[str, Any]) -> bool:
-    provider = config.get("provider")
-    if provider == "ollama":
-        return True
-    if provider in {"cloud", "openai"}:
-        return False
-
-    endpoint = str(config.get("endpoint") or "")
-    if not endpoint:
-        return False
-
-    parsed = _parse_model_list_endpoint(endpoint)
-    return (
-        parsed.hostname in {"localhost", "127.0.0.1", "::1"}
-        and parsed.port == 11434
-    )
+    return _is_ollama_endpoint(str(config.get("endpoint") or ""))
 
 
 def _ollama_tags_base(endpoint: str) -> str:
@@ -189,7 +177,9 @@ def _ollama_tags_base(endpoint: str) -> str:
 
 
 def _model_list_requires_api_key(config: dict[str, Any]) -> bool:
-    return config.get("provider") in {"cloud", "openai"}
+    # Cloud/LAN endpoints need a key; loopback endpoints (Ollama or any local
+    # service) do not.
+    return not _is_local_endpoint(config.get("endpoint"))
 
 
 def _list_openai_compatible_models(config: dict[str, Any]) -> list[str]:
@@ -244,10 +234,11 @@ async def get_service_status() -> dict:
     asr_endpoint = models.asr.endpoint or "http://localhost:8001"
 
     async def model_status(config) -> dict:
-        if config.provider == "ollama":
-            endpoint = config.endpoint or "http://localhost:11434"
-            health = await asyncio.to_thread(_check_ollama_health, endpoint)
-            return {"status": health, "endpoint": endpoint}
+        # Only a local Ollama endpoint is meaningfully probed (/api/tags);
+        # arbitrary cloud endpoints aren't, so fall back to config completeness.
+        if _is_ollama_endpoint(config.endpoint):
+            health = await asyncio.to_thread(_check_ollama_health, config.endpoint)
+            return {"status": health, "endpoint": config.endpoint}
         return {"status": _configured(config)}
 
     asr_status = await asyncio.to_thread(_check_asr_health, asr_endpoint)

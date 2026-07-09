@@ -231,7 +231,6 @@ async def clean_document(document_id: str, request: Request) -> dict:
         diagnostic_context={
             "document_id": document_id,
             "source_path": str(source_path),
-            "chat_provider": settings.models.chat.provider,
             "chat_endpoint": settings.models.chat.endpoint,
             "chat_model": settings.models.chat.model,
         },

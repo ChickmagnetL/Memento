@@ -16,16 +16,13 @@ storage:
 
 models:
   asr:
-    provider: "local"
     endpoint: "http://localhost:8001/v1"
     model: "iic/SenseVoiceSmall"
     protocol: "transcriptions"
   embedding:
-    provider: "ollama"
     endpoint: "http://localhost:11434"
     model: "qwen3-embedding:0.6b"
   chat:
-    provider: "cloud"
     api_key: ""
     model: "deepseek-chat"
 

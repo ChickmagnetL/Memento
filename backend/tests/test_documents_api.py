@@ -431,7 +431,6 @@ async def test_clean_document_chat_timeout_returns_502(
             lambda: SimpleNamespace(
                 models=SimpleNamespace(
                     chat=SimpleNamespace(
-                        provider="cloud",
                         endpoint="https://api.example.com/v1",
                         model="test-chat",
                     )
@@ -461,7 +460,6 @@ async def test_clean_document_chat_timeout_returns_502(
         assert exc_info.value.detail == "Chat API failed: HTTP 524: upstream timeout"
         assert "clean_provider_failure" in caplog.text
         assert "'document_id': 'd1'" in caplog.text
-        assert "'chat_provider': 'cloud'" in caplog.text
         assert "'chat_endpoint': 'https://api.example.com/v1'" in caplog.text
         assert "'chat_model': 'test-chat'" in caplog.text
     finally:

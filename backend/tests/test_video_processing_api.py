@@ -61,12 +61,7 @@ storage:
   data_dir: "{data_dir}"
 models:
   asr:
-    provider: local
     protocol: transcriptions
-  chat:
-    provider: cloud
-  embedding:
-    provider: ollama
 video_processing:
   bilibili_cookie: ""
   douyin_cookie: ""

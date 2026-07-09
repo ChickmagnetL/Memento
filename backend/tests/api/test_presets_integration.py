@@ -67,7 +67,6 @@ def test_complete_preset_workflow(client):
         f"/api/settings/models/{model_name}/presets",
         json={
             "config": {
-                "provider": "cloud",
                 "model": "claude-3-5-sonnet-20241022",
                 "api_key": "sk-secret1",
             }
@@ -85,7 +84,6 @@ def test_complete_preset_workflow(client):
         json={
             "name": "Ollama本地",
             "config": {
-                "provider": "ollama",
                 "model": "llama3",
                 "endpoint": "http://localhost:11434",
             },
@@ -124,7 +122,6 @@ def test_complete_preset_workflow(client):
         json={
             "name": "Claude官方",
             "config": {
-                "provider": "cloud",
                 "model": "claude-3-5-sonnet-20241022",
                 "api_key": "sk-s***",  # Masked - should preserve original
             },
@@ -168,7 +165,7 @@ def test_auto_name_skips_gaps(client):
     # Create preset 1
     resp1 = client.post(
         f"/api/settings/models/{model_name}/presets",
-        json={"config": {"provider": "cloud", "model": "test"}},
+        json={"config": {"model": "test"}},
     )
     preset1_id = resp1.json()["id"]
     assert resp1.json()["name"] == "Preset 1"
@@ -176,11 +173,11 @@ def test_auto_name_skips_gaps(client):
     # Create preset 2 and 3
     resp2 = client.post(
         f"/api/settings/models/{model_name}/presets",
-        json={"config": {"provider": "cloud", "model": "test"}},
+        json={"config": {"model": "test"}},
     )
     resp3 = client.post(
         f"/api/settings/models/{model_name}/presets",
-        json={"config": {"provider": "cloud", "model": "test"}},
+        json={"config": {"model": "test"}},
     )
     assert resp2.json()["name"] == "Preset 2"
     assert resp3.json()["name"] == "Preset 3"
@@ -193,7 +190,7 @@ def test_auto_name_skips_gaps(client):
     # Create new preset - should be Preset 4, not Preset 2
     resp4 = client.post(
         f"/api/settings/models/{model_name}/presets",
-        json={"config": {"provider": "cloud", "model": "test"}},
+        json={"config": {"model": "test"}},
     )
     assert resp4.json()["name"] == "Preset 4"
 
@@ -203,14 +200,14 @@ def test_cross_model_isolation(client):
     # Create chat preset
     chat_resp = client.post(
         "/api/settings/models/chat/presets",
-        json={"config": {"provider": "cloud", "model": "claude"}},
+        json={"config": {"model": "claude"}},
     )
     chat_id = chat_resp.json()["id"]
 
     # Create embedding preset
     emb_resp = client.post(
         "/api/settings/models/embedding/presets",
-        json={"config": {"provider": "openai", "model": "text-embedding-3-small"}},
+        json={"config": {"model": "text-embedding-3-small"}},
     )
     emb_id = emb_resp.json()["id"]
 
