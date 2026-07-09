@@ -1,39 +1,34 @@
 """Factories for embedding clients and chat models.
 
-Single switch point for Ollama-native vs OpenAI-compatible, decided from the
-endpoint. API modules import these and keep module-level names so tests can
+API modules import these and keep module-level names so tests can
 monkeypatch per-module.
 """
 
-from config.settings import Settings, _is_ollama_endpoint, get_settings
+from config.settings import Settings, _is_local_endpoint, get_settings
 from core.models.chat_completion import ChatCompletionError
 from core.models.chat_model_adapter import (
     ChatCompletionClient,
     SDKChatCompletionClient,
 )
 from core.rag.embedding import CloudEmbeddingClient
-from core.rag.ollama_embedding import (
-    OllamaEmbeddingClient,
-)
 
 
 def build_embedding_client(settings: Settings | None = None):
     """Build the embedding client.
 
-    Protocol is auto-detected from the endpoint (shared with the settings API):
-    localhost:11434 -> OllamaEmbeddingClient, anything else ->
-    CloudEmbeddingClient. When no endpoint is set, defaults to the cloud client
-    (no real preset hits this).
+    Embedding always uses the OpenAI-compatible protocol (/v1/embeddings),
+    regardless of provider (Ollama is reached via its /v1 endpoint, same as
+    cloud providers). Local loopback endpoints don't require a real api_key,
+    so a placeholder is supplied there -- the Authorization header is ignored
+    by local OpenAI-compatible servers.
     """
     embedding = (settings or get_settings()).models.embedding
-
-    if _is_ollama_endpoint(embedding.endpoint):
-        return OllamaEmbeddingClient(
-            endpoint=embedding.endpoint, model=embedding.model
-        )
+    api_key = embedding.api_key
+    if not api_key and _is_local_endpoint(embedding.endpoint):
+        api_key = "local"
     return CloudEmbeddingClient(
         endpoint=embedding.endpoint,
-        api_key=embedding.api_key,
+        api_key=api_key,
         model=embedding.model,
     )
 

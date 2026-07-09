@@ -3,7 +3,6 @@
 from config.settings import Settings
 from core.models.factory import build_embedding_client, build_chat_model
 from core.rag.embedding import CloudEmbeddingClient
-from core.rag.ollama_embedding import OllamaEmbeddingClient
 
 
 def _settings(embedding: dict, chat: dict) -> Settings:
@@ -19,13 +18,16 @@ def test_cloud_endpoint_builds_cloud_client():
     assert isinstance(client, CloudEmbeddingClient)
 
 
-def test_ollama_endpoint_builds_ollama_client():
+def test_local_ollama_endpoint_builds_cloud_client():
+    # Ollama is reached via its OpenAI-compatible /v1 endpoint; local
+    # loopback needs no real api_key (a placeholder is injected).
     settings = _settings(
-        {"endpoint": "http://localhost:11434", "model": "qwen3-embedding:0.6b"},
+        {"endpoint": "http://localhost:11434/v1", "model": "qwen3-embedding:0.6b"},
         {},
     )
     client = build_embedding_client(settings)
-    assert isinstance(client, OllamaEmbeddingClient)
+    assert isinstance(client, CloudEmbeddingClient)
+    assert client.api_key == "local"
 
 
 def test_non_ollama_port_on_localhost_builds_cloud_client():

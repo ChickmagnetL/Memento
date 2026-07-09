@@ -31,25 +31,6 @@ from pydantic_settings import BaseSettings, PydanticBaseSettingsSource
 logger = logging.getLogger(__name__)
 
 
-def _is_ollama_endpoint(endpoint: str | None) -> bool:
-    """True only when *endpoint* points at a local Ollama daemon
-    (localhost/127.0.0.1/::1 on port 11434). Selects the Ollama-native
-    protocol (/api/embed, /api/tags) over the OpenAI-compatible one.
-    """
-    if not endpoint:
-        return False
-    try:
-        parsed = urlparse(endpoint)
-        port = parsed.port
-    except ValueError:
-        # Non-numeric port (e.g. "localhost:bad") -- not a valid Ollama URL.
-        return False
-    return (
-        parsed.hostname in {"localhost", "127.0.0.1", "::1"}
-        and port == 11434
-    )
-
-
 def _is_local_endpoint(endpoint: str | None) -> bool:
     """True when *endpoint* is on the loopback (any port). Local services
     (Ollama on 11434, a local ASR/embedding server on another port) don't
@@ -105,10 +86,9 @@ def _merge_dicts(base: dict[str, Any], override: dict[str, Any]) -> dict[str, An
 class ModelConfig(BaseModel):
     """Configuration for a model service (ASR/Embedding/Chat).
 
-    The protocol (Ollama-native vs OpenAI-compatible) is auto-detected from
-    the endpoint -- see ``_is_ollama_endpoint``. Extra keys (e.g. a stale
-    ``provider`` left in stored presets) are ignored so no data migration is
-    needed.
+    All services speak the OpenAI-compatible protocol over HTTP. Extra keys
+    (e.g. a stale ``provider`` left in stored presets) are ignored so no data
+    migration is needed.
     """
 
     model_config = ConfigDict(extra="ignore")

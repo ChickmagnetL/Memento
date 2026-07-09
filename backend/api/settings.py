@@ -18,7 +18,6 @@ from config.settings import (
     ModelConfig,
     Settings,
     _is_local_endpoint,
-    _is_ollama_endpoint,
     get_settings,
 )
 from core.config_store import ConfigStore
@@ -124,15 +123,6 @@ def _check_asr_health(endpoint: str) -> str:
         return "unreachable"
 
 
-def _check_ollama_health(endpoint: str) -> str:
-    try:
-        with urlopen(f"{endpoint.rstrip('/')}/api/tags", timeout=3) as response:
-            response.read()
-        return "ok"
-    except (OSError, ValueError):
-        return "unreachable"
-
-
 MODEL_LIST_TIMEOUT_SECONDS = 10
 
 
@@ -162,18 +152,6 @@ def _parse_model_list_endpoint(endpoint: str):
     if parsed.scheme not in {"http", "https"} or not parsed.netloc:
         raise HTTPException(status_code=400, detail="Endpoint is invalid")
     return parsed
-
-
-def _is_ollama_model_list_config(config: dict[str, Any]) -> bool:
-    return _is_ollama_endpoint(str(config.get("endpoint") or ""))
-
-
-def _ollama_tags_base(endpoint: str) -> str:
-    base = endpoint.rstrip("/")
-    parsed = _parse_model_list_endpoint(base)
-    if parsed.path.rstrip("/") == "/v1":
-        base = base[: -len(parsed.path.rstrip("/"))].rstrip("/")
-    return base
 
 
 def _model_list_requires_api_key(config: dict[str, Any]) -> bool:
@@ -211,22 +189,6 @@ def _list_openai_compatible_models(config: dict[str, Any]) -> list[str]:
     ]
 
 
-def _list_ollama_models(config: dict[str, Any]) -> list[str]:
-    endpoint = config.get("endpoint")
-    if not endpoint:
-        raise HTTPException(status_code=400, detail="Endpoint is required to fetch models")
-
-    response = _read_json_url(f"{_ollama_tags_base(str(endpoint))}/api/tags")
-    models = response.get("models") if isinstance(response, dict) else None
-    if not isinstance(models, list):
-        raise HTTPException(status_code=502, detail="Malformed Ollama models response")
-    return [
-        item["name"]
-        for item in models
-        if isinstance(item, dict) and isinstance(item.get("name"), str)
-    ]
-
-
 @router.get("/status")
 async def get_service_status() -> dict:
     """Report per-service status without spending tokens."""
@@ -234,11 +196,7 @@ async def get_service_status() -> dict:
     asr_endpoint = models.asr.endpoint or "http://localhost:8001"
 
     async def model_status(config) -> dict:
-        # Only a local Ollama endpoint is meaningfully probed (/api/tags);
-        # arbitrary cloud endpoints aren't, so fall back to config completeness.
-        if _is_ollama_endpoint(config.endpoint):
-            health = await asyncio.to_thread(_check_ollama_health, config.endpoint)
-            return {"status": health, "endpoint": config.endpoint}
+        # Config-completeness only; arbitrary endpoints aren't live-probed.
         return {"status": _configured(config)}
 
     asr_status = await asyncio.to_thread(_check_asr_health, asr_endpoint)
@@ -538,10 +496,7 @@ async def list_available_models(
         await sqlite.close()
 
     config = _merge_preset_config(current_config, payload.config)
-    if _is_ollama_model_list_config(config):
-        models = await asyncio.to_thread(_list_ollama_models, config)
-    else:
-        models = await asyncio.to_thread(_list_openai_compatible_models, config)
+    models = await asyncio.to_thread(_list_openai_compatible_models, config)
     return {"models": models}
 
 

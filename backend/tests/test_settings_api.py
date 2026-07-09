@@ -465,7 +465,7 @@ def test_status_reports_configuration_state(client):
     status = response.json()
 
     assert status["chat"]["status"] == "configured"
-    assert status["embedding"]["status"] in ("ok", "unreachable")
+    assert status["embedding"]["status"] == "configured"
 
 
 def test_local_endpoint_configured_without_api_key():
@@ -487,19 +487,14 @@ def test_cloud_endpoint_configured_with_api_key():
     assert settings_api._configured(config) == "configured"
 
 
-def test_status_ollama_endpoint_probes_health(client, monkeypatch):
+def test_status_local_ollama_endpoint_reports_configured(client):
     test_client, _db_path = client
-
-    def mock_check_ollama(endpoint: str) -> str:
-        return "ok" if endpoint == "http://localhost:11434" else "unreachable"
-
-    monkeypatch.setattr(settings_api, "_check_ollama_health", mock_check_ollama)
 
     test_client.put(
         "/api/settings/models",
         json={
             "embedding": {
-                "endpoint": "http://localhost:11434",
+                "endpoint": "http://localhost:11434/v1",
                 "model": "nomic-embed-text",
             }
         },
@@ -507,8 +502,7 @@ def test_status_ollama_endpoint_probes_health(client, monkeypatch):
 
     response = test_client.get("/api/settings/status")
     assert response.status_code == 200
-    assert response.json()["embedding"]["status"] == "ok"
-    assert response.json()["embedding"]["endpoint"] == "http://localhost:11434"
+    assert response.json()["embedding"]["status"] == "configured"
 
 
 def test_asr_health_non_json_is_unreachable():
@@ -667,14 +661,14 @@ def test_list_models_runs_probe_in_thread(client, monkeypatch):
     assert calls[0][0] == "_list_openai_compatible_models"
 
 
-def test_list_models_ollama_strips_openai_v1_suffix(client, monkeypatch):
+def test_list_models_local_ollama_uses_openai_protocol(client, monkeypatch):
     test_client, _db_path = client
     calls = []
 
     def fake_urlopen(request, timeout):
         calls.append((request.full_url, dict(request.header_items()), timeout))
         return FakeUrlResponse(
-            {"models": [{"name": "llama3.2"}, {"name": "nomic-embed-text"}]}
+            {"data": [{"id": "llama3.2"}, {"id": "nomic-embed-text"}]}
         )
 
     monkeypatch.setattr(settings_api, "urlopen", fake_urlopen)
@@ -693,9 +687,8 @@ def test_list_models_ollama_strips_openai_v1_suffix(client, monkeypatch):
     assert response.json() == {"models": ["llama3.2", "nomic-embed-text"]}
     assert len(calls) == 1
     url, headers, timeout = calls[0]
-    assert url == "http://localhost:11434/api/tags"
+    assert url == "http://localhost:11434/v1/models"
     assert timeout == 10
-    assert "Authorization" not in headers
 
 
 def test_list_models_invalid_endpoint_port_returns_400(client):

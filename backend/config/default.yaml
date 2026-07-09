@@ -20,7 +20,7 @@ models:
     model: "iic/SenseVoiceSmall"
     protocol: "transcriptions"
   embedding:
-    endpoint: "http://localhost:11434"
+    endpoint: "http://localhost:11434/v1"
     model: "qwen3-embedding:0.6b"
   chat:
     api_key: ""
