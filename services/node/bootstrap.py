@@ -1,0 +1,302 @@
+#!/usr/bin/env python3
+"""Memento Remote Node Bootstrap — one-shot deployment and launcher.
+
+Usage:
+  python bootstrap.py probe         # detect hardware + check models
+  python bootstrap.py deploy        # probe + install missing models
+  python bootstrap.py serve         # start ASR + embedding services
+  python bootstrap.py run           # deploy + serve (one-shot)
+
+The bootstrap script is self-contained and does NOT depend on the Memento backend.
+It orchestrates services/asr/ and services/embedding/ which each have their own
+deploy.py and run.sh.
+"""
+
+import argparse
+import os
+import shutil
+import socket
+import subprocess
+import sys
+import time
+from pathlib import Path
+from urllib.request import urlopen
+from urllib.error import URLError
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+ASR_DIR = REPO_ROOT / "services" / "asr"
+EMBEDDING_DIR = REPO_ROOT / "services" / "embedding"
+
+ASR_PORT = 8001
+EMBEDDING_PORT = 8003
+
+
+# --- Hardware detection ---
+
+def detect_best_device() -> str:
+    """Detect the best available torch device: cuda > mps > cpu."""
+    if shutil.which("nvidia-smi") is not None:
+        return "cuda"
+    try:
+        import torch
+        if torch.backends.mps.is_available():
+            return "mps"
+    except ImportError:
+        pass
+    return "cpu"
+
+
+# --- Network ---
+
+def get_lan_ip() -> str:
+    """Get the LAN IP address of this machine."""
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        s.connect(("10.255.255.255", 1))
+        ip = s.getsockname()[0]
+    except Exception:
+        ip = "127.0.0.1"
+    finally:
+        s.close()
+    return ip
+
+
+# --- Health checks ---
+
+def check_health(port: int, timeout: float = 2.0) -> bool:
+    """Check if a service is healthy on localhost:port."""
+    try:
+        resp = urlopen(f"http://127.0.0.1:{port}/health", timeout=timeout)
+        return resp.status == 200
+    except (URLError, OSError):
+        return False
+
+
+# --- Service launchers ---
+
+def start_asr(device: str) -> subprocess.Popen:
+    """Start the ASR service in the background. Returns the Popen handle."""
+    venv_uvicorn = ASR_DIR / ".venv" / "bin" / "uvicorn"
+    if not venv_uvicorn.exists():
+        print(f"ERROR: ASR venv not found at {ASR_DIR / '.venv'}. Run 'deploy' first.")
+        sys.exit(1)
+
+    proc = subprocess.Popen(
+        [str(venv_uvicorn), "server:app", "--host", "0.0.0.0", "--port", str(ASR_PORT)],
+        cwd=str(ASR_DIR),
+        env={**os.environ, "ASR_HOST": "0.0.0.0", "ASR_PORT": str(ASR_PORT), "ASR_DEVICE": device},
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
+        start_new_session=True,
+    )
+    return proc
+
+
+def start_embedding(device: str) -> subprocess.Popen:
+    """Start the embedding service in the background. Returns the Popen handle."""
+    venv_uvicorn = EMBEDDING_DIR / ".venv" / "bin" / "uvicorn"
+    if not venv_uvicorn.exists():
+        print(f"ERROR: Embedding venv not found at {EMBEDDING_DIR / '.venv'}. Run 'deploy' first.")
+        sys.exit(1)
+
+    proc = subprocess.Popen(
+        [str(venv_uvicorn), "server:app", "--host", "0.0.0.0", "--port", str(EMBEDDING_PORT)],
+        cwd=str(EMBEDDING_DIR),
+        env={**os.environ, "EMBEDDING_HOST": "0.0.0.0", "EMBEDDING_PORT": str(EMBEDDING_PORT), "EMBEDDING_DEVICE": device},
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
+        start_new_session=True,
+    )
+    return proc
+
+
+def wait_for_health(port: int, timeout: float = 60.0) -> bool:
+    """Poll /health until the service is up or timeout expires."""
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        if check_health(port, timeout=1.0):
+            return True
+        time.sleep(1)
+    return False
+
+
+# --- Model existence checks ---
+
+def check_asr_models() -> dict[str, bool]:
+    """Check if ASR models are cached locally."""
+    cache_dir = ASR_DIR / "model_cache"
+    # sentence-transformers caches in ~/.cache/huggingface/hub/ or HF_HOME
+    hf_home = os.environ.get("HF_HOME", os.path.expanduser("~/.cache/huggingface/hub"))
+    hf_cache = Path(hf_home)
+    return {
+        "iic/SenseVoiceSmall": (cache_dir / "iic" / "SenseVoiceSmall").is_dir(),
+        "moonshine_voice/medium-streaming-en": (hf_cache / "models--moonshine-voice--medium-streaming-en").is_dir(),
+    }
+
+
+def check_embedding_models() -> dict[str, bool]:
+    """Check if embedding models are cached (sentence-transformers cache)."""
+    hf_home = os.environ.get("HF_HOME", os.path.expanduser("~/.cache/huggingface/hub"))
+    cache_base = Path(hf_home)
+    model_dir = cache_base / "models--sentence-transformers--all-MiniLM-L6-v2"
+    return {"all-MiniLM-L6-v2": model_dir.is_dir()}
+
+
+# --- Deployers ---
+
+def deploy_asr(device: str) -> None:
+    """Run the ASR service deploy.py."""
+    deploy_script = ASR_DIR / "deploy.py"
+    if not deploy_script.exists():
+        print(f"ERROR: ASR deploy script not found at {deploy_script}")
+        sys.exit(1)
+    cmd = [sys.executable, str(deploy_script), "--device", device]
+    print(f"  Running: {' '.join(cmd)}")
+    subprocess.run(cmd, check=True)
+
+
+def deploy_embedding(device: str) -> None:
+    """Run the embedding service deploy.py."""
+    deploy_script = EMBEDDING_DIR / "deploy.py"
+    if not deploy_script.exists():
+        print(f"ERROR: Embedding deploy script not found at {deploy_script}")
+        sys.exit(1)
+    cmd = [sys.executable, str(deploy_script), "--device", device]
+    print(f"  Running: {' '.join(cmd)}")
+    subprocess.run(cmd, check=True)
+
+
+# --- Commands ---
+
+def cmd_probe() -> None:
+    """Print hardware and model status."""
+    device = detect_best_device()
+    print(f"Hardware: {device}")
+    if device in ("cuda", "mps"):
+        print(f"  Accelerated: YES ({device})")
+    else:
+        print("  Accelerated: NO (CPU only)")
+        print("  Note: CUDA/MPS not detected. OpenVINO/RKNN not yet supported.")
+        print("  See: docs/superpowers/specs/2026-07-09-v0.3.0-remote-asr-embedding-node-design.md")
+
+    print()
+    print("ASR models:")
+    asr_models = check_asr_models()
+    for model_id, present in asr_models.items():
+        status = "INSTALLED" if present else "MISSING"
+        print(f"  [{status}] {model_id}")
+
+    print()
+    print("Embedding models:")
+    emb_models = check_embedding_models()
+    for model_id, present in emb_models.items():
+        status = "INSTALLED" if present else "MISSING"
+        print(f"  [{status}] {model_id}")
+
+
+def cmd_deploy() -> None:
+    """Probe + deploy missing models."""
+    device = detect_best_device()
+    print(f"Detected device: {device}")
+    print()
+
+    asr_models = check_asr_models()
+    all_asr_ok = all(asr_models.values())
+    if all_asr_ok:
+        print("ASR models: all present, skipping deploy.")
+    else:
+        print("ASR models: deploying...")
+        deploy_asr(device)
+
+    print()
+
+    emb_models = check_embedding_models()
+    all_emb_ok = all(emb_models.values())
+    if all_emb_ok:
+        print("Embedding models: all present, skipping deploy.")
+    else:
+        print("Embedding models: deploying...")
+        deploy_embedding(device)
+
+    print()
+    print("Deploy complete.")
+
+
+def cmd_serve() -> None:
+    """Start both services."""
+    device = detect_best_device()
+    print(f"Starting services (device={device})...")
+
+    # Check if already running
+    if check_health(ASR_PORT):
+        print(f"  ASR service already running on port {ASR_PORT}")
+    else:
+        print(f"  Starting ASR service on port {ASR_PORT}...")
+        start_asr(device)
+        if not wait_for_health(ASR_PORT):
+            print(f"  ERROR: ASR service failed to start on port {ASR_PORT}")
+            sys.exit(1)
+        print(f"  ASR service ready on port {ASR_PORT}")
+
+    if check_health(EMBEDDING_PORT):
+        print(f"  Embedding service already running on port {EMBEDDING_PORT}")
+    else:
+        print(f"  Starting embedding service on port {EMBEDDING_PORT}...")
+        start_embedding(device)
+        if not wait_for_health(EMBEDDING_PORT):
+            print(f"  ERROR: Embedding service failed to start on port {EMBEDDING_PORT}")
+            sys.exit(1)
+        print(f"  Embedding service ready on port {EMBEDDING_PORT}")
+
+    lan_ip = get_lan_ip()
+    print()
+    print("=" * 60)
+    print("  Services running. Configure Memento Settings:")
+    print()
+    print(f"  ASR endpoint:       http://{lan_ip}:{ASR_PORT}/v1")
+    print(f"  Embedding endpoint: http://{lan_ip}:{EMBEDDING_PORT}/v1")
+    print()
+    print("  In Memento Settings, create presets with these endpoints.")
+    print("  Provider: cloud (for embedding) or local (for ASR)")
+    print("=" * 60)
+    print()
+    print("Press Ctrl+C to stop all services.")
+
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("\nShutting down...")
+
+
+def cmd_run() -> None:
+    """Deploy + serve in one shot."""
+    cmd_deploy()
+    print()
+    cmd_serve()
+
+
+# --- Main ---
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Memento Remote Node Bootstrap",
+    )
+    parser.add_argument(
+        "command",
+        choices=["probe", "deploy", "serve", "run"],
+        help="probe=detect hardware, deploy=install models, serve=start services, run=deploy+serve",
+    )
+    args = parser.parse_args()
+
+    commands = {
+        "probe": cmd_probe,
+        "deploy": cmd_deploy,
+        "serve": cmd_serve,
+        "run": cmd_run,
+    }
+    commands[args.command]()
+
+
+if __name__ == "__main__":
+    main()
