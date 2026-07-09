@@ -51,12 +51,14 @@ class FunAsrTranscriber:
         self,
         cache_dir: str = "model_cache",
         model: str = "iic/SenseVoiceSmall",
+        device: str = "cpu",
     ):
         from funasr import AutoModel
 
+        self.device = device
         self.model = AutoModel(
             model=model,
-            device="cpu",
+            device=device,
             disable_update=True,
             cache_dir=cache_dir,
         )
@@ -79,7 +81,8 @@ class FunAsrTranscriber:
 class MoonshineVoiceTranscriber:
     """Moonshine Voice-backed transcription."""
 
-    def __init__(self, *, model: str):
+    def __init__(self, *, model: str, device: str = "cpu"):
+        self.device = device
         try:
             from moonshine_voice import (
                 ModelArch,

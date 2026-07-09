@@ -75,7 +75,7 @@ def test_get_transcriber_cache_is_keyed_by_model(monkeypatch):
     seen_models = []
 
     class FakeTranscriber:
-        def __init__(self, *, model: str) -> None:
+        def __init__(self, *, model: str, device=None) -> None:
             seen_models.append(model)
 
     monkeypatch.setattr(server, "MoonshineVoiceTranscriber", FakeTranscriber)
@@ -94,11 +94,11 @@ def test_get_transcriber_selects_moonshine_voice_from_model_prefix(monkeypatch):
     seen_models = []
 
     class FakeMoonshineVoiceTranscriber:
-        def __init__(self, *, model: str) -> None:
+        def __init__(self, *, model: str, device=None) -> None:
             seen_models.append(("moonshine_voice", model))
 
     class FakeFunAsrTranscriber:
-        def __init__(self, *, model: str) -> None:
+        def __init__(self, *, model: str, device=None) -> None:
             seen_models.append(("funasr", model))
 
     monkeypatch.setattr(
@@ -119,11 +119,11 @@ def test_get_transcriber_selects_funasr_for_modelscope_model(monkeypatch):
     seen_models = []
 
     class FakeMoonshineVoiceTranscriber:
-        def __init__(self, *, model: str) -> None:
+        def __init__(self, *, model: str, device=None) -> None:
             seen_models.append(("moonshine_voice", model))
 
     class FakeFunAsrTranscriber:
-        def __init__(self, *, model: str) -> None:
+        def __init__(self, *, model: str, device=None) -> None:
             seen_models.append(("funasr", model))
 
     monkeypatch.setattr(
@@ -142,7 +142,7 @@ def test_get_transcriber_cache_uses_exact_moonshine_voice_model(monkeypatch):
     seen_models = []
 
     class FakeMoonshineVoiceTranscriber:
-        def __init__(self, *, model: str) -> None:
+        def __init__(self, *, model: str, device=None) -> None:
             seen_models.append(model)
 
     monkeypatch.setattr(
@@ -168,7 +168,7 @@ def test_transcribe_reports_missing_moonshine_voice_dependency(
     audio_path.write_bytes(b"RIFF")
 
     class MissingMoonshineVoiceTranscriber:
-        def __init__(self, *, model: str) -> None:
+        def __init__(self, *, model: str, device=None) -> None:
             raise RuntimeError(
                 "Moonshine Voice ASR requires the moonshine_voice dependency. "
                 "Install it in the ASR venv with: pip install moonshine-voice"

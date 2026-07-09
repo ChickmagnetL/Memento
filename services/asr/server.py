@@ -5,6 +5,7 @@ audio and returns OpenAI-compatible verbose JSON transcription output.
 The configured Settings ASR model is lazy-loaded on first use.
 """
 
+import os
 import tempfile
 from pathlib import Path
 
@@ -79,7 +80,8 @@ def get_transcriber(model: str):
     model = _normalize_model(model)
     if model not in _transcribers:
         transcriber_class = _get_transcriber_class(model)
-        _transcribers[model] = transcriber_class(model=model)
+        device = os.environ.get("ASR_DEVICE", "cpu")
+        _transcribers[model] = transcriber_class(model=model, device=device)
     return _transcribers[model]
 
 
