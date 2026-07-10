@@ -110,7 +110,7 @@ async def list_models() -> dict:
     """
     ids = set()
     if _sensevoice_installed():
-        ids.update(_SENSEVOICE_MODELS)  # includes iic/SenseVoiceSmall + sensevoice-small alias
+        ids.add("iic/SenseVoiceSmall")  # canonical id only; "sensevoice-small" alias still accepted as input via _normalize_model
     for spec in _MOONSHINE_SPECS:
         if _moonshine_spec_installed(spec):
             ids.add(f"moonshine_voice/{spec}")
