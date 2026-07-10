@@ -39,25 +39,28 @@ def _make_state(data_dir: Path, content: dict) -> Path:
     return path
 
 
-def _make_moonshine_voice_cache(home: Path, spec: str) -> Path:
-    """Create a fake moonshine_voice cache directory.
+def _make_sensevoice_cache(service_dir: Path) -> Path:
+    """Create a fake SenseVoice cache at the relocated services/asr/models/ path."""
+    cache_dir = service_dir / "models" / "sensevoice" / "iic" / "SenseVoiceSmall"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    (cache_dir / "model.pt").touch()
+    return cache_dir
 
-    Creates the platform-specific moonshine_voice cache at:
-      macOS: <home>/Library/Caches/moonshine_voice/download.moonshine.ai/model/<spec>/quantized/
-      Linux: <home>/.cache/moonshine_voice/download.moonshine.ai/model/<spec>/quantized/
 
-    Returns the quantized directory path.
+def _make_moonshine_cache(service_dir: Path, spec: str) -> Path:
+    """Create a fake moonshine cache at the relocated services/asr/models/ path.
+
+    Path: <service_dir>/models/moonshine/download.moonshine.ai/model/<spec>/quantized/
     """
-    if sys.platform == "darwin":
-        cache_dir = (
-            home / "Library" / "Caches" / "moonshine_voice"
-            / "download.moonshine.ai" / "model" / spec / "quantized"
-        )
-    else:
-        cache_dir = (
-            home / ".cache" / "moonshine_voice"
-            / "download.moonshine.ai" / "model" / spec / "quantized"
-        )
+    cache_dir = (
+        service_dir
+        / "models"
+        / "moonshine"
+        / "download.moonshine.ai"
+        / "model"
+        / spec
+        / "quantized"
+    )
     cache_dir.mkdir(parents=True, exist_ok=True)
     (cache_dir / "encoder_model.onnx").touch()
     return cache_dir
@@ -131,11 +134,7 @@ def test_sensevoice_installed_when_modelscope_cache_exists(
     data_dir.mkdir(parents=True, exist_ok=True)
 
     # Create the ModelScope cache path
-    sensevoice_cache = (
-        fake_home / ".cache" / "modelscope" / "hub" / "models" / "iic" / "SenseVoiceSmall"
-    )
-    sensevoice_cache.mkdir(parents=True)
-    (sensevoice_cache / "model.pt").touch()
+    sensevoice_cache = _make_sensevoice_cache(service_dir)
 
     mgr = AsrModelManager(service_dir=service_dir, data_dir=data_dir)
     status = mgr.get_status()
@@ -222,7 +221,7 @@ def test_moonshine_installed_when_voice_cache_exists(
     data_dir.mkdir(parents=True, exist_ok=True)
 
     # Create moonshine_voice cache for base-en
-    moonshine_cache = _make_moonshine_voice_cache(fake_home, "base-en")
+    moonshine_cache = _make_moonshine_cache(service_dir, "base-en")
 
     mgr = AsrModelManager(service_dir=service_dir, data_dir=data_dir)
     status = mgr.get_status()
@@ -362,7 +361,7 @@ def test_model_dir_size_only_accumulates_explicit_dirs(
 
     # Create a known cache with a known size
     sensevoice_cache = (
-        fake_home / ".cache" / "modelscope" / "hub" / "models" / "iic" / "SenseVoiceSmall"
+        service_dir / "models" / "sensevoice" / "iic" / "SenseVoiceSmall"
     )
     sensevoice_cache.mkdir(parents=True)
     (sensevoice_cache / "model.pt").write_text("x" * 1000)  # 1000 bytes
@@ -394,11 +393,7 @@ def test_cache_permission_error_returns_error_detail_not_raises(
     data_dir.mkdir(parents=True, exist_ok=True)
 
     # Create an unreadable cache directory
-    sensevoice_cache = (
-        fake_home / ".cache" / "modelscope" / "hub" / "models" / "iic" / "SenseVoiceSmall"
-    )
-    sensevoice_cache.mkdir(parents=True)
-    (sensevoice_cache / "model.pt").touch()
+    sensevoice_cache = _make_sensevoice_cache(service_dir)
 
     # Make directory unreadable
     sensevoice_cache.chmod(0o000)
@@ -540,11 +535,11 @@ def test_cache_paths_checked_includes_all_candidate_paths(
     # At least one candidate path was checked
     assert len(checked) > 0
 
-    # Moonshine should have checked moonshine_voice cache paths
+    # Moonshine should have checked moonshine cache paths
     mo_status = status.models["moonshine-base-en"]
     mo_checked = [str(p) for p in mo_status.cache_paths_checked]
     assert len(mo_checked) > 0
-    assert any("moonshine_voice" in p for p in mo_checked)
+    assert any("moonshine" in p for p in mo_checked)
 
 
 def test_moonshine_tiny_streaming_cache_detection(
@@ -560,7 +555,7 @@ def test_moonshine_tiny_streaming_cache_detection(
     data_dir.mkdir(parents=True, exist_ok=True)
 
     # Create moonshine_voice cache with only the tiny-streaming-en variant
-    _make_moonshine_voice_cache(fake_home, "tiny-streaming-en")
+    _make_moonshine_cache(service_dir, "tiny-streaming-en")
 
     mgr = AsrModelManager(service_dir=service_dir, data_dir=data_dir)
     status = mgr.get_status()
@@ -592,11 +587,7 @@ def test_select_model_installed_writes_current_model_slug(
     data_dir.mkdir(parents=True, exist_ok=True)
 
     # Pre-create state with sensevoice-small marked as installed
-    sensevoice_cache = (
-        fake_home / ".cache" / "modelscope" / "hub" / "models" / "iic" / "SenseVoiceSmall"
-    )
-    sensevoice_cache.mkdir(parents=True)
-    (sensevoice_cache / "model.pt").touch()
+    sensevoice_cache = _make_sensevoice_cache(service_dir)
 
     _make_state(
         data_dir,
@@ -686,11 +677,7 @@ def test_select_model_does_not_touch_settings(
     data_dir.mkdir(parents=True, exist_ok=True)
 
     # Set up installed model
-    sensevoice_cache = (
-        fake_home / ".cache" / "modelscope" / "hub" / "models" / "iic" / "SenseVoiceSmall"
-    )
-    sensevoice_cache.mkdir(parents=True)
-    (sensevoice_cache / "model.pt").touch()
+    sensevoice_cache = _make_sensevoice_cache(service_dir)
 
     _make_state(
         data_dir,
@@ -728,14 +715,10 @@ def test_select_model_switches_between_installed_models(
     data_dir.mkdir(parents=True, exist_ok=True)
 
     # Install sensevoice
-    sv_cache = (
-        fake_home / ".cache" / "modelscope" / "hub" / "models" / "iic" / "SenseVoiceSmall"
-    )
-    sv_cache.mkdir(parents=True)
-    (sv_cache / "model.pt").touch()
+    sv_cache = _make_sensevoice_cache(service_dir)
 
     # Install moonshine base-en
-    mo_cache = _make_moonshine_voice_cache(fake_home, "base-en")
+    mo_cache = _make_moonshine_cache(service_dir, "base-en")
 
     _make_state(
         data_dir,
@@ -823,7 +806,7 @@ def test_install_model_writes_state_with_cache_path(
     fake_deploy = _FakeDeployModule()
 
     # Create the moonshine_voice cache that would be created by the download
-    moonshine_cache = _make_moonshine_voice_cache(fake_home, "tiny-en")
+    moonshine_cache = _make_moonshine_cache(service_dir, "tiny-en")
 
     mgr = AsrModelManager(service_dir=service_dir, data_dir=data_dir)
     monkeypatch.setattr(mgr, "_load_deploy_module", lambda: fake_deploy)
@@ -869,11 +852,7 @@ def test_install_model_sensevoice_writes_state(
     fake_deploy = _FakeDeployModule()
 
     # Pre-create the cache
-    sv_cache = (
-        fake_home / ".cache" / "modelscope" / "hub" / "models" / "iic" / "SenseVoiceSmall"
-    )
-    sv_cache.mkdir(parents=True)
-    (sv_cache / "model.pt").touch()
+    sv_cache = _make_sensevoice_cache(service_dir)
 
     mgr = AsrModelManager(service_dir=service_dir, data_dir=data_dir)
     monkeypatch.setattr(mgr, "_load_deploy_module", lambda: fake_deploy)
@@ -982,7 +961,7 @@ def test_uninstall_model_removes_cache_and_state(
     data_dir.mkdir(parents=True, exist_ok=True)
 
     # Create the cache
-    moonshine_cache = _make_moonshine_voice_cache(fake_home, "tiny-en")
+    moonshine_cache = _make_moonshine_cache(service_dir, "tiny-en")
 
     _make_state(
         data_dir,
@@ -1034,13 +1013,9 @@ def test_uninstall_model_clears_current_only_if_selected(
     data_dir.mkdir(parents=True, exist_ok=True)
 
     # Create two model caches
-    sv_cache = (
-        fake_home / ".cache" / "modelscope" / "hub" / "models" / "iic" / "SenseVoiceSmall"
-    )
-    sv_cache.mkdir(parents=True)
-    (sv_cache / "model.pt").touch()
+    sv_cache = _make_sensevoice_cache(service_dir)
 
-    mo_cache = _make_moonshine_voice_cache(fake_home, "tiny-en")
+    mo_cache = _make_moonshine_cache(service_dir, "tiny-en")
 
     _make_state(
         data_dir,
@@ -1099,13 +1074,9 @@ def test_uninstall_all_removes_caches_venv_and_state(
     data_dir.mkdir(parents=True, exist_ok=True)
 
     # Create two model caches
-    sv_cache = (
-        fake_home / ".cache" / "modelscope" / "hub" / "models" / "iic" / "SenseVoiceSmall"
-    )
-    sv_cache.mkdir(parents=True)
-    (sv_cache / "model.pt").touch()
+    sv_cache = _make_sensevoice_cache(service_dir)
 
-    mo_cache = _make_moonshine_voice_cache(fake_home, "tiny-en")
+    mo_cache = _make_moonshine_cache(service_dir, "tiny-en")
 
     _make_state(
         data_dir,
@@ -1160,16 +1131,10 @@ def test_uninstall_all_does_not_delete_unknown_parent_dirs(
     data_dir.mkdir(parents=True, exist_ok=True)
 
     # Create a known registry model cache
-    sv_cache = (
-        fake_home / ".cache" / "modelscope" / "hub" / "models" / "iic" / "SenseVoiceSmall"
-    )
-    sv_cache.mkdir(parents=True)
-    (sv_cache / "model.pt").touch()
+    sv_cache = _make_sensevoice_cache(service_dir)
 
     # Create an "unknown" sibling dir in the same parent structure
-    unknown_dir = (
-        fake_home / ".cache" / "modelscope" / "hub" / "models" / "some_other_model"
-    )
+    unknown_dir = service_dir / "models" / "sensevoice" / "iic" / "some_other_model"
     unknown_dir.mkdir(parents=True)
     (unknown_dir / "other.bin").touch()
 
@@ -1215,7 +1180,7 @@ def test_uninstall_all_busy_returns_current_progress(
     data_dir.mkdir(parents=True, exist_ok=True)
 
     # Create cache so install can succeed
-    mo_cache = _make_moonshine_voice_cache(fake_home, "tiny-en")
+    mo_cache = _make_moonshine_cache(service_dir, "tiny-en")
 
     fake_deploy = _FakeDeployModule()
     mgr = AsrModelManager(service_dir=service_dir, data_dir=data_dir)
@@ -1250,11 +1215,7 @@ def test_uninstall_all_failure_progress_has_error_detail(
     data_dir.mkdir(parents=True, exist_ok=True)
 
     # Create a cache so detect_cache finds it
-    sv_cache = (
-        fake_home / ".cache" / "modelscope" / "hub" / "models" / "iic" / "SenseVoiceSmall"
-    )
-    sv_cache.mkdir(parents=True)
-    (sv_cache / "model.pt").touch()
+    sv_cache = _make_sensevoice_cache(service_dir)
 
     _make_state(
         data_dir,
@@ -1303,11 +1264,7 @@ def test_detect_cache_returns_path_for_installed_model(
     service_dir.mkdir(parents=True, exist_ok=True)
     data_dir = tmp_path / "data"
 
-    sv_cache = (
-        fake_home / ".cache" / "modelscope" / "hub" / "models" / "iic" / "SenseVoiceSmall"
-    )
-    sv_cache.mkdir(parents=True)
-    (sv_cache / "model.pt").touch()
+    sv_cache = _make_sensevoice_cache(service_dir)
 
     mgr = AsrModelManager(service_dir=service_dir, data_dir=data_dir)
 

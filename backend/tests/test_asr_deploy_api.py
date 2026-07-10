@@ -12,7 +12,6 @@ from main import app
 def test_deploy_status_reports_missing_venv(monkeypatch, tmp_path: Path):
     monkeypatch.setattr(asr_api, "SERVICE_DIR", tmp_path)
     monkeypatch.setattr(asr_api, "VENV_DIR", tmp_path / ".venv")
-    monkeypatch.setattr(asr_api.Path, "home", lambda: tmp_path)
 
     response = TestClient(app).get("/api/asr/deploy/status")
 
@@ -26,28 +25,10 @@ def test_deploy_status_reports_missing_venv(monkeypatch, tmp_path: Path):
 def test_deploy_status_reports_modelscope_cached_sensevoice(monkeypatch, tmp_path: Path):
     monkeypatch.setattr(asr_api, "SERVICE_DIR", tmp_path)
     monkeypatch.setattr(asr_api, "VENV_DIR", tmp_path / ".venv")
-    monkeypatch.setattr(asr_api.Path, "home", lambda: tmp_path)
     (tmp_path / ".venv").mkdir()
-    (
-        tmp_path
-        / ".cache"
-        / "modelscope"
-        / "hub"
-        / "models"
-        / "iic"
-        / "SenseVoiceSmall"
-        / "model.pt"
-    ).parent.mkdir(parents=True)
-    (
-        tmp_path
-        / ".cache"
-        / "modelscope"
-        / "hub"
-        / "models"
-        / "iic"
-        / "SenseVoiceSmall"
-        / "model.pt"
-    ).touch()
+    sensevoice_cache = tmp_path / "models" / "sensevoice" / "iic" / "SenseVoiceSmall"
+    sensevoice_cache.mkdir(parents=True)
+    (sensevoice_cache / "model.pt").touch()
 
     response = TestClient(app).get("/api/asr/deploy/status")
 
@@ -99,7 +80,9 @@ def test_progress_reports_current_state(monkeypatch):
 def test_status_reports_installed_after_deploy(monkeypatch, tmp_path: Path):
     venv = tmp_path / ".venv"
     (venv / "bin").mkdir(parents=True)
-    (tmp_path / "model_cache").mkdir()
+    sensevoice_cache = tmp_path / "models" / "sensevoice" / "iic" / "SenseVoiceSmall"
+    sensevoice_cache.mkdir(parents=True)
+    (sensevoice_cache / "model.pt").touch()
     monkeypatch.setattr(asr_api, "SERVICE_DIR", tmp_path)
     monkeypatch.setattr(asr_api, "VENV_DIR", venv)
 
