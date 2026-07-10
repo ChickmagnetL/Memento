@@ -14,7 +14,7 @@ def test_funasr_transcriber_receives_device_and_passes_to_automodel(monkeypatch)
     captured_device = None
 
     class FakeAutoModel:
-        def __init__(self, model, device, disable_update, cache_dir):
+        def __init__(self, model, device, disable_update):
             nonlocal captured_device
             captured_device = device
 
@@ -38,7 +38,7 @@ def test_funasr_transcriber_defaults_device_to_cpu_when_omitted(monkeypatch):
     captured_device = None
 
     class FakeAutoModel:
-        def __init__(self, model, device, disable_update, cache_dir):
+        def __init__(self, model, device, disable_update):
             nonlocal captured_device
             captured_device = device
 

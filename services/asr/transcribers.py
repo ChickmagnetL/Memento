@@ -49,18 +49,23 @@ class FunAsrTranscriber:
 
     def __init__(
         self,
-        cache_dir: str = "model_cache",
         model: str = "iic/SenseVoiceSmall",
         device: str = "cpu",
     ):
         from funasr import AutoModel
+        from pathlib import Path
 
         self.device = device
+        # Load from the relocated local cache (services/asr/models/sensevoice/...)
+        # if present; otherwise fall back to the model id (triggers modelscope
+        # download via MODELSCOPE_CACHE or the default home cache).
+        service_dir = Path(__file__).resolve().parent
+        local_path = service_dir / "models" / "sensevoice" / "iic" / "SenseVoiceSmall"
+        resolved = str(local_path) if local_path.is_dir() else model
         self.model = AutoModel(
-            model=model,
+            model=resolved,
             device=device,
             disable_update=True,
-            cache_dir=cache_dir,
         )
 
     def transcribe(self, audio_path: str) -> list[dict]:
