@@ -2,18 +2,18 @@
 """Memento Remote Node Bootstrap — isolated toolchain + launcher.
 
 Usage:
-  python bootstrap.py probe         # detect hardware + check models
-  python bootstrap.py deploy        # probe + build isolated venvs + install models
-  python bootstrap.py serve         # start ASR + embedding services
-  python bootstrap.py run           # deploy + serve (one-shot)
+  python bootstrap.py                # interactive arrow-key menu
+  python bootstrap.py probe          # detect hardware + check models
+  python bootstrap.py deploy         # probe + build isolated venvs + install models
+  python bootstrap.py serve          # start ASR + embedding services
+  python bootstrap.py run            # deploy + serve (one-shot)
 
 Self-contained: builds an isolated toolchain under services/ (uv + Python 3.12 +
 per-service venvs) without touching the user's system Python. The system python
 only LAUNCHES this script; all real work happens in services/.bin/uv and the
-services-local Python 3.12.
+services-local Python 3.12. The interactive menu uses only the standard library.
 """
 
-import argparse
 import os
 import platform
 import shutil
@@ -481,27 +481,145 @@ def cmd_run() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Interactive menu (stdlib only: termios/tty on Unix, msvcrt on Windows)
+# ---------------------------------------------------------------------------
+
+_MENU_ITEMS = [
+    "查看状态（硬件 + 模型）",
+    "部署环境（建 venv + 下载模型）",
+    "启动服务",
+    "一键部署并启动",
+    "退出",
+]
+
+
+def _render_menu(title: str, options: list[str], selected: int) -> None:
+    """Clear screen and draw the menu, highlighting the selected line."""
+    sys.stdout.write("\033[2J\033[H")  # clear screen + cursor home
+    sys.stdout.write(f"{title}\n\n")
+    for i, opt in enumerate(options):
+        if i == selected:
+            sys.stdout.write(f"\033[7m> {opt}\033[0m\n")  # inverted video
+        else:
+            sys.stdout.write(f"  {opt}\n")
+    sys.stdout.write("\n(↑/↓ 选择，Enter 确认，Ctrl+C 退出)\n")
+    sys.stdout.flush()
+
+
+def _read_key_unix() -> str:
+    """Read one logical key on Unix (termios/tty + select for ESC disambiguation)."""
+    import select
+    import termios
+    import tty
+    fd = sys.stdin.fileno()
+    old = termios.tcgetattr(fd)
+    try:
+        tty.setraw(fd)
+        ch = sys.stdin.read(1)
+        if ch == "\x1b":  # ESC — arrow keys send ESC [ A / ESC [ B
+            ready, _, _ = select.select([sys.stdin], [], [], 0.1)
+            if not ready:
+                return "esc"  # lone ESC (no follow-up bytes)
+            seq = sys.stdin.read(2)
+            if seq == "[A":
+                return "up"
+            if seq == "[B":
+                return "down"
+            return "esc"
+        if ch in ("\r", "\n"):
+            return "enter"
+        if ch == "\x03":  # Ctrl-C
+            raise KeyboardInterrupt
+        return "other"
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old)
+
+
+def _read_key_windows() -> str:
+    """Read one logical key on Windows (msvcrt)."""
+    import msvcrt
+    ch = msvcrt.getch()
+    if ch in (b"\x00", b"\xe0"):  # special-key prefix (arrows, etc.)
+        ch2 = msvcrt.getch()
+        if ch2 == b"H":
+            return "up"
+        if ch2 == b"P":
+            return "down"
+        return "other"
+    if ch == b"\x1b":  # ESC
+        return "esc"
+    if ch in (b"\r", b"\n"):
+        return "enter"
+    if ch == b"\x03":  # Ctrl-C
+        raise KeyboardInterrupt
+    return "other"
+
+
+def _select_menu(title: str, options: list[str]) -> int:
+    """Interactive arrow-key menu. Returns the selected index, or -1 if cancelled."""
+    read_key = _read_key_windows if sys.platform == "win32" else _read_key_unix
+    selected = 0
+    _render_menu(title, options, selected)
+    try:
+        while True:
+            key = read_key()
+            if key == "up":
+                selected = (selected - 1) % len(options)
+            elif key == "down":
+                selected = (selected + 1) % len(options)
+            elif key == "enter":
+                sys.stdout.write("\033[0m\n")
+                sys.stdout.flush()
+                return selected
+            elif key == "esc":
+                sys.stdout.write("\n")
+                return -1
+            _render_menu(title, options, selected)
+    except KeyboardInterrupt:
+        sys.stdout.write("\n")
+        return -1
+
+
+def _interactive() -> None:
+    """Run the interactive menu loop."""
+    actions = {0: cmd_probe, 1: cmd_deploy, 2: cmd_serve, 3: cmd_run}
+    while True:
+        choice = _select_menu("Memento 远程节点", _MENU_ITEMS)
+        if choice in (-1, 4):  # cancelled or "退出"
+            print("Bye.")
+            return
+        actions[choice]()
+        # Let the user read probe/deploy output before the menu clears the screen.
+        if choice in (0, 1):
+            try:
+                input("\n按 Enter 返回菜单 (Ctrl+C 退出) ...")
+            except KeyboardInterrupt:
+                print("\nBye.")
+                return
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
-def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Memento Remote Node Bootstrap",
-    )
-    parser.add_argument(
-        "command",
-        choices=["probe", "deploy", "serve", "run"],
-        help="probe=detect hardware, deploy=install models, serve=start services, run=deploy+serve",
-    )
-    args = parser.parse_args()
+_COMMANDS = {
+    "probe": cmd_probe,
+    "deploy": cmd_deploy,
+    "serve": cmd_serve,
+    "run": cmd_run,
+}
 
-    commands = {
-        "probe": cmd_probe,
-        "deploy": cmd_deploy,
-        "serve": cmd_serve,
-        "run": cmd_run,
-    }
-    commands[args.command]()
+
+def main() -> None:
+    """If a known command is given as argv[1], run it directly; else show the menu.
+
+    Keeps scripts/CI working (`python bootstrap.py probe`) while making the
+    no-arg path an interactive menu.
+    """
+    if len(sys.argv) > 1 and sys.argv[1] in _COMMANDS:
+        _COMMANDS[sys.argv[1]]()
+        return
+    _interactive()
 
 
 if __name__ == "__main__":
