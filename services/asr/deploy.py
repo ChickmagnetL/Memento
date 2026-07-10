@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import shutil
 import subprocess
 import sys
@@ -12,6 +13,9 @@ from typing import Callable
 
 SERVICE_DIR = Path(__file__).resolve().parent
 VENV_DIR = SERVICE_DIR / ".venv"
+MODELS_DIR = SERVICE_DIR / "models"
+SENSEVOICE_CACHE_DIR = MODELS_DIR / "sensevoice"
+MOONSHINE_CACHE_DIR = MODELS_DIR / "moonshine"
 CUDA_TORCH_INDEX_URL = "https://download.pytorch.org/whl/cu121"
 
 ProgressCallback = Callable[[str, str, int | None], None]
@@ -35,26 +39,40 @@ def python_bin() -> Path:
     return VENV_DIR / "bin" / "python"
 
 
-def run_command(args: list[str | Path], cwd: Path | None = None) -> None:
+def run_command(
+    args: list[str | Path],
+    cwd: Path | None = None,
+    env: dict[str, str] | None = None,
+) -> None:
     subprocess.run(
         [str(arg) for arg in args],
         cwd=str(cwd or SERVICE_DIR),
         check=True,
+        env=env,
     )
 
 
 def detect_best_device() -> str:
-    """Detect the best available torch device on this machine.
+    """Detect the best available torch device: cuda > mps > cpu.
 
-    Priority: cuda > mps > cpu.
+    Probes via the service venv python (which has torch), not the running
+    python, since deploy.py may run under system python without torch.
     """
-    if shutil.which("nvidia-smi") is not None:
-        return "cuda"
+    script = (
+        "import torch;"
+        " print('cuda' if torch.cuda.is_available()"
+        " else 'mps' if torch.backends.mps.is_available()"
+        " else 'cpu')"
+    )
     try:
-        import torch
-        if torch.backends.mps.is_available():
-            return "mps"
-    except ImportError:
+        result = subprocess.run(
+            [str(python_bin()), "-c", script],
+            capture_output=True, text=True, timeout=30,
+        )
+        device = result.stdout.strip()
+        if device in ("cuda", "mps", "cpu"):
+            return device
+    except Exception:
         pass
     return "cpu"
 
@@ -154,8 +172,8 @@ def download_model(
                 str(python),
                 "-c",
                 (
-                    "from funasr import AutoModel; "
-                    f"AutoModel(model='{model_id}', disable_update=True)"
+                    "from modelscope.hub.snapshot_download import snapshot_download; "
+                    f"snapshot_download('{model_id}', cache_dir='{SENSEVOICE_CACHE_DIR}')"
                 ),
             ]
         )
@@ -171,7 +189,8 @@ def download_model(
                     "from moonshine_voice import ModelArch, get_model_for_language; "
                     f"get_model_for_language(wanted_language='en', wanted_model_arch=ModelArch.{arch})"
                 ),
-            ]
+            ],
+            env={**os.environ, "MOONSHINE_VOICE_CACHE": str(MOONSHINE_CACHE_DIR)},
         )
     else:
         raise ValueError(f"Unknown runtime: {runtime}")
@@ -191,8 +210,8 @@ def download_models(
             str(python),
             "-c",
             (
-                "from funasr import AutoModel; "
-                "AutoModel(model='iic/SenseVoiceSmall', disable_update=True)"
+                "from modelscope.hub.snapshot_download import snapshot_download; "
+                f"snapshot_download('iic/SenseVoiceSmall', cache_dir='{SENSEVOICE_CACHE_DIR}')"
             ),
         ]
     )
@@ -207,7 +226,8 @@ def download_models(
                 "wanted_language='en', "
                 "wanted_model_arch=ModelArch.MEDIUM_STREAMING)"
             ),
-        ]
+        ],
+        env={**os.environ, "MOONSHINE_VOICE_CACHE": str(MOONSHINE_CACHE_DIR)},
     )
 
 
