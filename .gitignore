@@ -59,3 +59,7 @@ private/
 
 # Models (local caches, never commit)
 services/*/models/
+
+# Isolated toolchain (downloaded binaries, machine-specific)
+services/.bin/
+services/.python/

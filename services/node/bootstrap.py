@@ -1,37 +1,49 @@
 #!/usr/bin/env python3
-"""Memento Remote Node Bootstrap — one-shot deployment and launcher.
+"""Memento Remote Node Bootstrap — isolated toolchain + launcher.
 
 Usage:
   python bootstrap.py probe         # detect hardware + check models
-  python bootstrap.py deploy        # probe + install missing models
+  python bootstrap.py deploy        # probe + build isolated venvs + install models
   python bootstrap.py serve         # start ASR + embedding services
   python bootstrap.py run           # deploy + serve (one-shot)
 
-The bootstrap script is self-contained and does NOT depend on the Memento backend.
-It orchestrates services/asr/ and services/embedding/ which each have their own
-deploy.py and run.sh.
+Self-contained: builds an isolated toolchain under services/ (uv + Python 3.12 +
+per-service venvs) without touching the user's system Python. The system python
+only LAUNCHES this script; all real work happens in services/.bin/uv and the
+services-local Python 3.12.
 """
 
 import argparse
 import os
+import platform
 import shutil
 import socket
 import subprocess
 import sys
+import tarfile
+import tempfile
 import time
+import zipfile
 from pathlib import Path
-from urllib.request import urlopen
 from urllib.error import URLError
+from urllib.request import urlretrieve, urlopen
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-ASR_DIR = REPO_ROOT / "services" / "asr"
-EMBEDDING_DIR = REPO_ROOT / "services" / "embedding"
+SERVICES_DIR = REPO_ROOT / "services"
+ASR_DIR = SERVICES_DIR / "asr"
+EMBEDDING_DIR = SERVICES_DIR / "embedding"
+BIN_DIR = SERVICES_DIR / ".bin"          # uv binary lives here
+PYTHON_DIR = SERVICES_DIR / ".python"    # isolated managed Python 3.12
 
 ASR_PORT = 8001
 EMBEDDING_PORT = 8003
 
+UV_RELEASE_BASE = "https://github.com/astral-sh/uv/releases/latest/download"
 
-# --- venv path helpers (OS-correct) ---
+
+# ---------------------------------------------------------------------------
+# venv path helpers (OS-correct)
+# ---------------------------------------------------------------------------
 
 def _venv_python(service_dir: Path) -> Path:
     """Return the venv python binary path, OS-correct."""
@@ -47,7 +59,117 @@ def _venv_uvicorn(service_dir: Path) -> Path:
     return service_dir / ".venv" / "bin" / "uvicorn"
 
 
-# --- Hardware detection ---
+# ---------------------------------------------------------------------------
+# Isolated toolchain: uv + Python 3.12 + per-service venvs
+# ---------------------------------------------------------------------------
+
+def _uv_path() -> Path:
+    name = "uv.exe" if sys.platform == "win32" else "uv"
+    return BIN_DIR / name
+
+
+def _detect_uv_asset() -> dict:
+    """Pick the uv standalone release asset for the current platform/arch."""
+    machine = platform.machine().lower()
+    is_x64 = machine in ("x86_64", "amd64")
+    is_arm = machine in ("arm64", "aarch64")
+    if sys.platform == "darwin":
+        if is_arm:
+            return {"name": "uv-aarch64-apple-darwin.tar.gz", "kind": "tar"}
+        if is_x64:
+            return {"name": "uv-x86_64-apple-darwin.tar.gz", "kind": "tar"}
+    elif sys.platform.startswith("linux"):
+        if is_arm:
+            return {"name": "uv-aarch64-unknown-linux-gnu.tar.gz", "kind": "tar"}
+        if is_x64:
+            return {"name": "uv-x86_64-unknown-linux-gnu.tar.gz", "kind": "tar"}
+    elif sys.platform == "win32":
+        if is_arm:
+            return {"name": "uv-aarch64-pc-windows-msvc.zip", "kind": "zip"}
+        if is_x64:
+            return {"name": "uv-x86_64-pc-windows-msvc.zip", "kind": "zip"}
+    raise RuntimeError(f"Unsupported platform/arch: {sys.platform}/{machine}")
+
+
+def _ensure_uv() -> Path:
+    """Download the standalone uv binary into services/.bin/ if missing. Returns its path."""
+    uv = _uv_path()
+    if uv.exists():
+        return uv
+    BIN_DIR.mkdir(parents=True, exist_ok=True)
+    asset = _detect_uv_asset()
+    url = f"{UV_RELEASE_BASE}/{asset['name']}"
+    print(f"  Downloading uv: {url}")
+    with tempfile.TemporaryDirectory(dir=str(BIN_DIR)) as td:
+        archive = Path(td) / asset["name"]
+        urlretrieve(url, archive)
+        exe_name = "uv.exe" if sys.platform == "win32" else "uv"
+        if asset["kind"] == "tar":
+            with tarfile.open(archive, "r:gz") as tar:
+                tar.extractall(td)
+        else:
+            with zipfile.ZipFile(archive) as z:
+                z.extractall(td)
+        candidates = [p for p in Path(td).rglob(exe_name) if p.is_file()]
+        if not candidates:
+            raise RuntimeError(f"{exe_name} not found in {asset['name']}")
+        shutil.move(str(candidates[0]), str(uv))
+    if sys.platform != "win32":
+        uv.chmod(0o755)
+    print(f"  uv ready: {uv}")
+    return uv
+
+
+def _uv_env() -> dict:
+    """Environment for uv: managed Pythons install under services/.python."""
+    env = dict(os.environ)
+    env["UV_PYTHON_INSTALL_DIR"] = str(PYTHON_DIR)
+    return env
+
+
+def _ensure_python_312() -> None:
+    """Install Python 3.12 into services/.python/ via uv (idempotent)."""
+    uv = _ensure_uv()
+    PYTHON_DIR.mkdir(parents=True, exist_ok=True)
+    print(f"  Ensuring Python 3.12 in {PYTHON_DIR} ...")
+    subprocess.run(
+        [str(uv), "python", "install", "3.12"],
+        env=_uv_env(), check=True,
+    )
+
+
+def _create_venvs() -> None:
+    """Create per-service venvs (Python 3.12, seeded with pip) if missing.
+
+    --seed installs pip/setuptools/wheel so the existing deploy.py scripts can
+    use `python -m pip install` inside the venv.
+    """
+    uv = _ensure_uv()
+    env = _uv_env()
+    for service_dir, name in ((ASR_DIR, "asr"), (EMBEDDING_DIR, "embedding")):
+        venv_dir = service_dir / ".venv"
+        if venv_dir.exists():
+            print(f"  {name} venv already exists, skipping.")
+            continue
+        print(f"  Creating {name} venv (Python 3.12) at {venv_dir} ...")
+        subprocess.run(
+            [str(uv), "venv", "--python", "3.12", "--seed", str(venv_dir)],
+            env=env, check=True,
+        )
+        result = subprocess.run(
+            [str(_venv_python(service_dir)), "--version"],
+            capture_output=True, text=True, check=True,
+        )
+        version = result.stdout.strip()
+        assert version.startswith("Python 3.12"), (
+            f"{name} venv python is {version!r}, expected 3.12"
+        )
+        print(f"    {name} venv: {version}")
+
+
+# ---------------------------------------------------------------------------
+# Hardware detection
+# ---------------------------------------------------------------------------
 
 def detect_best_device() -> str:
     """Detect the best available torch device.
@@ -88,7 +210,9 @@ def detect_best_device() -> str:
     return "cpu"
 
 
-# --- Network ---
+# ---------------------------------------------------------------------------
+# Network
+# ---------------------------------------------------------------------------
 
 def get_lan_ip() -> str:
     """Get the LAN IP address of this machine."""
@@ -103,7 +227,9 @@ def get_lan_ip() -> str:
     return ip
 
 
-# --- Health checks ---
+# ---------------------------------------------------------------------------
+# Health checks
+# ---------------------------------------------------------------------------
 
 def check_health(port: int, timeout: float = 2.0) -> bool:
     """Check if a service is healthy on localhost:port."""
@@ -114,7 +240,9 @@ def check_health(port: int, timeout: float = 2.0) -> bool:
         return False
 
 
-# --- Service launchers ---
+# ---------------------------------------------------------------------------
+# Service launchers
+# ---------------------------------------------------------------------------
 
 def start_asr(device: str) -> subprocess.Popen:
     """Start the ASR service in the background. Returns the Popen handle."""
@@ -166,7 +294,9 @@ def wait_for_health(port: int, timeout: float = 60.0) -> bool:
     return False
 
 
-# --- Model existence checks ---
+# ---------------------------------------------------------------------------
+# Model existence checks
+# ---------------------------------------------------------------------------
 
 def check_asr_models() -> dict[str, bool]:
     """Check if ASR models are cached in services/asr/models/."""
@@ -182,10 +312,12 @@ def check_embedding_models() -> dict[str, bool]:
     return {"all-MiniLM-L6-v2": model_dir.is_dir()}
 
 
-# --- Deployers ---
+# ---------------------------------------------------------------------------
+# Deployers
+# ---------------------------------------------------------------------------
 
 def deploy_asr(device: str) -> None:
-    """Run the ASR service deploy.py."""
+    """Run the ASR service deploy.py (uses the pre-built 3.12 venv)."""
     deploy_script = ASR_DIR / "deploy.py"
     if not deploy_script.exists():
         print(f"ERROR: ASR deploy script not found at {deploy_script}")
@@ -196,7 +328,7 @@ def deploy_asr(device: str) -> None:
 
 
 def deploy_embedding(device: str) -> None:
-    """Run the embedding service deploy.py."""
+    """Run the embedding service deploy.py (uses the pre-built 3.12 venv)."""
     deploy_script = EMBEDDING_DIR / "deploy.py"
     if not deploy_script.exists():
         print(f"ERROR: Embedding deploy script not found at {deploy_script}")
@@ -206,7 +338,9 @@ def deploy_embedding(device: str) -> None:
     subprocess.run(cmd, check=True)
 
 
-# --- Commands ---
+# ---------------------------------------------------------------------------
+# Commands
+# ---------------------------------------------------------------------------
 
 def cmd_probe() -> None:
     """Print hardware and model status."""
@@ -235,9 +369,15 @@ def cmd_probe() -> None:
 
 
 def cmd_deploy() -> None:
-    """Probe + deploy missing models."""
+    """Probe + build isolated venvs + deploy missing models."""
     device = detect_best_device()
     print(f"Detected device: {device}")
+    print()
+
+    print("Preparing isolated toolchain (uv + Python 3.12 + venvs)...")
+    _ensure_uv()
+    _ensure_python_312()
+    _create_venvs()
     print()
 
     asr_models = check_asr_models()
@@ -340,7 +480,9 @@ def cmd_run() -> None:
     cmd_serve()
 
 
-# --- Main ---
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
 
 def main() -> None:
     parser = argparse.ArgumentParser(
