@@ -14,6 +14,7 @@ deploy.py and run.sh.
 
 import argparse
 import os
+import shutil
 import socket
 import subprocess
 import sys
@@ -49,31 +50,41 @@ def _venv_uvicorn(service_dir: Path) -> Path:
 # --- Hardware detection ---
 
 def detect_best_device() -> str:
-    """Detect the best available torch device via the ASR service venv.
+    """Detect the best available torch device.
 
-    bootstrap.py runs under system python (no torch), so probe the service
-    venv python which has torch + MPS/CUDA support.
+    Strategy (in priority order):
+    1. If ASR venv exists with torch, probe it (most accurate — confirms the
+       installed torch actually sees CUDA/MPS).
+    2. Else fall back to nvidia-smi (CUDA) / platform check (MPS on macOS).
+       This works BEFORE the venv is built, so 'deploy' installs the right
+       torch wheel (CUDA vs CPU) on the first run.
     """
     venv_python = _venv_python(ASR_DIR)
-    if not venv_python.exists():
-        print("Note: ASR venv not found; assuming CPU. Run 'deploy' first for accurate detection.")
-        return "cpu"
-    script = (
-        "import torch;"
-        " print('cuda' if torch.cuda.is_available()"
-        " else 'mps' if torch.backends.mps.is_available()"
-        " else 'cpu')"
-    )
-    try:
-        result = subprocess.run(
-            [str(venv_python), "-c", script],
-            capture_output=True, text=True, timeout=30,
+    if venv_python.exists():
+        script = (
+            "import torch;"
+            " print('cuda' if torch.cuda.is_available()"
+            " else 'mps' if torch.backends.mps.is_available()"
+            " else 'cpu')"
         )
-        device = result.stdout.strip()
-        if device in ("cuda", "mps", "cpu"):
-            return device
-    except Exception:
-        pass
+        try:
+            result = subprocess.run(
+                [str(venv_python), "-c", script],
+                capture_output=True, text=True, timeout=30,
+            )
+            device = result.stdout.strip()
+            if device in ("cuda", "mps", "cpu"):
+                return device
+        except Exception:
+            pass
+        return "cpu"
+
+    # Venv not built yet — fall back to nvidia-smi / platform detection so
+    # the first 'deploy' picks the right torch wheel (CUDA vs CPU).
+    if shutil.which("nvidia-smi") is not None:
+        return "cuda"
+    if sys.platform == "darwin":
+        return "mps"
     return "cpu"
 
 
