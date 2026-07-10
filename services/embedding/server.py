@@ -11,6 +11,10 @@ from typing import Optional
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
+# Default to the China HuggingFace mirror (model downloads go via HF).
+# Harmless elsewhere; set HF_ENDPOINT to override.
+os.environ.setdefault("HF_ENDPOINT", "https://hf-mirror.com")
+
 SERVICE_DIR = Path(__file__).resolve().parent
 MODELS_DIR = SERVICE_DIR / "models"
 

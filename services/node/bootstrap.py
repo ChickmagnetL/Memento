@@ -28,6 +28,11 @@ from pathlib import Path
 from urllib.error import URLError
 from urllib.request import urlretrieve, urlopen
 
+# Default to the China HuggingFace mirror so launched services and deploy
+# subprocesses (which inherit this env) pull models via hf-mirror.com.
+# Harmless elsewhere; set HF_ENDPOINT to override.
+os.environ.setdefault("HF_ENDPOINT", "https://hf-mirror.com")
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SERVICES_DIR = REPO_ROOT / "services"
 ASR_DIR = SERVICES_DIR / "asr"

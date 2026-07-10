@@ -11,6 +11,10 @@ from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 
+# Default to the China HuggingFace mirror (moonshine models ship via HF).
+# Harmless elsewhere; set HF_ENDPOINT to override.
+os.environ.setdefault("HF_ENDPOINT", "https://hf-mirror.com")
+
 app = FastAPI(title="Memento ASR Service", version="0.1.0")
 
 SERVICE_DIR = Path(__file__).resolve().parent

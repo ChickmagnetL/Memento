@@ -2,16 +2,25 @@
 """Deploy the Memento embedding service: venv, deps, torch, model download."""
 
 import argparse
+import os
 import shutil
 import subprocess
 import sys
 from pathlib import Path
 from typing import Callable
 
+# Default to the China HuggingFace mirror (model downloads go via HF).
+# Harmless elsewhere; set HF_ENDPOINT to override.
+os.environ.setdefault("HF_ENDPOINT", "https://hf-mirror.com")
+
 SERVICE_DIR = Path(__file__).resolve().parent
 VENV_DIR = SERVICE_DIR / ".venv"
 MODELS_DIR = SERVICE_DIR / "models"
-CUDA_TORCH_INDEX_URL = "https://download.pytorch.org/whl/cu121"
+CUDA_TORCH_INDEX_URL = os.environ.get(
+    "CUDA_TORCH_INDEX_URL", "https://download.pytorch.org/whl/cu121"
+)
+# Tsinghua PyPI mirror by default; set PIP_INDEX_URL="" to use the default PyPI.
+PIP_INDEX_URL = os.environ.get("PIP_INDEX_URL", "https://pypi.tuna.tsinghua.edu.cn/simple")
 DEFAULT_MODEL = "all-MiniLM-L6-v2"
 
 ProgressCallback = Callable[[str, str, int | None], None]
@@ -27,6 +36,16 @@ def python_bin() -> Path:
 def run_command(args: list[str | Path], cwd: Path | None = None) -> None:
     """Run a command via subprocess, raising on non-zero exit."""
     subprocess.run([str(a) for a in args], cwd=cwd, check=True)
+
+
+def _with_pip_index(command: list[str]) -> list[str]:
+    """Append `-i PIP_INDEX_URL` to a pip command when a mirror is configured.
+
+    No-op when PIP_INDEX_URL is empty (set PIP_INDEX_URL="" for the default PyPI).
+    """
+    if PIP_INDEX_URL:
+        command.extend(["-i", PIP_INDEX_URL])
+    return command
 
 
 def detect_best_device() -> str:
@@ -78,16 +97,16 @@ def ensure_environment(
             created_venv = True
 
         _progress(on_progress, "venv", "Upgrading pip/setuptools/wheel", 10)
-        run_command([
+        run_command(_with_pip_index([
             str(python_bin()), "-m", "pip", "install",
             "--upgrade", "pip", "setuptools", "wheel",
-        ])
+        ]))
 
         _progress(on_progress, "deps", "Installing Python dependencies", 20)
-        run_command([
+        run_command(_with_pip_index([
             str(python_bin()), "-m", "pip", "install",
             "-r", str(SERVICE_DIR / "requirements.txt"),
-        ])
+        ]))
 
         _progress(on_progress, "torch", f"Installing torch (device={device})", 35)
         torch_cmd = [
@@ -95,6 +114,8 @@ def ensure_environment(
         ]
         if device == "cuda":
             torch_cmd.extend(["--index-url", CUDA_TORCH_INDEX_URL])
+        else:
+            _with_pip_index(torch_cmd)
         run_command(torch_cmd)
     except Exception:
         if created_venv and VENV_DIR.is_dir():

@@ -10,13 +10,21 @@ import sys
 from pathlib import Path
 from typing import Callable
 
+# Default to the China HuggingFace mirror (moonshine models ship via HF).
+# Harmless elsewhere; set HF_ENDPOINT to override.
+os.environ.setdefault("HF_ENDPOINT", "https://hf-mirror.com")
+
 
 SERVICE_DIR = Path(__file__).resolve().parent
 VENV_DIR = SERVICE_DIR / ".venv"
 MODELS_DIR = SERVICE_DIR / "models"
 SENSEVOICE_CACHE_DIR = MODELS_DIR / "sensevoice"
 MOONSHINE_CACHE_DIR = MODELS_DIR / "moonshine"
-CUDA_TORCH_INDEX_URL = "https://download.pytorch.org/whl/cu121"
+CUDA_TORCH_INDEX_URL = os.environ.get(
+    "CUDA_TORCH_INDEX_URL", "https://download.pytorch.org/whl/cu121"
+)
+# Tsinghua PyPI mirror by default; set PIP_INDEX_URL="" to use the default PyPI.
+PIP_INDEX_URL = os.environ.get("PIP_INDEX_URL", "https://pypi.tuna.tsinghua.edu.cn/simple")
 
 ProgressCallback = Callable[[str, str, int | None], None]
 
@@ -52,6 +60,16 @@ def run_command(
     )
 
 
+def _with_pip_index(command: list[str]) -> list[str]:
+    """Append `-i PIP_INDEX_URL` to a pip command when a mirror is configured.
+
+    No-op when PIP_INDEX_URL is empty (set PIP_INDEX_URL="" for the default PyPI).
+    """
+    if PIP_INDEX_URL:
+        command.extend(["-i", PIP_INDEX_URL])
+    return command
+
+
 def detect_best_device() -> str:
     """Detect the best available torch device: cuda > mps > cpu.
 
@@ -81,7 +99,11 @@ def torch_install_command(use_cuda: bool = False) -> list[str]:
     """Return the pip install command for torch (+torchaudio), with CUDA index if needed."""
     command = [str(python_bin()), "-m", "pip", "install", "torch", "torchaudio"]
     if use_cuda:
+        # CUDA torch wheels only ship on the pytorch index (no China mirror),
+        # so use the official CDN index there; overridable via CUDA_TORCH_INDEX_URL.
         command.extend(["--index-url", CUDA_TORCH_INDEX_URL])
+    else:
+        _with_pip_index(command)
     return command
 
 
@@ -116,26 +138,30 @@ def ensure_environment(
         python = python_bin()
         _progress(on_progress, "dependencies", "Installing ASR dependencies", 30)
         run_command(
-            [
-                str(python),
-                "-m",
-                "pip",
-                "install",
-                "--upgrade",
-                "pip",
-                "setuptools",
-                "wheel",
-            ]
+            _with_pip_index(
+                [
+                    str(python),
+                    "-m",
+                    "pip",
+                    "install",
+                    "--upgrade",
+                    "pip",
+                    "setuptools",
+                    "wheel",
+                ]
+            )
         )
         run_command(
-            [
-                str(python),
-                "-m",
-                "pip",
-                "install",
-                "-r",
-                str(SERVICE_DIR / "requirements.txt"),
-            ]
+            _with_pip_index(
+                [
+                    str(python),
+                    "-m",
+                    "pip",
+                    "install",
+                    "-r",
+                    str(SERVICE_DIR / "requirements.txt"),
+                ]
+            )
         )
 
         _progress(on_progress, "torch", "Installing platform torch wheel", 45)
