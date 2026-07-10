@@ -39,6 +39,11 @@ ASR_PORT = 8001
 EMBEDDING_PORT = 8003
 
 UV_RELEASE_BASE = "https://github.com/astral-sh/uv/releases/latest/download"
+# Fallback PyPI index for unstable networks: GitHub release redirects
+# (objects.githubusercontent.com) are often disrupted in China, while the PyPI
+# `uv` wheel carries the same standalone binary and is mirrored domestically.
+UV_PIP_INDEX = "https://pypi.tuna.tsinghua.edu.cn/simple"
+_UV_DOWNLOAD_ATTEMPTS = 3
 
 
 # ---------------------------------------------------------------------------
@@ -91,29 +96,84 @@ def _detect_uv_asset() -> dict:
     raise RuntimeError(f"Unsupported platform/arch: {sys.platform}/{machine}")
 
 
+def _place_uv_from_archive(td: Path, asset: dict, uv: Path) -> None:
+    """Extract the standalone uv binary from a downloaded GitHub archive into BIN_DIR."""
+    archive = td / asset["name"]
+    exe_name = "uv.exe" if sys.platform == "win32" else "uv"
+    if asset["kind"] == "tar":
+        with tarfile.open(archive, "r:gz") as tar:
+            tar.extractall(td)
+    else:
+        with zipfile.ZipFile(archive) as z:
+            z.extractall(td)
+    candidates = [p for p in td.rglob(exe_name) if p.is_file()]
+    if not candidates:
+        raise RuntimeError(f"{exe_name} not found in {asset['name']}")
+    shutil.move(str(candidates[0]), str(uv))
+
+
+def _place_uv_from_pip(td: Path, uv: Path) -> None:
+    """Install the standalone uv binary via a China-friendly PyPI mirror.
+
+    The PyPI `uv` wheel ships the same binary; `pip install --target` places it at
+    <td>/bin/uv (Unix) or <td>/Scripts/uv.exe (Windows). Used when the direct
+    GitHub download fails on an unstable connection (e.g. GFW interference).
+    """
+    exe_name = "uv.exe" if sys.platform == "win32" else "uv"
+    cmd = [sys.executable, "-m", "pip", "install", "--target", str(td),
+           "uv", "--no-deps", "-i", UV_PIP_INDEX]
+    subprocess.run(cmd, check=True)
+    candidates = [p for p in td.rglob(exe_name) if p.is_file()]
+    if not candidates:
+        raise RuntimeError(f"{exe_name} not found in pip-installed uv package")
+    shutil.move(str(candidates[0]), str(uv))
+
+
 def _ensure_uv() -> Path:
-    """Download the standalone uv binary into services/.bin/ if missing. Returns its path."""
+    """Download the standalone uv binary into services/.bin/ if missing. Returns its path.
+
+    Tries the direct GitHub release first with retry + backoff; on persistent
+    failure falls back to the PyPI `uv` package via a China-friendly mirror, which
+    stays reachable when GitHub release redirects are disrupted.
+    """
     uv = _uv_path()
     if uv.exists():
         return uv
     BIN_DIR.mkdir(parents=True, exist_ok=True)
     asset = _detect_uv_asset()
     url = f"{UV_RELEASE_BASE}/{asset['name']}"
-    print(f"  Downloading uv: {url}")
+
+    primary_err = None
     with tempfile.TemporaryDirectory(dir=str(BIN_DIR)) as td:
-        archive = Path(td) / asset["name"]
-        urlretrieve(url, archive)
-        exe_name = "uv.exe" if sys.platform == "win32" else "uv"
-        if asset["kind"] == "tar":
-            with tarfile.open(archive, "r:gz") as tar:
-                tar.extractall(td)
+        td_path = Path(td)
+        # 1) Direct download from GitHub, with retry + backoff.
+        for attempt in range(1, _UV_DOWNLOAD_ATTEMPTS + 1):
+            try:
+                print(f"  Downloading uv (attempt {attempt}/{_UV_DOWNLOAD_ATTEMPTS}): {url}")
+                urlretrieve(url, td_path / asset["name"])
+                _place_uv_from_archive(td_path, asset, uv)
+                break
+            except Exception as exc:  # SSLEOFError, URLError, corrupt archive, ...
+                primary_err = exc
+                if attempt < _UV_DOWNLOAD_ATTEMPTS:
+                    print(f"    failed ({exc}); retrying in {2 * attempt}s ...")
+                    time.sleep(2 * attempt)
         else:
-            with zipfile.ZipFile(archive) as z:
-                z.extractall(td)
-        candidates = [p for p in Path(td).rglob(exe_name) if p.is_file()]
-        if not candidates:
-            raise RuntimeError(f"{exe_name} not found in {asset['name']}")
-        shutil.move(str(candidates[0]), str(uv))
+            # 2) All direct attempts failed — fall back to the PyPI mirror.
+            print(f"  Direct download failed ({primary_err}).")
+            print(f"  Falling back to PyPI mirror: {UV_PIP_INDEX}")
+            try:
+                with tempfile.TemporaryDirectory(dir=str(BIN_DIR)) as ptd:
+                    _place_uv_from_pip(Path(ptd), uv)
+            except Exception as fallback_err:
+                raise RuntimeError(
+                    "uv download failed via both GitHub and the PyPI mirror.\n"
+                    f"  GitHub error:    {primary_err}\n"
+                    f"  PyPI mirror error: {fallback_err}\n"
+                    "Please configure a proxy or VPN and retry, or manually place\n"
+                    f"the uv binary for your platform at {uv}."
+                ) from fallback_err
+
     if sys.platform != "win32":
         uv.chmod(0o755)
     print(f"  uv ready: {uv}")
