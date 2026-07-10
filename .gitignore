@@ -57,9 +57,5 @@ config.local.yaml
 config.local.yaml.bak
 private/
 
-# Models
-services/funasr/models/
-services/funasr/.venv/
-services/asr/.venv
-services/asr/.venv/
-services/asr/model_cache/
+# Models (local caches, never commit)
+services/*/models/
