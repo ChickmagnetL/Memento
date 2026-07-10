@@ -33,9 +33,13 @@ def python_bin() -> Path:
     return VENV_DIR / "bin" / "python"
 
 
-def run_command(args: list[str | Path], cwd: Path | None = None) -> None:
+def run_command(
+    args: list[str | Path],
+    cwd: Path | None = None,
+    env: dict[str, str] | None = None,
+) -> None:
     """Run a command via subprocess, raising on non-zero exit."""
-    subprocess.run([str(a) for a in args], cwd=cwd, check=True)
+    subprocess.run([str(a) for a in args], cwd=cwd, check=True, env=env)
 
 
 def _with_pip_index(command: list[str]) -> list[str]:
@@ -125,11 +129,18 @@ def ensure_environment(
 
 def download_model(model_id: str = DEFAULT_MODEL) -> None:
     """Download the embedding model to the local sentence-transformers cache."""
+    # Pass model_id and cache dir via env vars to avoid Windows backslash
+    # mangling when interpolating a path into the `-c` script string.
+    env = dict(os.environ)
+    env["MEM_DOWNLOAD_MODEL_ID"] = str(model_id)
+    env["MEM_DOWNLOAD_CACHE_DIR"] = str(MODELS_DIR)
     script = (
-        f"from sentence_transformers import SentenceTransformer; "
-        f"SentenceTransformer('{model_id}', cache_folder='{MODELS_DIR}')"
+        "import os;"
+        " from sentence_transformers import SentenceTransformer;"
+        " SentenceTransformer(os.environ['MEM_DOWNLOAD_MODEL_ID'],"
+        " cache_folder=os.environ['MEM_DOWNLOAD_CACHE_DIR'])"
     )
-    run_command([str(python_bin()), "-c", script])
+    run_command([str(python_bin()), "-c", script], env=env)
 
 
 def deploy(

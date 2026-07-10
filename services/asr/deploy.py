@@ -180,6 +180,27 @@ def ensure_environment(
 # ---------------------------------------------------------------------------
 
 
+def _run_sensevoice_download(python: Path, model_id: str, cache_dir: Path) -> None:
+    """Download a SenseVoice model via modelscope.
+
+    model_id and cache_dir are passed through environment variables instead of
+    being interpolated into the ``-c`` script string. Embedding a Windows path
+    such as ``...\\services\\asr\\models\\sensevoice`` into the script would let
+    Python's escape parsing mangle it (``\\a`` -> bell char 0x07, ``\\W`` ->
+    invalid escape), corrupting the path at runtime.
+    """
+    env = dict(os.environ)
+    env["MEM_DOWNLOAD_MODEL_ID"] = str(model_id)
+    env["MEM_DOWNLOAD_CACHE_DIR"] = str(cache_dir)
+    script = (
+        "import os;"
+        " from modelscope.hub.snapshot_download import snapshot_download;"
+        " snapshot_download(os.environ['MEM_DOWNLOAD_MODEL_ID'],"
+        " cache_dir=os.environ['MEM_DOWNLOAD_CACHE_DIR'])"
+    )
+    run_command([str(python), "-c", script], env=env)
+
+
 def download_model(
     python: Path,
     *,
@@ -193,16 +214,7 @@ def download_model(
     _progress(on_progress, "models", f"Downloading {label}", 50)
 
     if runtime == "sensevoice":
-        run_command(
-            [
-                str(python),
-                "-c",
-                (
-                    "from modelscope.hub.snapshot_download import snapshot_download; "
-                    f"snapshot_download('{model_id}', cache_dir='{SENSEVOICE_CACHE_DIR}')"
-                ),
-            ]
-        )
+        _run_sensevoice_download(python, model_id, SENSEVOICE_CACHE_DIR)
     elif runtime == "moonshine":
         if spec is None or spec not in _SPEC_TO_ARCH:
             raise ValueError(f"Unknown moonshine spec: {spec}")
@@ -231,16 +243,7 @@ def download_models(
 ) -> None:
     """Download ALL known models (backward-compat bulk path)."""
     _progress(on_progress, "models", "Downloading SenseVoiceSmall", 50)
-    run_command(
-        [
-            str(python),
-            "-c",
-            (
-                "from modelscope.hub.snapshot_download import snapshot_download; "
-                f"snapshot_download('iic/SenseVoiceSmall', cache_dir='{SENSEVOICE_CACHE_DIR}')"
-            ),
-        ]
-    )
+    _run_sensevoice_download(python, "iic/SenseVoiceSmall", SENSEVOICE_CACHE_DIR)
     _progress(on_progress, "models", "Downloading Moonshine Voice", 90)
     run_command(
         [

@@ -98,7 +98,17 @@ def test_download_models_invokes_sensevoice_and_moonshine(monkeypatch):
     )
 
     joined = [" ".join(str(a) for a in cmd) for cmd in commands]
-    assert any("snapshot_download" in c and "iic/SenseVoiceSmall" in c for c in joined)
+    assert any("snapshot_download" in c for c in joined)
+    # SenseVoice model_id + cache dir are passed via env vars (not interpolated
+    # into the script string, which would mangle Windows backslash paths).
+    assert any(
+        e and e.get("MEM_DOWNLOAD_MODEL_ID") == "iic/SenseVoiceSmall" for e in envs
+    )
+    assert any(
+        e and e.get("MEM_DOWNLOAD_CACHE_DIR")
+        == str(deploy_module.SENSEVOICE_CACHE_DIR)
+        for e in envs
+    )
     assert any("moonshine_voice" in c for c in joined)
     # Moonshine command injects MOONSHINE_VOICE_CACHE env pointing at the moonshine cache dir
     assert any(
@@ -222,9 +232,14 @@ def test_download_model_sensevoice_small(monkeypatch):
     """download_model with sensevoice runtime triggers iic/SenseVoiceSmall import."""
     deploy_module = load_deploy_module()
     commands = []
+    envs = []
     progress = []
 
-    monkeypatch.setattr(deploy_module, "run_command", lambda args, cwd=None, env=None: commands.append(args))
+    def fake_run_command(args, cwd=None, env=None):
+        commands.append(args)
+        envs.append(env)
+
+    monkeypatch.setattr(deploy_module, "run_command", fake_run_command)
 
     deploy_module.download_model(
         Path("/venv/bin/python"),
@@ -236,8 +251,13 @@ def test_download_model_sensevoice_small(monkeypatch):
     joined = [" ".join(str(a) for a in cmd) for cmd in commands]
     assert len(joined) == 1
     assert "snapshot_download" in joined[0]
-    assert "iic/SenseVoiceSmall" in joined[0]
-    assert "models/sensevoice" in joined[0]
+    # model_id and cache dir are passed via env, not interpolated into the
+    # script (avoids Windows backslash mangling).
+    assert "iic/SenseVoiceSmall" not in joined[0]
+    assert "models/sensevoice" not in joined[0]
+    assert envs[0] is not None
+    assert envs[0]["MEM_DOWNLOAD_MODEL_ID"] == "iic/SenseVoiceSmall"
+    assert envs[0]["MEM_DOWNLOAD_CACHE_DIR"] == str(deploy_module.SENSEVOICE_CACHE_DIR)
     # Should NOT contain any moonshine imports
     assert "moonshine_voice" not in joined[0]
 
@@ -441,6 +461,7 @@ def test_install_model_sensevoice_small_only_triggers_sensevoice(monkeypatch, tm
     """install_model('sensevoice-small') only triggers SenseVoiceSmall, not moonshine."""
     deploy_module = load_deploy_module()
     commands = []
+    envs = []
     progress = []
     venv_dir = tmp_path / ".venv"
     venv_dir.mkdir()
@@ -450,6 +471,7 @@ def test_install_model_sensevoice_small_only_triggers_sensevoice(monkeypatch, tm
 
     def fake_run_command(args, cwd=None, env=None):
         commands.append(args)
+        envs.append(env)
 
     monkeypatch.setattr(deploy_module, "SERVICE_DIR", tmp_path)
     monkeypatch.setattr(deploy_module, "VENV_DIR", venv_dir)
@@ -466,7 +488,11 @@ def test_install_model_sensevoice_small_only_triggers_sensevoice(monkeypatch, tm
     # Should have ONE model download command
     model_commands = [c for c in joined if "snapshot_download" in c or "moonshine_voice" in c]
     assert len(model_commands) == 1
-    assert "iic/SenseVoiceSmall" in model_commands[0]
+    # model_id is passed via env (not interpolated into the script string,
+    # which would mangle Windows backslash paths).
+    assert any(
+        e and e.get("MEM_DOWNLOAD_MODEL_ID") == "iic/SenseVoiceSmall" for e in envs
+    )
     # Should NOT trigger any moonshine download
     assert not any("moonshine_voice" in c for c in joined)
     assert not any("ModelArch" in c for c in joined)
