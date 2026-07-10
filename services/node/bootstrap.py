@@ -30,6 +30,22 @@ ASR_PORT = 8001
 EMBEDDING_PORT = 8003
 
 
+# --- venv path helpers (OS-correct) ---
+
+def _venv_python(service_dir: Path) -> Path:
+    """Return the venv python binary path, OS-correct."""
+    if sys.platform == "win32":
+        return service_dir / ".venv" / "Scripts" / "python.exe"
+    return service_dir / ".venv" / "bin" / "python"
+
+
+def _venv_uvicorn(service_dir: Path) -> Path:
+    """Return the venv uvicorn binary path, OS-correct."""
+    if sys.platform == "win32":
+        return service_dir / ".venv" / "Scripts" / "uvicorn.exe"
+    return service_dir / ".venv" / "bin" / "uvicorn"
+
+
 # --- Hardware detection ---
 
 def detect_best_device() -> str:
@@ -38,7 +54,7 @@ def detect_best_device() -> str:
     bootstrap.py runs under system python (no torch), so probe the service
     venv python which has torch + MPS/CUDA support.
     """
-    venv_python = ASR_DIR / ".venv" / "bin" / "python"
+    venv_python = _venv_python(ASR_DIR)
     if not venv_python.exists():
         print("Note: ASR venv not found; assuming CPU. Run 'deploy' first for accurate detection.")
         return "cpu"
@@ -91,7 +107,7 @@ def check_health(port: int, timeout: float = 2.0) -> bool:
 
 def start_asr(device: str) -> subprocess.Popen:
     """Start the ASR service in the background. Returns the Popen handle."""
-    venv_uvicorn = ASR_DIR / ".venv" / "bin" / "uvicorn"
+    venv_uvicorn = _venv_uvicorn(ASR_DIR)
     if not venv_uvicorn.exists():
         raise FileNotFoundError(f"ASR venv not found at {ASR_DIR / '.venv'}. Run 'deploy' first.")
 
@@ -114,7 +130,7 @@ def start_asr(device: str) -> subprocess.Popen:
 
 def start_embedding(device: str) -> subprocess.Popen:
     """Start the embedding service in the background. Returns the Popen handle."""
-    venv_uvicorn = EMBEDDING_DIR / ".venv" / "bin" / "uvicorn"
+    venv_uvicorn = _venv_uvicorn(EMBEDDING_DIR)
     if not venv_uvicorn.exists():
         raise FileNotFoundError(f"Embedding venv not found at {EMBEDDING_DIR / '.venv'}. Run 'deploy' first.")
 
