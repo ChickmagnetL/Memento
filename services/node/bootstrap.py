@@ -14,7 +14,6 @@ deploy.py and run.sh.
 
 import argparse
 import os
-import shutil
 import socket
 import subprocess
 import sys
@@ -34,14 +33,30 @@ EMBEDDING_PORT = 8003
 # --- Hardware detection ---
 
 def detect_best_device() -> str:
-    """Detect the best available torch device: cuda > mps > cpu."""
-    if shutil.which("nvidia-smi") is not None:
-        return "cuda"
+    """Detect the best available torch device via the ASR service venv.
+
+    bootstrap.py runs under system python (no torch), so probe the service
+    venv python which has torch + MPS/CUDA support.
+    """
+    venv_python = ASR_DIR / ".venv" / "bin" / "python"
+    if not venv_python.exists():
+        print("Note: ASR venv not found; assuming CPU. Run 'deploy' first for accurate detection.")
+        return "cpu"
+    script = (
+        "import torch;"
+        " print('cuda' if torch.cuda.is_available()"
+        " else 'mps' if torch.backends.mps.is_available()"
+        " else 'cpu')"
+    )
     try:
-        import torch
-        if torch.backends.mps.is_available():
-            return "mps"
-    except ImportError:
+        result = subprocess.run(
+            [str(venv_python), "-c", script],
+            capture_output=True, text=True, timeout=30,
+        )
+        device = result.stdout.strip()
+        if device in ("cuda", "mps", "cpu"):
+            return device
+    except Exception:
         pass
     return "cpu"
 
@@ -83,7 +98,13 @@ def start_asr(device: str) -> subprocess.Popen:
     proc = subprocess.Popen(
         [str(venv_uvicorn), "server:app", "--host", "0.0.0.0", "--port", str(ASR_PORT)],
         cwd=str(ASR_DIR),
-        env={**os.environ, "ASR_HOST": "0.0.0.0", "ASR_PORT": str(ASR_PORT), "ASR_DEVICE": device},
+        env={
+            **os.environ,
+            "ASR_HOST": "0.0.0.0",
+            "ASR_PORT": str(ASR_PORT),
+            "ASR_DEVICE": device,
+            "MOONSHINE_VOICE_CACHE": str(ASR_DIR / "models" / "moonshine"),
+        },
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
         start_new_session=True,
@@ -121,22 +142,16 @@ def wait_for_health(port: int, timeout: float = 60.0) -> bool:
 # --- Model existence checks ---
 
 def check_asr_models() -> dict[str, bool]:
-    """Check if ASR models are cached locally."""
-    cache_dir = ASR_DIR / "model_cache"
-    # sentence-transformers caches in ~/.cache/huggingface/hub/ or HF_HOME
-    hf_home = os.environ.get("HF_HOME", os.path.expanduser("~/.cache/huggingface/hub"))
-    hf_cache = Path(hf_home)
+    """Check if ASR models are cached in services/asr/models/."""
     return {
-        "iic/SenseVoiceSmall": (cache_dir / "iic" / "SenseVoiceSmall").is_dir(),
-        "moonshine_voice/medium-streaming-en": (hf_cache / "models--moonshine-voice--medium-streaming-en").is_dir(),
+        "iic/SenseVoiceSmall": (ASR_DIR / "models" / "sensevoice" / "iic" / "SenseVoiceSmall" / "model.pt").is_file(),
+        "moonshine_voice/medium-streaming-en": (ASR_DIR / "models" / "moonshine" / "download.moonshine.ai" / "model" / "medium-streaming-en" / "quantized").is_dir(),
     }
 
 
 def check_embedding_models() -> dict[str, bool]:
-    """Check if embedding models are cached (sentence-transformers cache)."""
-    hf_home = os.environ.get("HF_HOME", os.path.expanduser("~/.cache/huggingface/hub"))
-    cache_base = Path(hf_home)
-    model_dir = cache_base / "models--sentence-transformers--all-MiniLM-L6-v2"
+    """Check if embedding models are cached in services/embedding/models/."""
+    model_dir = EMBEDDING_DIR / "models" / "models--sentence-transformers--all-MiniLM-L6-v2"
     return {"all-MiniLM-L6-v2": model_dir.is_dir()}
 
 
