@@ -10,6 +10,7 @@ from typing import Callable
 
 SERVICE_DIR = Path(__file__).resolve().parent
 VENV_DIR = SERVICE_DIR / ".venv"
+MODELS_DIR = SERVICE_DIR / "models"
 CUDA_TORCH_INDEX_URL = "https://download.pytorch.org/whl/cu121"
 DEFAULT_MODEL = "all-MiniLM-L6-v2"
 
@@ -29,14 +30,26 @@ def run_command(args: list[str | Path], cwd: Path | None = None) -> None:
 
 
 def detect_best_device() -> str:
-    """Detect the best available torch device: cuda > mps > cpu."""
-    if shutil.which("nvidia-smi") is not None:
-        return "cuda"
+    """Detect the best available torch device: cuda > mps > cpu.
+
+    Probes via the service venv python (which has torch), not the running
+    python, since deploy.py may run under system python without torch.
+    """
+    script = (
+        "import torch;"
+        " print('cuda' if torch.cuda.is_available()"
+        " else 'mps' if torch.backends.mps.is_available()"
+        " else 'cpu')"
+    )
     try:
-        import torch
-        if torch.backends.mps.is_available():
-            return "mps"
-    except ImportError:
+        result = subprocess.run(
+            [str(python_bin()), "-c", script],
+            capture_output=True, text=True, timeout=30,
+        )
+        device = result.stdout.strip()
+        if device in ("cuda", "mps", "cpu"):
+            return device
+    except Exception:
         pass
     return "cpu"
 
@@ -93,7 +106,7 @@ def download_model(model_id: str = DEFAULT_MODEL) -> None:
     """Download the embedding model to the local sentence-transformers cache."""
     script = (
         f"from sentence_transformers import SentenceTransformer; "
-        f"SentenceTransformer('{model_id}')"
+        f"SentenceTransformer('{model_id}', cache_folder='{MODELS_DIR}')"
     )
     run_command([str(python_bin()), "-c", script])
 

@@ -5,10 +5,14 @@ Start with: bash run.sh
 """
 
 import os
+from pathlib import Path
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+
+SERVICE_DIR = Path(__file__).resolve().parent
+MODELS_DIR = SERVICE_DIR / "models"
 
 app = FastAPI(title="Memento Embedding Service", version="0.1.0")
 
@@ -18,6 +22,17 @@ _loaded_model_id: Optional[str] = None
 
 DEFAULT_EMBEDDING_MODEL = "all-MiniLM-L6-v2"
 AVAILABLE_MODELS = [DEFAULT_EMBEDDING_MODEL]
+
+AVAILABLE_MODELS_HF = {"all-MiniLM-L6-v2": "sentence-transformers/all-MiniLM-L6-v2"}
+
+
+def _hf_cache_dirname(model_id: str) -> str:
+    repo = AVAILABLE_MODELS_HF.get(model_id, model_id)
+    return "models--" + repo.replace("/", "--")
+
+
+def _embedding_installed(model_id: str) -> bool:
+    return (MODELS_DIR / _hf_cache_dirname(model_id)).is_dir()
 
 
 def _get_device() -> str:
@@ -44,7 +59,7 @@ def _load_model(model_id: str) -> object:
 
     from sentence_transformers import SentenceTransformer
     device = _get_device()
-    _embedding_model = SentenceTransformer(model_id, device=device)
+    _embedding_model = SentenceTransformer(model_id, device=device, cache_folder=str(MODELS_DIR))
     _loaded_model_id = model_id
     return _embedding_model
 
@@ -88,7 +103,7 @@ async def health() -> dict:
 @app.get("/v1/models")
 async def list_models() -> ModelListResponse:
     return ModelListResponse(
-        data=[ModelItem(id=m) for m in AVAILABLE_MODELS]
+        data=[ModelItem(id=m) for m in AVAILABLE_MODELS if _embedding_installed(m)]
     )
 
 
