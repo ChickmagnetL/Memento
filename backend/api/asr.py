@@ -2,7 +2,6 @@
 
 from concurrent.futures import Future, ThreadPoolExecutor
 import importlib.util
-from pathlib import Path
 import threading
 
 from fastapi import APIRouter, HTTPException, status
@@ -47,16 +46,7 @@ def _get_manager() -> AsrModelManager:
 
 
 def _models_installed() -> bool:
-    return (
-        Path.home()
-        / ".cache"
-        / "modelscope"
-        / "hub"
-        / "models"
-        / "iic"
-        / "SenseVoiceSmall"
-        / "model.pt"
-    ).exists()
+    return (SERVICE_DIR / "models" / "sensevoice" / "iic" / "SenseVoiceSmall" / "model.pt").exists()
 
 
 def _load_deploy_module():

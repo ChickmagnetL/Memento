@@ -31,25 +31,17 @@ from schemas.asr import (
 # ---------------------------------------------------------------------------
 
 
-def _modelscope_default_cache(home: Path) -> Path:
-    """Default ModelScope SenseVoiceSmall cache directory."""
-    return home / ".cache" / "modelscope" / "hub" / "models" / "iic" / "SenseVoiceSmall"
+def _sensevoice_cache_dir(service_dir: Path) -> Path:
+    """Relocated SenseVoiceSmall cache directory under services/asr/models/."""
+    return service_dir / "models" / "sensevoice" / "iic" / "SenseVoiceSmall"
 
 
-def _moonshine_voice_cache(spec: str) -> Path:
-    """moonshine_voice package cache directory for a specific variant.
-
-    The moonshine_voice package downloads from ``download.moonshine.ai`` (not
-    HuggingFace hub).  On macOS it uses ``~/Library/Caches/moonshine_voice/``;
-    on Linux it uses ``~/.cache/moonshine_voice/``.
+def _moonshine_cache_dir(service_dir: Path, spec: str) -> Path:
+    """Relocated moonshine cache directory under services/asr/models/.
 
     Each variant is stored under ``download.moonshine.ai/model/<spec>/quantized/``.
     """
-    if sys.platform == "darwin":
-        base = Path.home() / "Library" / "Caches" / "moonshine_voice"
-    else:
-        base = Path.home() / ".cache" / "moonshine_voice"
-    return base / "download.moonshine.ai" / "model" / spec / "quantized"
+    return service_dir / "models" / "moonshine" / "download.moonshine.ai" / "model" / spec / "quantized"
 
 
 def _dir_exists_and_accessible(path: Path) -> tuple[bool, str | None]:
@@ -164,7 +156,6 @@ class AsrModelManager:
 
     def _detect_sensevoice(self, model: AsrModel, state: dict) -> dict[str, object]:
         """Detect SenseVoiceSmall cache location."""
-        home = Path.home()
         model_state = state.get("models", {}).get(model.slug, {})
         checked: list[Path] = []
         result: dict[str, object] = {"installed": False, "cache_path": None, "error": None}
@@ -184,7 +175,7 @@ class AsrModelManager:
                 result["error"] = err
                 result["checked"] = checked
                 return result
-        default = _modelscope_default_cache(home)
+        default = _sensevoice_cache_dir(self.service_dir)
         checked.append(default)
         exists, err = _dir_exists_and_accessible(default)
         if exists and err is None:
@@ -223,8 +214,8 @@ class AsrModelManager:
                 result["checked"] = checked
                 return result
 
-        # 2. moonshine_voice package default cache
-        default = _moonshine_voice_cache(model.spec or "")
+        # 2. moonshine package default cache
+        default = _moonshine_cache_dir(self.service_dir, model.spec or "")
         checked.append(default)
         exists, err = _dir_exists_and_accessible(default)
         if exists and err is None:
