@@ -17,7 +17,8 @@ class TestHealthEndpoint:
 
 
 class TestModelsEndpoint:
-    def test_models_returns_data_with_ids(self):
+    def test_models_returns_data_with_ids(self, monkeypatch):
+        monkeypatch.setattr(server, "_embedding_installed", lambda model_id: True)
         client = TestClient(server.app)
         response = client.get("/v1/models")
         assert response.status_code == 200
@@ -28,6 +29,13 @@ class TestModelsEndpoint:
         for item in body["data"]:
             assert "id" in item
             assert isinstance(item["id"], str)
+
+    def test_models_empty_when_none_installed(self, monkeypatch):
+        monkeypatch.setattr(server, "_embedding_installed", lambda model_id: False)
+        client = TestClient(server.app)
+        response = client.get("/v1/models")
+        assert response.status_code == 200
+        assert response.json() == {"data": []}
 
 
 class TestEmbeddingsEndpoint:

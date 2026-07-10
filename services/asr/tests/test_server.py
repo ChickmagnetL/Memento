@@ -70,7 +70,9 @@ def test_legacy_transcribe_endpoint_is_removed():
     assert response.status_code == 404
 
 
-def test_list_models_returns_supported_asr_models():
+def test_list_models_returns_supported_asr_models(monkeypatch):
+    monkeypatch.setattr(server, "_sensevoice_installed", lambda: True)
+    monkeypatch.setattr(server, "_moonshine_spec_installed", lambda spec: True)
     response = TestClient(server.app).get("/v1/models")
     assert response.status_code == 200
     body = response.json()
@@ -78,6 +80,14 @@ def test_list_models_returns_supported_asr_models():
     ids = {item["id"] for item in body["data"]}
     assert "iic/SenseVoiceSmall" in ids
     assert any("moonshine_voice/" in mid for mid in ids)
+
+
+def test_list_models_empty_when_none_installed(monkeypatch):
+    monkeypatch.setattr(server, "_sensevoice_installed", lambda: False)
+    monkeypatch.setattr(server, "_moonshine_spec_installed", lambda spec: False)
+    response = TestClient(server.app).get("/v1/models")
+    assert response.status_code == 200
+    assert response.json() == {"data": []}
 
 
 def test_get_transcriber_cache_is_keyed_by_model(monkeypatch):
