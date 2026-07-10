@@ -5,8 +5,10 @@
   1. 真实下载 (未缓存时; venv 已存在, 直接调 download_model 跳过 pip 循环)
   2. 缓存检测 (manager.get_status 报 installed + cache_path 且路径真实存在)
   3. 运行时分流 + 转录 (POST /v1/audio/transcriptions, 比对关键词)
-  4. SenseVoice 额外: 检查 services/asr/model_cache/ 是否在转录后被新建
-     (FunAsrTranscriber cache_dir="model_cache" 与 deploy 下载位置不一致的信号)
+  4. SenseVoice 额外: 确认转录使用迁移后的部署路径
+     services/asr/models/sensevoice/iic/SenseVoiceSmall/ (目录存在)，
+     且旧的 services/asr/model_cache/ 不再被创建
+     (FunAsrTranscriber cache_dir="model_cache" 不一致 bug 已修复)
 
 前置 (由调用方/子代理准备):
   - ASR server 已起:
@@ -127,9 +129,12 @@ def main() -> int:
     python = deploy.python_bin()
     results = []
 
-    # SenseVoice cache_dir-mismatch probe: snapshot before any transcription
+    # SenseVoice relocated-path probe: confirm the new deploy location exists
+    # and the old buggy services/asr/model_cache/ is absent after transcription.
+    sensevoice_deploy_dir = (
+        ROOT / "services" / "asr" / "models" / "sensevoice" / "iic" / "SenseVoiceSmall"
+    )
     model_cache_dir = ROOT / "services" / "asr" / "model_cache"
-    mc_before = model_cache_dir.exists()
 
     for m in list_local_asr_models():
         slug = m.slug
@@ -188,14 +193,23 @@ def main() -> int:
         entry["keywords_hit"] = hit
         print(f"[verify] transcribe_ok={transcribe_ok} text={text[:120]!r}")
 
-        # 4. SenseVoice: did services/asr/model_cache/ get created during transcribe?
+        # 4. SenseVoice: transcription must use the relocated deploy path
+        #    (services/asr/models/sensevoice/iic/SenseVoiceSmall) and the old
+        #    buggy services/asr/model_cache/ must NOT be created.
         if m.runtime == "sensevoice":
-            mc_after = model_cache_dir.exists()
-            entry["model_cache_dir_created"] = (not mc_before) and mc_after
-            if entry["model_cache_dir_created"]:
-                print("[verify] WARN services/asr/model_cache/ created — cache_dir mismatch bug")
+            deploy_present = sensevoice_deploy_dir.is_dir()
+            stale_absent = not model_cache_dir.exists()
+            entry["sensevoice_deploy_path_present"] = deploy_present
+            entry["stale_model_cache_absent"] = stale_absent
+            if not deploy_present:
+                print(f"[verify] FAIL SenseVoice deploy path missing: {sensevoice_deploy_dir}")
+            if not stale_absent:
+                print(f"[verify] FAIL stale model_cache still present: {model_cache_dir}")
+            path_ok = deploy_present and stale_absent
+        else:
+            path_ok = True
 
-        entry["pass"] = bool(cache_ok and transcribe_ok)
+        entry["pass"] = bool(cache_ok and transcribe_ok and path_ok)
         results.append(entry)
 
     RESULTS_PATH.write_text(json.dumps(results, indent=2, ensure_ascii=False))
