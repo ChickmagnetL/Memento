@@ -29,7 +29,7 @@ def test_deploy_creates_venv_installs_requirements_and_models(monkeypatch, tmp_p
     model_downloads = []
     venv_dir = tmp_path / ".venv"
 
-    def fake_run_command(args, cwd=None):
+    def fake_run_command(args, cwd=None, env=None):
         commands.append(args)
         if args[:3] == [sys.executable, "-m", "venv"]:
             venv_dir.mkdir()
@@ -62,8 +62,8 @@ def test_torch_command_selects_platform_specific_wheel(monkeypatch, tmp_path: Pa
     deploy_module = load_deploy_module()
     monkeypatch.setattr(deploy_module, "VENV_DIR", tmp_path / ".venv")
 
-    monkeypatch.setattr(deploy_module.sys, "platform", "darwin")
-    assert deploy_module.torch_install_command(device=None) == [
+    # use_cuda=False -> base command, no CUDA index-url
+    assert deploy_module.torch_install_command(use_cuda=False) == [
         str(deploy_module.python_bin()),
         "-m",
         "pip",
@@ -71,44 +71,40 @@ def test_torch_command_selects_platform_specific_wheel(monkeypatch, tmp_path: Pa
         "torch",
         "torchaudio",
     ]
+    assert "--index-url" not in deploy_module.torch_install_command(use_cuda=False)
 
-    monkeypatch.setattr(deploy_module.sys, "platform", "linux")
-    monkeypatch.setattr(deploy_module, "has_nvidia_gpu", lambda: True)
-    assert deploy_module.torch_install_command(device=None)[-2:] == [
+    # use_cuda=True -> CUDA index-url appended
+    assert deploy_module.torch_install_command(use_cuda=True)[-2:] == [
         "--index-url",
         "https://download.pytorch.org/whl/cu121",
     ]
-
-    monkeypatch.setattr(deploy_module.sys, "platform", "win32")
-    assert deploy_module.torch_install_command(device="cuda")[-2:] == [
-        "--index-url",
-        "https://download.pytorch.org/whl/cu121",
-    ]
-
-    monkeypatch.setattr(deploy_module.sys, "platform", "linux")
-    monkeypatch.setattr(deploy_module, "has_nvidia_gpu", lambda: False)
-    assert "--index-url" not in deploy_module.torch_install_command(device=None)
 
 
 def test_download_models_invokes_sensevoice_and_moonshine(monkeypatch):
     deploy_module = load_deploy_module()
     commands = []
+    envs = []
     progress = []
 
-    monkeypatch.setattr(
-        deploy_module,
-        "run_command",
-        lambda args, cwd=None: commands.append(args),
-    )
+    def fake_run_command(args, cwd=None, env=None):
+        commands.append(args)
+        envs.append(env)
+
+    monkeypatch.setattr(deploy_module, "run_command", fake_run_command)
 
     deploy_module.download_models(
         Path("/venv/bin/python"),
         on_progress=lambda stage, detail, percent=None: progress.append((stage, detail, percent)),
     )
 
-    joined = [" ".join(command) for command in commands]
-    assert any("AutoModel" in command and "iic/SenseVoiceSmall" in command for command in joined)
-    assert any("moonshine_voice" in command for command in joined)
+    joined = [" ".join(str(a) for a in cmd) for cmd in commands]
+    assert any("snapshot_download" in c and "iic/SenseVoiceSmall" in c for c in joined)
+    assert any("moonshine_voice" in c for c in joined)
+    # Moonshine command injects MOONSHINE_VOICE_CACHE env pointing at the moonshine cache dir
+    assert any(
+        e and e.get("MOONSHINE_VOICE_CACHE") == str(deploy_module.MOONSHINE_CACHE_DIR)
+        for e in envs
+    )
     assert progress == [
         ("models", "Downloading SenseVoiceSmall", 50),
         ("models", "Downloading Moonshine Voice", 90),
@@ -159,7 +155,7 @@ def test_ensure_environment_does_not_download_models(monkeypatch, tmp_path: Path
     progress = []
     venv_dir = tmp_path / ".venv"
 
-    def fake_run_command(args, cwd=None):
+    def fake_run_command(args, cwd=None, env=None):
         commands.append(args)
         if args[:3] == [sys.executable, "-m", "venv"]:
             venv_dir.mkdir()
@@ -228,7 +224,7 @@ def test_download_model_sensevoice_small(monkeypatch):
     commands = []
     progress = []
 
-    monkeypatch.setattr(deploy_module, "run_command", lambda args, cwd=None: commands.append(args))
+    monkeypatch.setattr(deploy_module, "run_command", lambda args, cwd=None, env=None: commands.append(args))
 
     deploy_module.download_model(
         Path("/venv/bin/python"),
@@ -239,9 +235,9 @@ def test_download_model_sensevoice_small(monkeypatch):
 
     joined = [" ".join(str(a) for a in cmd) for cmd in commands]
     assert len(joined) == 1
-    assert "AutoModel" in joined[0]
+    assert "snapshot_download" in joined[0]
     assert "iic/SenseVoiceSmall" in joined[0]
-    assert "disable_update=True" in joined[0]
+    assert "models/sensevoice" in joined[0]
     # Should NOT contain any moonshine imports
     assert "moonshine_voice" not in joined[0]
 
@@ -252,12 +248,17 @@ def test_download_model_sensevoice_small(monkeypatch):
 
 
 def test_download_model_moonshine_tiny_en(monkeypatch):
-    """download_model with moonshine tiny-en triggers TINY ModelArch."""
+    """download_model with moonshine tiny-en triggers TINY ModelArch + MOONSHINE_VOICE_CACHE env."""
     deploy_module = load_deploy_module()
     commands = []
+    envs = []
     progress = []
 
-    monkeypatch.setattr(deploy_module, "run_command", lambda args, cwd=None: commands.append(args))
+    def fake_run_command(args, cwd=None, env=None):
+        commands.append(args)
+        envs.append(env)
+
+    monkeypatch.setattr(deploy_module, "run_command", fake_run_command)
 
     deploy_module.download_model(
         Path("/venv/bin/python"),
@@ -274,6 +275,9 @@ def test_download_model_moonshine_tiny_en(monkeypatch):
     # Should NOT contain any funasr imports
     assert "AutoModel" not in joined[0]
     assert "funasr" not in joined[0]
+    # MOONSHINE_VOICE_CACHE env injected, pointing at the moonshine cache dir
+    assert envs[0] is not None
+    assert envs[0]["MOONSHINE_VOICE_CACHE"] == str(deploy_module.MOONSHINE_CACHE_DIR)
 
 
 def test_download_model_moonshine_base_en(monkeypatch):
@@ -281,7 +285,7 @@ def test_download_model_moonshine_base_en(monkeypatch):
     deploy_module = load_deploy_module()
     commands = []
 
-    monkeypatch.setattr(deploy_module, "run_command", lambda args, cwd=None: commands.append(args))
+    monkeypatch.setattr(deploy_module, "run_command", lambda args, cwd=None, env=None: commands.append(args))
 
     deploy_module.download_model(
         Path("/venv/bin/python"),
@@ -299,7 +303,7 @@ def test_download_model_moonshine_tiny_streaming(monkeypatch):
     deploy_module = load_deploy_module()
     commands = []
 
-    monkeypatch.setattr(deploy_module, "run_command", lambda args, cwd=None: commands.append(args))
+    monkeypatch.setattr(deploy_module, "run_command", lambda args, cwd=None, env=None: commands.append(args))
 
     deploy_module.download_model(
         Path("/venv/bin/python"),
@@ -317,7 +321,7 @@ def test_download_model_moonshine_small_streaming(monkeypatch):
     deploy_module = load_deploy_module()
     commands = []
 
-    monkeypatch.setattr(deploy_module, "run_command", lambda args, cwd=None: commands.append(args))
+    monkeypatch.setattr(deploy_module, "run_command", lambda args, cwd=None, env=None: commands.append(args))
 
     deploy_module.download_model(
         Path("/venv/bin/python"),
@@ -335,7 +339,7 @@ def test_download_model_moonshine_medium_streaming(monkeypatch):
     deploy_module = load_deploy_module()
     commands = []
 
-    monkeypatch.setattr(deploy_module, "run_command", lambda args, cwd=None: commands.append(args))
+    monkeypatch.setattr(deploy_module, "run_command", lambda args, cwd=None, env=None: commands.append(args))
 
     deploy_module.download_model(
         Path("/venv/bin/python"),
@@ -353,7 +357,7 @@ def test_download_model_unknown_runtime_raises(monkeypatch):
     deploy_module = load_deploy_module()
     commands = []
 
-    monkeypatch.setattr(deploy_module, "run_command", lambda args, cwd=None: commands.append(args))
+    monkeypatch.setattr(deploy_module, "run_command", lambda args, cwd=None, env=None: commands.append(args))
 
     try:
         deploy_module.download_model(
@@ -372,7 +376,7 @@ def test_download_model_unknown_moonshine_spec_raises(monkeypatch):
     deploy_module = load_deploy_module()
     commands = []
 
-    monkeypatch.setattr(deploy_module, "run_command", lambda args, cwd=None: commands.append(args))
+    monkeypatch.setattr(deploy_module, "run_command", lambda args, cwd=None, env=None: commands.append(args))
 
     try:
         deploy_module.download_model(
@@ -404,7 +408,7 @@ def test_install_model_moonshine_tiny_en_only_downloads_tiny_en(monkeypatch, tmp
     bin_dir.mkdir(parents=True, exist_ok=True)
     (bin_dir / "python").touch()
 
-    def fake_run_command(args, cwd=None):
+    def fake_run_command(args, cwd=None, env=None):
         commands.append(args)
 
     monkeypatch.setattr(deploy_module, "SERVICE_DIR", tmp_path)
@@ -444,7 +448,7 @@ def test_install_model_sensevoice_small_only_triggers_sensevoice(monkeypatch, tm
     bin_dir.mkdir(parents=True, exist_ok=True)
     (bin_dir / "python").touch()
 
-    def fake_run_command(args, cwd=None):
+    def fake_run_command(args, cwd=None, env=None):
         commands.append(args)
 
     monkeypatch.setattr(deploy_module, "SERVICE_DIR", tmp_path)
@@ -460,7 +464,7 @@ def test_install_model_sensevoice_small_only_triggers_sensevoice(monkeypatch, tm
 
     joined = [" ".join(str(a) for a in cmd) for cmd in commands]
     # Should have ONE model download command
-    model_commands = [c for c in joined if "AutoModel" in c or "moonshine_voice" in c]
+    model_commands = [c for c in joined if "snapshot_download" in c or "moonshine_voice" in c]
     assert len(model_commands) == 1
     assert "iic/SenseVoiceSmall" in model_commands[0]
     # Should NOT trigger any moonshine download
