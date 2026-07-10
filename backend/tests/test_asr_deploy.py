@@ -61,6 +61,8 @@ def test_deploy_creates_venv_installs_requirements_and_models(monkeypatch, tmp_p
 def test_torch_command_selects_platform_specific_wheel(monkeypatch, tmp_path: Path):
     deploy_module = load_deploy_module()
     monkeypatch.setattr(deploy_module, "VENV_DIR", tmp_path / ".venv")
+    # Disable the China pip mirror so the non-CUDA command is the bare base command.
+    monkeypatch.setattr(deploy_module, "PIP_INDEX_URL", "")
 
     # use_cuda=False -> base command, no CUDA index-url
     assert deploy_module.torch_install_command(use_cuda=False) == [
