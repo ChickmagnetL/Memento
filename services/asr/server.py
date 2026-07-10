@@ -13,6 +13,9 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 
 app = FastAPI(title="Memento ASR Service", version="0.1.0")
 
+SERVICE_DIR = Path(__file__).resolve().parent
+_MODELS_DIR = SERVICE_DIR / "models"
+
 _transcribers: dict = {}
 FunAsrTranscriber = None
 MoonshineVoiceTranscriber = None
@@ -35,6 +38,14 @@ _SENSEVOICE_MODELS = frozenset({
     "iic/SenseVoiceSmall",
     "sensevoice-small",
 })
+
+
+def _sensevoice_installed() -> bool:
+    return (_MODELS_DIR / "sensevoice" / "iic" / "SenseVoiceSmall" / "model.pt").is_file()
+
+
+def _moonshine_spec_installed(spec: str) -> bool:
+    return (_MODELS_DIR / "moonshine" / "download.moonshine.ai" / "model" / spec / "quantized").is_dir()
 
 
 def _normalize_model(model: str) -> str:
@@ -92,19 +103,21 @@ def health() -> dict:
 
 @app.get("/v1/models")
 async def list_models() -> dict:
-    """List supported ASR models (OpenAI-compatible).
+    """List ASR models actually installed on disk (OpenAI-compatible).
 
     Shape matches what backend/api/settings.py:_list_openai_compatible_models
     parses (``data[].id``).
     """
-    model_ids = sorted(
-        _SENSEVOICE_MODELS
-        | {f"moonshine_voice/{spec}" for spec in _MOONSHINE_SPECS}
-    )
+    ids = set()
+    if _sensevoice_installed():
+        ids.update(_SENSEVOICE_MODELS)  # includes iic/SenseVoiceSmall + sensevoice-small alias
+    for spec in _MOONSHINE_SPECS:
+        if _moonshine_spec_installed(spec):
+            ids.add(f"moonshine_voice/{spec}")
     return {
         "data": [
             {"id": mid, "object": "model", "created": 0, "owned_by": "memento"}
-            for mid in model_ids
+            for mid in sorted(ids)
         ]
     }
 
