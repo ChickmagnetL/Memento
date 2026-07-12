@@ -1,18 +1,24 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Memento 技术 Wiki</title>
   <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/docsify@4/lib/themes/vue.css">
+  <link rel="stylesheet" href="custom.css">
 </head>
 <body>
   <div id="app">加载中…</div>
+
+  <!-- Theme Toggle Button -->
+  <button class="theme-toggle" id="theme-toggle" title="切换主题" aria-label="切换浅色/暗色主题">☀</button>
+
   <script>
     window.$docsify = {
       name: 'Memento 技术 Wiki',
       repo: '',
       loadSidebar: true,
+      coverpage: true,
       subMaxLevel: 2,
       auto2top: true,
       search: 'auto',
@@ -21,5 +27,30 @@
   </script>
   <script src="//cdn.jsdelivr.net/npm/docsify@4/lib/docsify.min.js"></script>
   <script src="//cdn.jsdelivr.net/npm/docsify@4/lib/plugins/search.min.js"></script>
-</head>
+
+  <!-- Theme Toggle Logic -->
+  <script>
+  (function() {
+    var html = document.documentElement;
+    var btn = document.getElementById('theme-toggle');
+
+    function setTheme(theme) {
+      html.setAttribute('data-theme', theme);
+      btn.textContent = theme === 'dark' ? '☀' : '☾';
+      try { localStorage.setItem('memento-theme', theme); } catch(e) {}
+    }
+
+    // Restore saved preference, default dark
+    var saved = null;
+    try { saved = localStorage.getItem('memento-theme'); } catch(e) {}
+    var current = html.getAttribute('data-theme');
+    setTheme(saved || current || 'dark');
+
+    btn.addEventListener('click', function() {
+      var next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      setTheme(next);
+    });
+  })();
+  </script>
+</body>
 </html>
