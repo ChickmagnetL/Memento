@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN" data-theme="dark">
+<html lang="zh-CN" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,17 +8,24 @@
   <link rel="stylesheet" href="custom.css">
 </head>
 <body>
-  <div id="app">加载中…</div>
+  <!-- Top Nav Bar -->
+  <header class="wiki-nav">
+    <div class="wiki-nav-inner">
+      <a class="wiki-nav-title" href="/">Memento 技术 Wiki</a>
+      <button class="wiki-nav-theme" id="theme-toggle" title="切换主题" aria-label="切换浅色/暗色主题">☾</button>
+    </div>
+  </header>
 
-  <!-- Theme Toggle Button -->
-  <button class="theme-toggle" id="theme-toggle" title="切换主题" aria-label="切换浅色/暗色主题">☀</button>
+  <div class="wiki-layout">
+    <div id="app">加载中…</div>
+  </div>
 
   <script>
     window.$docsify = {
       name: 'Memento 技术 Wiki',
       repo: '',
       loadSidebar: true,
-      coverpage: true,
+      coverpage: false,
       subMaxLevel: 2,
       auto2top: true,
       search: 'auto',
@@ -28,7 +35,6 @@
   <script src="//cdn.jsdelivr.net/npm/docsify@4/lib/docsify.min.js"></script>
   <script src="//cdn.jsdelivr.net/npm/docsify@4/lib/plugins/search.min.js"></script>
 
-  <!-- Theme Toggle Logic -->
   <script>
   (function() {
     var html = document.documentElement;
@@ -40,11 +46,9 @@
       try { localStorage.setItem('memento-theme', theme); } catch(e) {}
     }
 
-    // Restore saved preference, default dark
     var saved = null;
     try { saved = localStorage.getItem('memento-theme'); } catch(e) {}
-    var current = html.getAttribute('data-theme');
-    setTheme(saved || current || 'dark');
+    setTheme(saved || 'light');
 
     btn.addEventListener('click', function() {
       var next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
