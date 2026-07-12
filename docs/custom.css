@@ -9,7 +9,7 @@
 
 :root, [data-theme="light"] {
   --bg-body: #ffffff;
-  --bg-nav: rgba(255,255,255,0.85);
+  --bg-nav: rgba(255,255,255,0.92);
   --bg-sidebar: #f8f9fa;
   --bg-content: #ffffff;
   --bg-code: #f6f8fa;
@@ -41,7 +41,7 @@
 
 [data-theme="dark"] {
   --bg-body: #0d1117;
-  --bg-nav: rgba(13,17,23,0.85);
+  --bg-nav: rgba(13,17,23,0.92);
   --bg-sidebar: #0d1117;
   --bg-content: #0d1117;
   --bg-code: #161b22;
@@ -71,21 +71,16 @@
    2. Reset & Body
    ============================================ */
 
-*, *::before, *::after {
-  box-sizing: border-box;
-}
+*, *::before, *::after { box-sizing: border-box; }
 
 body {
-  margin: 0;
-  padding: 0;
+  margin: 0; padding: 0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC",
                "PingFang SC", "Microsoft YaHei", sans-serif;
-  font-size: 15px;
-  line-height: 1.7;
+  font-size: 15px; line-height: 1.7;
   color: var(--text-primary);
   background: var(--bg-body);
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
 /* ============================================
@@ -93,11 +88,7 @@ body {
    ============================================ */
 
 .wiki-nav {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 100;
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
   height: 48px;
   background: var(--bg-nav);
   backdrop-filter: blur(12px);
@@ -107,52 +98,30 @@ body {
 }
 
 .wiki-nav-inner {
-  max-width: 1000px;
-  margin: 0 auto;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  max-width: 1000px; margin: 0 auto; height: 100%;
+  display: flex; align-items: center; justify-content: space-between;
   padding: 0 24px;
 }
 
 .wiki-nav-title {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text-heading);
-  text-decoration: none;
-  letter-spacing: -0.01em;
+  font-size: 15px; font-weight: 600;
+  color: var(--text-heading); text-decoration: none;
 }
-
-.wiki-nav-title:hover {
-  color: var(--accent);
-}
+.wiki-nav-title:hover { color: var(--accent); }
 
 .wiki-nav-theme {
-  width: 32px;
-  height: 32px;
-  border: 1px solid var(--border-color);
-  border-radius: 50%;
-  background: transparent;
-  color: var(--text-secondary);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 15px;
-  transition: all 0.2s ease;
-  padding: 0;
-  line-height: 1;
-  flex-shrink: 0;
+  width: 32px; height: 32px;
+  border: 1px solid var(--border-color); border-radius: 50%;
+  background: transparent; color: var(--text-secondary);
+  cursor: pointer; font-size: 15px;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0; line-height: 1; flex-shrink: 0;
+  transition: all 0.2s;
 }
-
-.wiki-nav-theme:hover {
-  color: var(--accent);
-  border-color: var(--accent);
-}
+.wiki-nav-theme:hover { color: var(--accent); border-color: var(--accent); }
 
 /* ============================================
-   4. Layout: Centered sidebar + content block
+   4. Layout Wrapper
    ============================================ */
 
 .wiki-layout {
@@ -161,121 +130,100 @@ body {
   padding-top: 48px;
 }
 
+/* Make sidebar + content sit side by side */
 #app {
-  display: flex;
+  display: flex !important;
   min-height: calc(100vh - 48px);
 }
 
 /* ============================================
-   5. Sidebar
+   5. Sidebar — override Docsify defaults
    ============================================ */
 
-/* Override Docsify's fixed sidebar */
+/* Docsify default: position:fixed left:0. Override to relative so it
+   flows inside #app's flex container. */
 .sidebar {
-  position: sticky !important;
-  top: 48px;
-  left: auto !important;
-  bottom: auto !important;
+  position: relative !important;
+  top: auto !important; left: auto !important;
+  bottom: auto !important; right: auto !important;
   width: 230px !important;
   min-width: 230px;
-  max-height: calc(100vh - 48px);
-  overflow-y: auto;
   flex-shrink: 0;
-  align-self: flex-start;
   transform: none !important;
   transition: none !important;
   background: var(--bg-sidebar) !important;
   border-right: 1px solid var(--border-light) !important;
-  padding: 24px 0 24px 0 !important;
-  z-index: 10;
+  padding: 24px 0 !important;
+  overflow-y: auto;
+  max-height: calc(100vh - 48px);
+  z-index: 1;
 }
 
-/* Hide Docsify's sidebar close button on desktop */
-.sidebar > .close {
-  display: none !important;
+/* Hide sidebar close button on desktop */
+.sidebar > .close { display: none !important; }
+
+/* Docsify body.close hides sidebar. On desktop we always show it. */
+body.close .sidebar {
+  transform: none !important;
+  width: 230px !important;
 }
 
-/* Sidebar nav */
-.sidebar-nav {
-  padding: 0 20px;
-}
+/* ============================================
+   5b. Sidebar nav styling
+   ============================================ */
 
-.sidebar-nav ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.sidebar-nav li {
-  margin: 0;
-  line-height: 1.6;
-}
+.sidebar-nav { padding: 0 20px; }
+.sidebar-nav ul { list-style: none; padding: 0; margin: 0; }
+.sidebar-nav li { margin: 0; line-height: 1.6; }
 
 .sidebar-nav a {
-  display: block;
-  padding: 4px 12px;
+  display: block; padding: 4px 12px;
   color: var(--text-sidebar) !important;
-  font-size: 13.5px;
-  text-decoration: none;
+  font-size: 13.5px; text-decoration: none;
   border-radius: var(--radius-sm);
-  transition: all 0.15s ease;
+  transition: all 0.15s;
 }
-
 .sidebar-nav a:hover {
   color: var(--accent) !important;
   background: var(--accent-dim);
   text-decoration: none;
 }
-
 .sidebar-nav .active > a {
   color: var(--accent) !important;
   font-weight: 600;
   background: var(--accent-dim);
 }
 
-/* Section headers (e.g. "系统", "数据", "对话") */
+/* Section headers */
 .sidebar-nav li > p {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  font-size: 11px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.06em;
   color: var(--text-muted);
-  margin: 16px 12px 6px 12px;
-  padding: 0;
-}
-
-/* Nested items */
-.sidebar-nav ul ul {
-  padding-left: 0;
+  margin: 16px 12px 6px 12px; padding: 0;
 }
 
 .sidebar-nav ul ul a {
-  padding-left: 24px;
-  font-size: 13px;
+  padding-left: 24px; font-size: 13px;
   color: var(--text-secondary) !important;
 }
 
-.sidebar-nav ul ul .active > a {
-  color: var(--accent) !important;
-}
-
-/* Hide sidebar toggle on desktop */
-.sidebar-toggle {
-  display: none !important;
-}
-
 /* ============================================
-   6. Content Area
+   6. Content Area — override Docsify defaults
    ============================================ */
 
+/* Docsify default: position:absolute left:300px. Override to relative
+   so it flows inside #app's flex container. */
 .content {
-  flex: 1;
-  min-width: 0;
-  left: 0 !important;
+  position: relative !important;
+  left: 0 !important; right: auto !important;
+  top: auto !important; bottom: auto !important;
+  flex: 1; min-width: 0;
   transition: none !important;
-  padding-top: 0 !important;
   background: var(--bg-content);
 }
+
+/* Docsify body.close moves content to left:0. We already have that. */
+body.close .content { left: 0 !important; }
 
 .markdown-section {
   max-width: 720px;
@@ -284,203 +232,118 @@ body {
 }
 
 /* --- Headings --- */
-
 .markdown-section h1 {
-  font-size: 1.75em;
-  font-weight: 700;
-  margin: 0 0 0.5em 0;
-  padding-bottom: 0.35em;
+  font-size: 1.75em; font-weight: 700;
+  margin: 0 0 0.5em 0; padding-bottom: 0.35em;
   border-bottom: 1px solid var(--border-light);
   color: var(--text-heading);
-  letter-spacing: -0.02em;
-  line-height: 1.3;
+  letter-spacing: -0.02em; line-height: 1.3;
 }
-
 .markdown-section h2 {
-  font-size: 1.35em;
-  font-weight: 600;
-  margin: 2em 0 0.5em 0;
-  padding-bottom: 0.3em;
+  font-size: 1.35em; font-weight: 600;
+  margin: 2em 0 0.5em 0; padding-bottom: 0.3em;
   border-bottom: 1px solid var(--border-light);
   color: var(--text-heading);
   letter-spacing: -0.01em;
 }
-
 .markdown-section h3 {
-  font-size: 1.15em;
-  font-weight: 600;
-  margin: 1.6em 0 0.4em 0;
-  color: var(--text-heading);
+  font-size: 1.15em; font-weight: 600;
+  margin: 1.6em 0 0.4em 0; color: var(--text-heading);
 }
-
 .markdown-section h4 {
-  font-size: 1.05em;
-  font-weight: 600;
-  margin: 1.3em 0 0.3em 0;
-  color: var(--text-heading);
+  font-size: 1.05em; font-weight: 600;
+  margin: 1.3em 0 0.3em 0; color: var(--text-heading);
 }
 
-/* --- Paragraphs --- */
-
-.markdown-section p {
-  margin: 0 0 1em 0;
-  color: var(--text-primary);
-}
-
-/* --- Links --- */
-
-.markdown-section a {
-  color: var(--accent);
-  text-decoration: none;
-  transition: color 0.15s ease;
-}
-
-.markdown-section a:hover {
-  color: var(--accent-hover);
-  text-decoration: underline;
-}
-
-/* --- Strong --- */
-
-.markdown-section strong {
-  color: var(--text-heading);
-  font-weight: 600;
-}
-
-/* --- Horizontal Rules --- */
-
+/* --- Paragraphs & Links --- */
+.markdown-section p { margin: 0 0 1em 0; color: var(--text-primary); }
+.markdown-section a { color: var(--accent); text-decoration: none; }
+.markdown-section a:hover { color: var(--accent-hover); text-decoration: underline; }
+.markdown-section strong { color: var(--text-heading); font-weight: 600; }
 .markdown-section hr {
-  border: none;
-  height: 1px;
-  background: var(--border-light);
-  margin: 2.5em 0;
+  border: none; height: 1px;
+  background: var(--border-light); margin: 2.5em 0;
 }
 
 /* ============================================
-   7. Code Blocks & Inline Code
+   7. Code
    ============================================ */
 
 .markdown-section code {
-  font-family: "SF Mono", "Cascadia Code", "Fira Code", "JetBrains Mono",
-               "Source Code Pro", Consolas, monospace;
-  font-size: 0.85em;
-  background: var(--bg-code-inline);
-  color: var(--text-primary);
-  padding: 0.15em 0.4em;
-  border-radius: 3px;
-  border: 1px solid var(--border-light);
+  font-family: "SF Mono", "Cascadia Code", "Fira Code", monospace;
+  font-size: 0.85em; background: var(--bg-code-inline);
+  color: var(--text-primary); padding: 0.15em 0.4em;
+  border-radius: 3px; border: 1px solid var(--border-light);
 }
-
 .markdown-section pre {
   background: var(--bg-code) !important;
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  padding: 0 !important;
-  margin: 1.2em 0;
-  overflow: hidden;
+  border-radius: var(--radius-md); padding: 0 !important;
+  margin: 1.2em 0; overflow: hidden;
   box-shadow: var(--shadow-sm);
 }
-
 .markdown-section pre code {
-  display: block;
-  padding: 16px 20px;
-  background: transparent;
-  border: none;
-  border-radius: 0;
-  font-size: 0.82em;
-  line-height: 1.65;
-  overflow-x: auto;
+  display: block; padding: 16px 20px;
+  background: transparent; border: none; border-radius: 0;
+  font-size: 0.82em; line-height: 1.65; overflow-x: auto;
   color: var(--text-primary);
 }
 
-/* PrismJS token colors for dark theme */
+/* Dark theme code highlighting */
 [data-theme="dark"] .token.comment,
 [data-theme="dark"] .token.prolog,
 [data-theme="dark"] .token.doctype,
-[data-theme="dark"] .token.cdata {
-  color: #8b949e;
-}
-[data-theme="dark"] .token.punctuation {
-  color: #c9d1d9;
-}
+[data-theme="dark"] .token.cdata { color: #8b949e; }
+[data-theme="dark"] .token.punctuation { color: #c9d1d9; }
 [data-theme="dark"] .token.property,
 [data-theme="dark"] .token.tag,
 [data-theme="dark"] .token.boolean,
 [data-theme="dark"] .token.number,
 [data-theme="dark"] .token.constant,
 [data-theme="dark"] .token.symbol,
-[data-theme="dark"] .token.deleted {
-  color: #79c0ff;
-}
+[data-theme="dark"] .token.deleted { color: #79c0ff; }
 [data-theme="dark"] .token.selector,
 [data-theme="dark"] .token.attr-name,
 [data-theme="dark"] .token.string,
 [data-theme="dark"] .token.char,
 [data-theme="dark"] .token.builtin,
-[data-theme="dark"] .token.inserted {
-  color: #a5d6ff;
-}
+[data-theme="dark"] .token.inserted { color: #a5d6ff; }
 [data-theme="dark"] .token.operator,
 [data-theme="dark"] .token.entity,
-[data-theme="dark"] .token.url {
-  color: #d2a8ff;
-}
+[data-theme="dark"] .token.url { color: #d2a8ff; }
 [data-theme="dark"] .token.atrule,
 [data-theme="dark"] .token.attr-value,
-[data-theme="dark"] .token.keyword {
-  color: #ff7b72;
-}
+[data-theme="dark"] .token.keyword { color: #ff7b72; }
 [data-theme="dark"] .token.function,
-[data-theme="dark"] .token.class-name {
-  color: #d2a8ff;
-}
+[data-theme="dark"] .token.class-name { color: #d2a8ff; }
 [data-theme="dark"] .token.regex,
 [data-theme="dark"] .token.important,
-[data-theme="dark"] .token.variable {
-  color: #ffa657;
-}
+[data-theme="dark"] .token.variable { color: #ffa657; }
 
 /* ============================================
    8. Tables
    ============================================ */
 
 .markdown-section table {
-  display: table;
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
+  display: table; width: 100%;
+  border-collapse: separate; border-spacing: 0;
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  margin: 1.2em 0;
-  font-size: 0.92em;
+  border-radius: var(--radius-md); overflow: hidden;
+  margin: 1.2em 0; font-size: 0.92em;
   box-shadow: var(--shadow-sm);
 }
-
 .markdown-section table th {
-  background: var(--bg-table-header);
-  color: var(--text-heading);
-  font-weight: 600;
-  text-align: left;
-  padding: 10px 16px;
-  border-bottom: 2px solid var(--border-color);
-  white-space: nowrap;
-  font-size: 0.95em;
+  background: var(--bg-table-header); color: var(--text-heading);
+  font-weight: 600; text-align: left;
+  padding: 10px 16px; border-bottom: 2px solid var(--border-color);
+  white-space: nowrap; font-size: 0.95em;
 }
-
 .markdown-section table td {
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--border-light);
+  padding: 10px 16px; border-bottom: 1px solid var(--border-light);
   color: var(--text-primary);
 }
-
-.markdown-section table tr:last-child td {
-  border-bottom: none;
-}
-
-.markdown-section table tr:nth-child(even) td {
-  background: var(--bg-table-stripe);
-}
+.markdown-section table tr:last-child td { border-bottom: none; }
+.markdown-section table tr:nth-child(even) td { background: var(--bg-table-stripe); }
 
 /* ============================================
    9. Blockquotes
@@ -489,85 +352,50 @@ body {
 .markdown-section blockquote {
   border-left: 3px solid var(--accent);
   background: var(--accent-dim);
-  margin: 1.2em 0;
-  padding: 12px 20px;
+  margin: 1.2em 0; padding: 12px 20px;
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
   color: var(--text-primary);
 }
-
-.markdown-section blockquote p {
-  margin: 0;
-}
-
-.markdown-section blockquote p + p {
-  margin-top: 0.6em;
-}
+.markdown-section blockquote p { margin: 0; }
+.markdown-section blockquote p + p { margin-top: 0.6em; }
 
 /* ============================================
    10. Lists
    ============================================ */
 
-.markdown-section ul,
-.markdown-section ol {
-  padding-left: 1.6em;
-  margin: 0 0 1em 0;
+.markdown-section ul, .markdown-section ol {
+  padding-left: 1.6em; margin: 0 0 1em 0;
+}
+.markdown-section li { margin-bottom: 0.25em; }
+.markdown-section li > ul, .markdown-section li > ol {
+  margin-top: 0.25em; margin-bottom: 0;
 }
 
-.markdown-section li {
-  margin-bottom: 0.25em;
-}
-
-.markdown-section li > ul,
-.markdown-section li > ol {
-  margin-top: 0.25em;
-  margin-bottom: 0;
-}
-
-/* Custom bullet for unordered lists */
-.markdown-section ul {
-  list-style: none;
-  padding-left: 1.4em;
-}
-
+.markdown-section ul { list-style: none; padding-left: 1.4em; }
 .markdown-section ul li::before {
-  content: "\2022";
-  color: var(--accent);
-  font-weight: bold;
-  display: inline-block;
-  width: 1em;
-  margin-left: -1em;
-  font-size: 1.1em;
+  content: "\2022"; color: var(--accent); font-weight: bold;
+  display: inline-block; width: 1em; margin-left: -1em; font-size: 1.1em;
 }
 
 /* ============================================
    11. Search
    ============================================ */
 
-.search {
-  margin: 0 20px 16px 20px;
-}
-
+.search { margin: 0 20px 16px 20px; }
 .search input {
   background: var(--bg-body) !important;
   border: 1px solid var(--border-color) !important;
   color: var(--text-primary) !important;
   border-radius: var(--radius-md) !important;
   padding: 7px 12px 7px 32px !important;
-  font-size: 13px !important;
-  width: 100% !important;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  font-size: 13px !important; width: 100% !important;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
-
 .search input:focus {
-  border-color: var(--accent) !important;
-  outline: none;
+  border-color: var(--accent) !important; outline: none;
   box-shadow: 0 0 0 3px var(--accent-dim);
 }
-
-.search input::placeholder {
-  color: var(--text-muted);
-}
-
+.search input::placeholder { color: var(--text-muted); }
 .search .results-panel {
   background: var(--bg-body) !important;
   border: 1px solid var(--border-color) !important;
@@ -579,128 +407,62 @@ body {
    12. Scrollbar
    ============================================ */
 
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--border-color);
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--text-muted);
-}
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
 
 /* ============================================
-   13. Mobile Responsive
+   13. Docsify UI Overrides
+   ============================================ */
+
+/* Hide sidebar toggle button on desktop */
+.sidebar-toggle { display: none !important; }
+
+/* Hide GitHub corner */
+.github-corner { display: none; }
+
+/* Hide cover */
+.cover, .cover-show { display: none !important; }
+
+/* ============================================
+   14. Mobile
    ============================================ */
 
 @media (max-width: 768px) {
-  .wiki-nav-inner {
-    padding: 0 16px;
-  }
+  .wiki-nav-inner { padding: 0 16px; }
+  .wiki-layout { max-width: none; }
 
-  .wiki-layout {
-    max-width: none;
-  }
-
-  #app {
-    display: block;
-  }
-
-  /* Restore Docsify's default sidebar behavior on mobile */
+  /* Restore Docsify default sidebar on mobile */
   .sidebar {
     position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
+    top: 0 !important; left: 0 !important;
     bottom: 0 !important;
-    width: 280px !important;
-    min-width: 0;
-    max-height: none;
-    z-index: 40;
+    width: 280px !important; min-width: 0;
+    max-height: none; z-index: 40;
     transform: translateX(-280px) !important;
     transition: transform 250ms ease !important;
     border-right: 1px solid var(--border-color) !important;
     padding-top: 48px !important;
   }
+  body.close .sidebar { transform: translateX(-280px) !important; }
+  body:not(.close) .sidebar { transform: translateX(0) !important; }
 
-  body:not(.close) .sidebar {
-    transform: translateX(0) !important;
-  }
+  .sidebar > .close { display: block !important; }
 
-  /* Show sidebar close button on mobile */
-  .sidebar > .close {
-    display: block !important;
-  }
-
-  /* Show sidebar toggle on mobile — below the nav bar */
   .sidebar-toggle {
     display: block !important;
-    position: fixed;
-    top: 56px;
-    left: 12px;
-    z-index: 50;
+    position: fixed; top: 56px; left: 12px; z-index: 50;
     background: var(--bg-nav) !important;
-    border-radius: 50%;
-    width: 36px;
-    height: 36px;
+    border-radius: 50%; width: 36px; height: 36px;
     padding: 8px !important;
     box-shadow: var(--shadow-md);
     border: 1px solid var(--border-color);
   }
+  .sidebar-toggle span { background-color: var(--text-secondary) !important; }
 
-  .sidebar-toggle span {
-    background-color: var(--text-secondary) !important;
-  }
-
-  .content {
-    left: 0 !important;
-    padding-top: 0 !important;
-  }
-
-  .markdown-section {
-    max-width: none;
-    padding: 32px 20px 48px 20px;
-  }
-
-  .markdown-section h1 {
-    font-size: 1.5em;
-  }
-
-  .markdown-section h2 {
-    font-size: 1.2em;
-  }
-}
-
-/* ============================================
-   14. Misc
-   ============================================ */
-
-/* Hide GitHub corner (no repo link) */
-.github-corner {
-  display: none;
-}
-
-/* Hide cover-related elements */
-.cover, .cover-show {
-  display: none !important;
-}
-
-/* Loading state */
-#app:empty::before,
-#app:not(:has(.content))::before {
-  content: "加载中…";
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 60vh;
-  color: var(--text-muted);
-  font-size: 14px;
-  flex: 1;
+  .content { left: 0 !important; flex: auto; }
+  .markdown-section { max-width: none; padding: 32px 20px 48px 20px; }
+  .markdown-section h1 { font-size: 1.5em; }
+  .markdown-section h2 { font-size: 1.2em; }
 }
