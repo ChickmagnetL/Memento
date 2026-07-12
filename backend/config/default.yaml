@@ -7,6 +7,7 @@ api_reload: true
 
 cors_origins:
   - "http://localhost:3000"
+  - "http://localhost:3123"
 
 log_level: "INFO"
 
