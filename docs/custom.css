@@ -1,294 +1,379 @@
 /* ============================================
    Memento Wiki - Custom Theme
-   CSS Variables for Dark/Light mode switching
+   Centered layout: sidebar + content as one block
    ============================================ */
 
-/* --- Dark Theme (default) --- */
-:root, [data-theme="dark"] {
-  --bg-primary: #0d1117;
-  --bg-secondary: #161b22;
-  --bg-sidebar: #161b22;
-  --bg-code: #1c2128;
-  --bg-code-header: #21262d;
-  --bg-table-stripe: #161b22;
-  --bg-table-header: #21262d;
-  --bg-cover: linear-gradient(135deg, #0d1117 0%, #161b22 50%, #1a1a2e 100%);
+/* ============================================
+   1. CSS Variables
+   ============================================ */
 
-  --text-primary: #e6edf3;
-  --text-secondary: #8b949e;
-  --text-heading: #f0f6fc;
-  --text-code: #e6edf3;
-  --text-sidebar: #e6edf3;
-  --text-muted: #6e7681;
-
-  --border-color: #30363d;
-  --border-table: #30363d;
-  --border-code: #30363d;
-
-  --accent: #58a6ff;
-  --accent-hover: #79c0ff;
-  --accent-dim: rgba(88, 166, 255, 0.15);
-
-  --link-color: #58a6ff;
-  --link-hover: #79c0ff;
-
-  --scrollbar-bg: #0d1117;
-  --scrollbar-thumb: #30363d;
-
-  --cover-text: #e6edf3;
-  --cover-subtitle: #8b949e;
-  --cover-btn-bg: #238636;
-  --cover-btn-text: #ffffff;
-  --cover-btn-hover: #2ea043;
-
-  --search-bg: #0d1117;
-  --search-border: #30363d;
-  --search-text: #e6edf3;
-
-  --shadow-sm: 0 1px 0 rgba(255,255,255,0.04);
-  --shadow-md: 0 3px 6px rgba(0,0,0,0.3);
-  --shadow-lg: 0 8px 24px rgba(0,0,0,0.4);
-
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-}
-
-/* --- Light Theme --- */
-[data-theme="light"] {
-  --bg-primary: #ffffff;
-  --bg-secondary: #f6f8fa;
-  --bg-sidebar: #f6f8fa;
+:root, [data-theme="light"] {
+  --bg-body: #ffffff;
+  --bg-nav: rgba(255,255,255,0.85);
+  --bg-sidebar: #f8f9fa;
+  --bg-content: #ffffff;
   --bg-code: #f6f8fa;
-  --bg-code-header: #eaeef2;
-  --bg-table-stripe: #f6f8fa;
-  --bg-table-header: #eaeef2;
-  --bg-cover: linear-gradient(135deg, #f6f8fa 0%, #ffffff 50%, #e8ecf1 100%);
+  --bg-code-inline: #f0f1f3;
+  --bg-table-stripe: #f8f9fa;
+  --bg-table-header: #f1f3f5;
 
   --text-primary: #1f2328;
   --text-secondary: #656d76;
-  --text-heading: #1f2328;
-  --text-code: #1f2328;
+  --text-heading: #1a1a2e;
   --text-sidebar: #1f2328;
   --text-muted: #8b949e;
 
   --border-color: #d0d7de;
-  --border-table: #d0d7de;
-  --border-code: #d0d7de;
+  --border-light: #e8eaed;
 
   --accent: #0969da;
   --accent-hover: #0550ae;
-  --accent-dim: rgba(9, 105, 218, 0.1);
+  --accent-dim: rgba(9, 105, 218, 0.08);
 
-  --link-color: #0969da;
-  --link-hover: #0550ae;
+  --shadow-nav: 0 1px 3px rgba(0,0,0,0.06);
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 3px 6px rgba(0,0,0,0.08);
 
-  --scrollbar-bg: #f6f8fa;
-  --scrollbar-thumb: #d0d7de;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+}
 
-  --cover-text: #1f2328;
-  --cover-subtitle: #656d76;
-  --cover-btn-bg: #1f883d;
-  --cover-btn-text: #ffffff;
-  --cover-btn-hover: #1a7f37;
+[data-theme="dark"] {
+  --bg-body: #0d1117;
+  --bg-nav: rgba(13,17,23,0.85);
+  --bg-sidebar: #0d1117;
+  --bg-content: #0d1117;
+  --bg-code: #161b22;
+  --bg-code-inline: #1c2128;
+  --bg-table-stripe: #161b22;
+  --bg-table-header: #21262d;
 
-  --search-bg: #ffffff;
-  --search-border: #d0d7de;
-  --search-text: #1f2328;
+  --text-primary: #e6edf3;
+  --text-secondary: #8b949e;
+  --text-heading: #f0f6fc;
+  --text-sidebar: #e6edf3;
+  --text-muted: #6e7681;
 
-  --shadow-sm: 0 1px 0 rgba(31,35,40,0.04);
-  --shadow-md: 0 3px 6px rgba(31,35,40,0.08);
-  --shadow-lg: 0 8px 24px rgba(31,35,40,0.12);
+  --border-color: #30363d;
+  --border-light: #21262d;
+
+  --accent: #58a6ff;
+  --accent-hover: #79c0ff;
+  --accent-dim: rgba(88, 166, 255, 0.12);
+
+  --shadow-nav: 0 1px 3px rgba(0,0,0,0.3);
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
+  --shadow-md: 0 3px 6px rgba(0,0,0,0.4);
 }
 
 /* ============================================
-   Global Styles
+   2. Reset & Body
    ============================================ */
 
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
 body {
+  margin: 0;
+  padding: 0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC",
                "PingFang SC", "Microsoft YaHei", sans-serif;
   font-size: 15px;
   line-height: 1.7;
   color: var(--text-primary);
-  background: var(--bg-primary);
+  background: var(--bg-body);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* --- Theme Toggle Button --- */
-.theme-toggle {
+/* ============================================
+   3. Top Nav Bar
+   ============================================ */
+
+.wiki-nav {
   position: fixed;
-  top: 16px;
-  right: 20px;
-  z-index: 1000;
-  width: 36px;
-  height: 36px;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  height: 48px;
+  background: var(--bg-nav);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border-light);
+  box-shadow: var(--shadow-nav);
+}
+
+.wiki-nav-inner {
+  max-width: 1000px;
+  margin: 0 auto;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+}
+
+.wiki-nav-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-heading);
+  text-decoration: none;
+  letter-spacing: -0.01em;
+}
+
+.wiki-nav-title:hover {
+  color: var(--accent);
+}
+
+.wiki-nav-theme {
+  width: 32px;
+  height: 32px;
   border: 1px solid var(--border-color);
   border-radius: 50%;
-  background: var(--bg-secondary);
+  background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 17px;
-  transition: all 0.25s ease;
-  box-shadow: var(--shadow-sm);
-  line-height: 1;
+  font-size: 15px;
+  transition: all 0.2s ease;
   padding: 0;
+  line-height: 1;
+  flex-shrink: 0;
 }
-.theme-toggle:hover {
+
+.wiki-nav-theme:hover {
   color: var(--accent);
   border-color: var(--accent);
-  transform: scale(1.08);
-  box-shadow: var(--shadow-md);
 }
 
 /* ============================================
-   Sidebar
+   4. Layout: Centered sidebar + content block
    ============================================ */
 
+.wiki-layout {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding-top: 48px;
+}
+
+#app {
+  display: flex;
+  min-height: calc(100vh - 48px);
+}
+
+/* ============================================
+   5. Sidebar
+   ============================================ */
+
+/* Override Docsify's fixed sidebar */
 .sidebar {
+  position: sticky !important;
+  top: 48px;
+  left: auto !important;
+  bottom: auto !important;
+  width: 230px !important;
+  min-width: 230px;
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  flex-shrink: 0;
+  align-self: flex-start;
+  transform: none !important;
+  transition: none !important;
   background: var(--bg-sidebar) !important;
-  border-right: 1px solid var(--border-color) !important;
-  padding-top: 48px !important;
+  border-right: 1px solid var(--border-light) !important;
+  padding: 24px 0 24px 0 !important;
+  z-index: 10;
+}
+
+/* Hide Docsify's sidebar close button on desktop */
+.sidebar > .close {
+  display: none !important;
+}
+
+/* Sidebar nav */
+.sidebar-nav {
+  padding: 0 20px;
+}
+
+.sidebar-nav ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
 }
 
 .sidebar-nav li {
-  line-height: 1.8;
+  margin: 0;
+  line-height: 1.6;
 }
 
 .sidebar-nav a {
+  display: block;
+  padding: 4px 12px;
   color: var(--text-sidebar) !important;
-  font-size: 14px;
-  transition: color 0.15s ease;
+  font-size: 13.5px;
+  text-decoration: none;
+  border-radius: var(--radius-sm);
+  transition: all 0.15s ease;
 }
 
 .sidebar-nav a:hover {
   color: var(--accent) !important;
+  background: var(--accent-dim);
   text-decoration: none;
 }
 
 .sidebar-nav .active > a {
   color: var(--accent) !important;
   font-weight: 600;
+  background: var(--accent-dim);
+}
+
+/* Section headers (e.g. "系统", "数据", "对话") */
+.sidebar-nav li > p {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin: 16px 12px 6px 12px;
+  padding: 0;
+}
+
+/* Nested items */
+.sidebar-nav ul ul {
+  padding-left: 0;
 }
 
 .sidebar-nav ul ul a {
-  color: var(--text-secondary) !important;
-  font-size: 13px;
   padding-left: 24px;
+  font-size: 13px;
+  color: var(--text-secondary) !important;
 }
 
-/* --- Sidebar toggle (hamburger) --- */
+.sidebar-nav ul ul .active > a {
+  color: var(--accent) !important;
+}
+
+/* Hide sidebar toggle on desktop */
 .sidebar-toggle {
-  background: transparent !important;
-  padding: 12px !important;
-  top: 12px !important;
-}
-
-.sidebar-toggle span {
-  background-color: var(--text-secondary) !important;
+  display: none !important;
 }
 
 /* ============================================
-   Content Area
+   6. Content Area
    ============================================ */
 
-.content, .markdown-section {
-  max-width: 860px;
-  padding: 20px 40px;
+.content {
+  flex: 1;
+  min-width: 0;
+  left: 0 !important;
+  transition: none !important;
+  padding-top: 0 !important;
+  background: var(--bg-content);
+}
+
+.markdown-section {
+  max-width: 720px;
+  padding: 48px 48px 64px 48px;
+  margin: 0;
 }
 
 /* --- Headings --- */
+
 .markdown-section h1 {
-  font-size: 2em;
+  font-size: 1.75em;
   font-weight: 700;
-  margin-top: 0;
-  margin-bottom: 0.6em;
-  padding-bottom: 0.3em;
-  border-bottom: 1px solid var(--border-color);
+  margin: 0 0 0.5em 0;
+  padding-bottom: 0.35em;
+  border-bottom: 1px solid var(--border-light);
   color: var(--text-heading);
   letter-spacing: -0.02em;
+  line-height: 1.3;
 }
 
 .markdown-section h2 {
-  font-size: 1.5em;
+  font-size: 1.35em;
   font-weight: 600;
-  margin-top: 1.8em;
-  margin-bottom: 0.6em;
-  padding-bottom: 0.25em;
-  border-bottom: 1px solid var(--border-color);
+  margin: 2em 0 0.5em 0;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--border-light);
   color: var(--text-heading);
+  letter-spacing: -0.01em;
 }
 
 .markdown-section h3 {
-  font-size: 1.25em;
+  font-size: 1.15em;
   font-weight: 600;
-  margin-top: 1.5em;
-  margin-bottom: 0.5em;
+  margin: 1.6em 0 0.4em 0;
   color: var(--text-heading);
 }
 
 .markdown-section h4 {
-  font-size: 1.1em;
+  font-size: 1.05em;
   font-weight: 600;
-  margin-top: 1.2em;
-  margin-bottom: 0.4em;
+  margin: 1.3em 0 0.3em 0;
   color: var(--text-heading);
 }
 
 /* --- Paragraphs --- */
+
 .markdown-section p {
-  margin-bottom: 1em;
+  margin: 0 0 1em 0;
   color: var(--text-primary);
 }
 
 /* --- Links --- */
+
 .markdown-section a {
-  color: var(--link-color);
+  color: var(--accent);
   text-decoration: none;
   transition: color 0.15s ease;
 }
 
 .markdown-section a:hover {
-  color: var(--link-hover);
+  color: var(--accent-hover);
   text-decoration: underline;
 }
 
-/* --- Strong / Bold --- */
+/* --- Strong --- */
+
 .markdown-section strong {
   color: var(--text-heading);
   font-weight: 600;
 }
 
 /* --- Horizontal Rules --- */
+
 .markdown-section hr {
   border: none;
   height: 1px;
-  background: var(--border-color);
-  margin: 2em 0;
+  background: var(--border-light);
+  margin: 2.5em 0;
 }
 
 /* ============================================
-   Code Blocks & Inline Code
+   7. Code Blocks & Inline Code
    ============================================ */
 
 .markdown-section code {
   font-family: "SF Mono", "Cascadia Code", "Fira Code", "JetBrains Mono",
                "Source Code Pro", Consolas, monospace;
-  font-size: 0.88em;
-  background: var(--bg-code);
-  color: var(--text-code);
-  padding: 0.2em 0.4em;
-  border-radius: 4px;
-  border: 1px solid var(--border-code);
+  font-size: 0.85em;
+  background: var(--bg-code-inline);
+  color: var(--text-primary);
+  padding: 0.15em 0.4em;
+  border-radius: 3px;
+  border: 1px solid var(--border-light);
 }
 
 .markdown-section pre {
   background: var(--bg-code) !important;
-  border: 1px solid var(--border-code);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   padding: 0 !important;
   margin: 1.2em 0;
@@ -302,12 +387,13 @@ body {
   background: transparent;
   border: none;
   border-radius: 0;
-  font-size: 0.85em;
+  font-size: 0.82em;
   line-height: 1.65;
   overflow-x: auto;
+  color: var(--text-primary);
 }
 
-/* PrismJS token overrides for dark theme */
+/* PrismJS token colors for dark theme */
 [data-theme="dark"] .token.comment,
 [data-theme="dark"] .token.prolog,
 [data-theme="dark"] .token.doctype,
@@ -355,7 +441,7 @@ body {
 }
 
 /* ============================================
-   Tables
+   8. Tables
    ============================================ */
 
 .markdown-section table {
@@ -363,11 +449,11 @@ body {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  border: 1px solid var(--border-table);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   overflow: hidden;
   margin: 1.2em 0;
-  font-size: 0.94em;
+  font-size: 0.92em;
   box-shadow: var(--shadow-sm);
 }
 
@@ -377,13 +463,14 @@ body {
   font-weight: 600;
   text-align: left;
   padding: 10px 16px;
-  border-bottom: 2px solid var(--border-table);
+  border-bottom: 2px solid var(--border-color);
   white-space: nowrap;
+  font-size: 0.95em;
 }
 
 .markdown-section table td {
   padding: 10px 16px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-light);
   color: var(--text-primary);
 }
 
@@ -396,11 +483,11 @@ body {
 }
 
 /* ============================================
-   Blockquotes
+   9. Blockquotes
    ============================================ */
 
 .markdown-section blockquote {
-  border-left: 4px solid var(--accent);
+  border-left: 3px solid var(--accent);
   background: var(--accent-dim);
   margin: 1.2em 0;
   padding: 12px 20px;
@@ -412,30 +499,34 @@ body {
   margin: 0;
 }
 
+.markdown-section blockquote p + p {
+  margin-top: 0.6em;
+}
+
 /* ============================================
-   Lists
+   10. Lists
    ============================================ */
 
 .markdown-section ul,
 .markdown-section ol {
-  padding-left: 1.8em;
-  margin-bottom: 1em;
+  padding-left: 1.6em;
+  margin: 0 0 1em 0;
 }
 
 .markdown-section li {
-  margin-bottom: 0.3em;
+  margin-bottom: 0.25em;
 }
 
 .markdown-section li > ul,
 .markdown-section li > ol {
-  margin-top: 0.3em;
+  margin-top: 0.25em;
   margin-bottom: 0;
 }
 
-/* Custom bullet for ul */
+/* Custom bullet for unordered lists */
 .markdown-section ul {
   list-style: none;
-  padding-left: 1.5em;
+  padding-left: 1.4em;
 }
 
 .markdown-section ul li::before {
@@ -445,20 +536,26 @@ body {
   display: inline-block;
   width: 1em;
   margin-left: -1em;
+  font-size: 1.1em;
 }
 
 /* ============================================
-   Search
+   11. Search
    ============================================ */
 
+.search {
+  margin: 0 20px 16px 20px;
+}
+
 .search input {
-  background: var(--search-bg) !important;
-  border: 1px solid var(--search-border) !important;
-  color: var(--search-text) !important;
-  border-radius: var(--radius-sm) !important;
-  padding: 8px 12px !important;
-  font-size: 14px !important;
-  transition: border-color 0.2s ease;
+  background: var(--bg-body) !important;
+  border: 1px solid var(--border-color) !important;
+  color: var(--text-primary) !important;
+  border-radius: var(--radius-md) !important;
+  padding: 7px 12px 7px 32px !important;
+  font-size: 13px !important;
+  width: 100% !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .search input:focus {
@@ -467,107 +564,143 @@ body {
   box-shadow: 0 0 0 3px var(--accent-dim);
 }
 
-.search .results-panel {
-  background: var(--bg-secondary) !important;
-  border: 1px solid var(--border-color) !important;
-  border-radius: var(--radius-md) !important;
-  box-shadow: var(--shadow-lg) !important;
+.search input::placeholder {
+  color: var(--text-muted);
 }
 
-/* --- Scrollbar (Webkit) --- */
+.search .results-panel {
+  background: var(--bg-body) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: var(--radius-md) !important;
+  box-shadow: var(--shadow-md) !important;
+}
+
+/* ============================================
+   12. Scrollbar
+   ============================================ */
+
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
+
 ::-webkit-scrollbar-track {
-  background: var(--scrollbar-bg);
+  background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
-  background: var(--scrollbar-thumb);
-  border-radius: 4px;
+  background: var(--border-color);
+  border-radius: 3px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-muted);
 }
 
 /* ============================================
-   Cover Page
+   13. Mobile Responsive
    ============================================ */
 
-.cover {
-  background: var(--bg-cover) !important;
+@media (max-width: 768px) {
+  .wiki-nav-inner {
+    padding: 0 16px;
+  }
+
+  .wiki-layout {
+    max-width: none;
+  }
+
+  #app {
+    display: block;
+  }
+
+  /* Restore Docsify's default sidebar behavior on mobile */
+  .sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: 0 !important;
+    width: 280px !important;
+    min-width: 0;
+    max-height: none;
+    z-index: 40;
+    transform: translateX(-280px) !important;
+    transition: transform 250ms ease !important;
+    border-right: 1px solid var(--border-color) !important;
+    padding-top: 48px !important;
+  }
+
+  body:not(.close) .sidebar {
+    transform: translateX(0) !important;
+  }
+
+  /* Show sidebar close button on mobile */
+  .sidebar > .close {
+    display: block !important;
+  }
+
+  /* Show sidebar toggle on mobile — below the nav bar */
+  .sidebar-toggle {
+    display: block !important;
+    position: fixed;
+    top: 56px;
+    left: 12px;
+    z-index: 50;
+    background: var(--bg-nav) !important;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    padding: 8px !important;
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--border-color);
+  }
+
+  .sidebar-toggle span {
+    background-color: var(--text-secondary) !important;
+  }
+
+  .content {
+    left: 0 !important;
+    padding-top: 0 !important;
+  }
+
+  .markdown-section {
+    max-width: none;
+    padding: 32px 20px 48px 20px;
+  }
+
+  .markdown-section h1 {
+    font-size: 1.5em;
+  }
+
+  .markdown-section h2 {
+    font-size: 1.2em;
+  }
 }
 
-.cover .cover-main {
-  text-align: center;
-}
-
-.cover .cover-main h1 {
-  font-size: 3rem;
-  font-weight: 800;
-  color: var(--cover-text);
-  letter-spacing: -0.03em;
-  margin-bottom: 0.3em;
-  border: none;
-  padding: 0;
-}
-
-.cover .cover-main h1 small {
-  font-size: 1.2rem;
-  font-weight: 400;
-  color: var(--cover-subtitle);
-  display: block;
-  margin-top: 0.5em;
-  letter-spacing: 0.02em;
-}
-
-.cover .cover-main p {
-  color: var(--cover-subtitle);
-  font-size: 1.1rem;
-  margin-bottom: 2em;
-}
-
-.cover .cover-main a {
-  display: inline-block;
-  padding: 10px 28px;
-  border: none !important;
-  border-radius: var(--radius-md);
-  background: var(--cover-btn-bg) !important;
-  color: var(--cover-btn-text) !important;
-  font-size: 1rem;
-  font-weight: 600;
-  text-decoration: none;
-  transition: background 0.2s ease, transform 0.15s ease;
-  box-shadow: var(--shadow-md);
-  letter-spacing: 0.02em;
-}
-
-.cover .cover-main a:hover {
-  background: var(--cover-btn-hover) !important;
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-lg);
-}
-
-.cover .cover-main a:last-child {
-  background: transparent !important;
-  color: var(--text-secondary) !important;
-  border: 1px solid var(--border-color) !important;
-  box-shadow: none;
-  margin-left: 12px;
-}
-
-.cover .cover-main a:last-child:hover {
-  color: var(--accent) !important;
-  border-color: var(--accent) !important;
-  background: var(--accent-dim) !important;
-}
-
-/* Hide the "show cover" toggle link */
-.cover-show {
-  display: none;
-}
+/* ============================================
+   14. Misc
+   ============================================ */
 
 /* Hide GitHub corner (no repo link) */
 .github-corner {
   display: none;
+}
+
+/* Hide cover-related elements */
+.cover, .cover-show {
+  display: none !important;
+}
+
+/* Loading state */
+#app:empty::before,
+#app:not(:has(.content))::before {
+  content: "加载中…";
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 60vh;
+  color: var(--text-muted);
+  font-size: 14px;
+  flex: 1;
 }
