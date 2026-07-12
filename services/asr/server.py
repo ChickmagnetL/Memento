@@ -12,7 +12,8 @@ from pathlib import Path
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 
 # Default to the China HuggingFace mirror (moonshine models ship via HF).
-# Harmless elsewhere; set HF_ENDPOINT to override.
+# Harmless elsewhere; set HF_ENDPOINT before start to override
+# (e.g. HF_ENDPOINT=https://huggingface.co).
 os.environ.setdefault("HF_ENDPOINT", "https://hf-mirror.com")
 
 app = FastAPI(title="Memento ASR Service", version="0.1.0")
@@ -45,7 +46,14 @@ _SENSEVOICE_MODELS = frozenset({
 
 
 def _sensevoice_installed() -> bool:
-    return (_MODELS_DIR / "sensevoice" / "iic" / "SenseVoiceSmall" / "model.pt").is_file()
+    root = _MODELS_DIR / "sensevoice"
+    if not root.is_dir():
+        return False
+    # Preferred exact layout
+    if (root / "iic" / "SenseVoiceSmall" / "model.pt").is_file():
+        return True
+    # Alternate modelscope layouts
+    return any(root.rglob("model.pt"))
 
 
 def _moonshine_spec_installed(spec: str) -> bool:
@@ -124,6 +132,22 @@ async def list_models() -> dict:
             for mid in sorted(ids)
         ]
     }
+
+
+@app.post("/v1/warmup")
+def warmup() -> dict:
+    if _sensevoice_installed():
+        model = DEFAULT_ASR_MODEL  # "iic/SenseVoiceSmall"
+    else:
+        model = None
+        for spec in sorted(_MOONSHINE_SPECS):
+            if _moonshine_spec_installed(spec):
+                model = f"moonshine_voice/{spec}"
+                break
+        if model is None:
+            raise HTTPException(status_code=503, detail="No ASR models installed")
+    get_transcriber(model)
+    return {"status": "ok", "model": model}
 
 
 @app.post("/v1/audio/transcriptions")

@@ -323,3 +323,47 @@ def test_moonshine_voice_transcriber_rejects_unsupported_model(monkeypatch):
         assert "moonshine_voice/tiny" in str(exc)
     else:
         raise AssertionError("expected unsupported Moonshine Voice model error")
+
+
+def test_warmup_loads_default_or_installed_model(monkeypatch):
+    called = {}
+    def fake_get_transcriber(model):
+        called["model"] = model
+        return object()
+    monkeypatch.setattr(server, "get_transcriber", fake_get_transcriber)
+    monkeypatch.setattr(server, "_sensevoice_installed", lambda: True)
+    client = TestClient(server.app)
+    r = client.post("/v1/warmup")
+    assert r.status_code == 200
+    assert r.json()["status"] == "ok"
+    assert "model" in r.json()
+    assert called["model"]
+
+
+def test_warmup_uses_first_installed_moonshine_when_no_sensevoice(monkeypatch):
+    called = {}
+    def fake_get_transcriber(model):
+        called["model"] = model
+        return object()
+    monkeypatch.setattr(server, "get_transcriber", fake_get_transcriber)
+    monkeypatch.setattr(server, "_sensevoice_installed", lambda: False)
+    monkeypatch.setattr(
+        server,
+        "_moonshine_spec_installed",
+        lambda spec: spec == "tiny-en",
+    )
+    client = TestClient(server.app)
+    r = client.post("/v1/warmup")
+    assert r.status_code == 200
+    assert called["model"] == "moonshine_voice/tiny-en"
+    assert r.json()["model"] == "moonshine_voice/tiny-en"
+    assert r.json()["status"] == "ok"
+
+
+def test_warmup_no_models_returns_503(monkeypatch):
+    monkeypatch.setattr(server, "_sensevoice_installed", lambda: False)
+    monkeypatch.setattr(server, "_moonshine_spec_installed", lambda spec: False)
+    client = TestClient(server.app)
+    r = client.post("/v1/warmup")
+    assert r.status_code == 503
+    assert r.json()["detail"] == "No ASR models installed"

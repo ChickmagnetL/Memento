@@ -10,9 +10,13 @@ import sys
 from pathlib import Path
 from typing import Callable
 
-# Default to the China HuggingFace mirror (moonshine models ship via HF).
-# Harmless elsewhere; set HF_ENDPOINT to override.
-os.environ.setdefault("HF_ENDPOINT", "https://hf-mirror.com")
+# Capture any pre-existing HF_ENDPOINT before setdefault so download fallback
+# can tell "user/parent forced a value" from "we filled the China default".
+_USER_HF_ENDPOINT = os.environ.get("HF_ENDPOINT")
+_DEFAULT_HF_ENDPOINTS = ("https://huggingface.co", "https://hf-mirror.com")
+# Default to the official HuggingFace hub (moonshine models ship via HF).
+# Harmless elsewhere; set HF_ENDPOINT to override. Download path may fall back.
+os.environ.setdefault("HF_ENDPOINT", _DEFAULT_HF_ENDPOINTS[0])
 
 
 SERVICE_DIR = Path(__file__).resolve().parent
@@ -21,7 +25,7 @@ MODELS_DIR = SERVICE_DIR / "models"
 SENSEVOICE_CACHE_DIR = MODELS_DIR / "sensevoice"
 MOONSHINE_CACHE_DIR = MODELS_DIR / "moonshine"
 CUDA_TORCH_INDEX_URL = os.environ.get(
-    "CUDA_TORCH_INDEX_URL", "https://download.pytorch.org/whl/cu121"
+    "CUDA_TORCH_INDEX_URL", "https://download.pytorch.org/whl/cu124"
 )
 # Tsinghua PyPI mirror by default; set PIP_INDEX_URL="" to use the default PyPI.
 PIP_INDEX_URL = os.environ.get("PIP_INDEX_URL", "https://pypi.tuna.tsinghua.edu.cn/simple")
@@ -38,6 +42,41 @@ _SPEC_TO_ARCH: dict[str, str] = {
     "tiny-streaming-en": "TINY_STREAMING",
     "small-streaming-en": "SMALL_STREAMING",
     "medium-streaming-en": "MEDIUM_STREAMING",
+}
+
+# CLI slug → (model_id, runtime, spec). Duplicated here on purpose — do not
+# import from backend/node_app so this service remains standalone.
+_MODEL_SLUGS: dict[str, dict[str, str | None]] = {
+    "sensevoice-small": {
+        "model_id": "iic/SenseVoiceSmall",
+        "runtime": "sensevoice",
+        "spec": None,
+    },
+    "moonshine-tiny-en": {
+        "model_id": "moonshine_voice/tiny-en",
+        "runtime": "moonshine",
+        "spec": "tiny-en",
+    },
+    "moonshine-base-en": {
+        "model_id": "moonshine_voice/base-en",
+        "runtime": "moonshine",
+        "spec": "base-en",
+    },
+    "moonshine-tiny-streaming-en": {
+        "model_id": "moonshine_voice/tiny-streaming-en",
+        "runtime": "moonshine",
+        "spec": "tiny-streaming-en",
+    },
+    "moonshine-small-streaming-en": {
+        "model_id": "moonshine_voice/small-streaming-en",
+        "runtime": "moonshine",
+        "spec": "small-streaming-en",
+    },
+    "moonshine-medium-streaming-en": {
+        "model_id": "moonshine_voice/medium-streaming-en",
+        "runtime": "moonshine",
+        "spec": "medium-streaming-en",
+    },
 }
 
 
@@ -70,6 +109,56 @@ def _with_pip_index(command: list[str]) -> list[str]:
     return command
 
 
+def _hf_endpoint_candidates() -> list[str]:
+    """Return HuggingFace hub endpoints to try for model download.
+
+    - Custom HF_ENDPOINT (not a known public hub): exclusive, no public fallback.
+    - Unset, or a known public hub (incl. parent bootstrap setdefault): try the
+      China mirror first, then the official hub, preferring any user-set known
+      hub first.
+    """
+    defaults = list(_DEFAULT_HF_ENDPOINTS)
+    user = (_USER_HF_ENDPOINT or "").strip().rstrip("/")
+    if not user:
+        return defaults
+    known = {ep.rstrip("/") for ep in defaults}
+    if user not in known:
+        return [user]
+    ordered = [user]
+    for ep in defaults:
+        if ep.rstrip("/") != user:
+            ordered.append(ep)
+    return ordered
+
+
+def _run_with_hf_endpoint_fallback(
+    args: list[str | Path],
+    *,
+    base_env: dict[str, str],
+    what: str,
+) -> None:
+    """Run a command with HF_ENDPOINT fallback across candidate hubs."""
+    candidates = _hf_endpoint_candidates()
+    errors: list[str] = []
+    for endpoint in candidates:
+        env = dict(base_env)
+        env["HF_ENDPOINT"] = endpoint
+        # Force the HF HTTP bridge instead of the hf_xet native protocol, which
+        # stalls large LFS downloads at 0 bytes/s on this network.
+        env["HF_HUB_DISABLE_XET"] = "1"
+        print(f"{what} via HF_ENDPOINT={endpoint}")
+        try:
+            run_command(args, env=env)
+            print(f"{what} succeeded via {endpoint}")
+            return
+        except Exception as exc:
+            print(f"{what} failed via {endpoint}: {exc}")
+            errors.append(f"{endpoint}: {exc}")
+    raise RuntimeError(
+        f"Failed {what} from all HF endpoints. Tried: " + "; ".join(errors)
+    )
+
+
 def detect_best_device() -> str:
     """Detect the best available torch device: cuda > mps > cpu.
 
@@ -93,6 +182,43 @@ def detect_best_device() -> str:
     except Exception:
         pass
     return "cpu"
+
+
+def _torch_cuda_available() -> bool:
+    """Probe whether venv torch has CUDA support."""
+    script = "import torch; print('1' if torch.cuda.is_available() else '0')"
+    try:
+        result = subprocess.run(
+            [str(python_bin()), "-c", script],
+            capture_output=True, text=True, timeout=60,
+        )
+        return result.stdout.strip() == "1"
+    except Exception:
+        return False
+
+
+def _ensure_cuda_torch() -> None:
+    """After install, if CUDA torch not actually usable, force reinstall from CUDA index."""
+    if _torch_cuda_available():
+        print("CUDA torch verified: torch.cuda.is_available() == True")
+        return
+    print("WARNING: torch installed but CUDA not available; force-reinstalling from CUDA index...")
+    run_command([str(python_bin()), "-m", "pip", "uninstall", "-y", "torch", "torchaudio"])
+    torch_cmd = [
+        str(python_bin()), "-m", "pip", "install", "--force-reinstall",
+        "torch", "torchaudio",
+        "--index-url", CUDA_TORCH_INDEX_URL,
+    ]
+    # Do NOT append China pip mirror.
+    run_command(torch_cmd)
+    if _torch_cuda_available():
+        print("CUDA torch force-reinstall succeeded: torch.cuda.is_available() == True")
+    else:
+        print(
+            "WARNING: torch still has no CUDA after force-reinstall. "
+            "Host may lack NVIDIA driver/CUDA, or wrong CUDA index. "
+            "Service will fall back to CPU if started with ASR_DEVICE=cuda."
+        )
 
 
 def torch_install_command(use_cuda: bool = False) -> list[str]:
@@ -167,6 +293,8 @@ def ensure_environment(
         _progress(on_progress, "torch", "Installing platform torch wheel", 45)
         use_cuda = bool(device == "cuda")
         run_command(torch_install_command(use_cuda=use_cuda))
+        if use_cuda:
+            _ensure_cuda_torch()
 
         _progress(on_progress, "environment", "ASR environment ready", 50)
     except Exception:
@@ -201,6 +329,19 @@ def _run_sensevoice_download(python: Path, model_id: str, cache_dir: Path) -> No
     run_command([str(python), "-c", script], env=env)
 
 
+def _run_moonshine_download(python: Path, arch: str, *, label: str) -> None:
+    """Download a Moonshine model via HF, with endpoint fallback."""
+    script = (
+        "from moonshine_voice import ModelArch, get_model_for_language; "
+        f"get_model_for_language(wanted_language='en', wanted_model_arch=ModelArch.{arch})"
+    )
+    _run_with_hf_endpoint_fallback(
+        [str(python), "-c", script],
+        base_env={**os.environ, "MOONSHINE_VOICE_CACHE": str(MOONSHINE_CACHE_DIR)},
+        what=f"Downloading {label}",
+    )
+
+
 def download_model(
     python: Path,
     *,
@@ -219,17 +360,7 @@ def download_model(
         if spec is None or spec not in _SPEC_TO_ARCH:
             raise ValueError(f"Unknown moonshine spec: {spec}")
         arch = _SPEC_TO_ARCH[spec]
-        run_command(
-            [
-                str(python),
-                "-c",
-                (
-                    "from moonshine_voice import ModelArch, get_model_for_language; "
-                    f"get_model_for_language(wanted_language='en', wanted_model_arch=ModelArch.{arch})"
-                ),
-            ],
-            env={**os.environ, "MOONSHINE_VOICE_CACHE": str(MOONSHINE_CACHE_DIR)},
-        )
+        _run_moonshine_download(python, arch, label=label)
     else:
         raise ValueError(f"Unknown runtime: {runtime}")
 
@@ -245,19 +376,7 @@ def download_models(
     _progress(on_progress, "models", "Downloading SenseVoiceSmall", 50)
     _run_sensevoice_download(python, "iic/SenseVoiceSmall", SENSEVOICE_CACHE_DIR)
     _progress(on_progress, "models", "Downloading Moonshine Voice", 90)
-    run_command(
-        [
-            str(python),
-            "-c",
-            (
-                "from moonshine_voice import ModelArch, get_model_for_language; "
-                "get_model_for_language("
-                "wanted_language='en', "
-                "wanted_model_arch=ModelArch.MEDIUM_STREAMING)"
-            ),
-        ],
-        env={**os.environ, "MOONSHINE_VOICE_CACHE": str(MOONSHINE_CACHE_DIR)},
-    )
+    _run_moonshine_download(python, "MEDIUM_STREAMING", label="Moonshine Voice")
 
 
 # ---------------------------------------------------------------------------
@@ -307,6 +426,33 @@ def uninstall_all(model_cache_paths: list[str]) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Model presence checks (skip re-download when already cached)
+# ---------------------------------------------------------------------------
+
+
+def _sensevoice_present() -> bool:
+    """True if SenseVoiceSmall cache looks installed (same heuristic as bootstrap)."""
+    root = MODELS_DIR / "sensevoice"
+    if not root.is_dir():
+        return False
+    if (root / "iic" / "SenseVoiceSmall" / "model.pt").is_file():
+        return True
+    return any(root.rglob("model.pt"))
+
+
+def _moonshine_present() -> bool:
+    """True if medium-streaming-en quantized cache is present (same as bootstrap)."""
+    return (
+        MODELS_DIR
+        / "moonshine"
+        / "download.moonshine.ai"
+        / "model"
+        / "medium-streaming-en"
+        / "quantized"
+    ).is_dir()
+
+
+# ---------------------------------------------------------------------------
 # Full deploy (backward-compat)
 # ---------------------------------------------------------------------------
 
@@ -316,25 +462,87 @@ def deploy(
     device: str | None = None,
     on_progress: ProgressCallback | None = None,
 ) -> None:
-    """Full deploy: venv + deps + torch + ALL models."""
+    """Full deploy: always repair env (venv/deps/torch); download only missing models."""
     if device is None:
         device = detect_best_device()
     ensure_environment(device=device, on_progress=on_progress)
     python = python_bin()
-    _progress(on_progress, "models", "Downloading ASR models", 50)
-    download_models(python, on_progress=on_progress)
+
+    sense_ok = _sensevoice_present()
+    moon_ok = _moonshine_present()
+    if sense_ok and moon_ok:
+        _progress(on_progress, "models", "ASR models already present, skipping download", 90)
+        print("ASR models: all present, skipping download.")
+    else:
+        if not sense_ok:
+            _progress(on_progress, "models", "Downloading SenseVoiceSmall", 50)
+            print("ASR models: downloading SenseVoiceSmall...")
+            _run_sensevoice_download(python, "iic/SenseVoiceSmall", SENSEVOICE_CACHE_DIR)
+        else:
+            _progress(on_progress, "models", "SenseVoiceSmall present, skipping", 50)
+            print("ASR models: SenseVoiceSmall present, skipping download.")
+        if not moon_ok:
+            _progress(on_progress, "models", "Downloading Moonshine Voice", 90)
+            print("ASR models: downloading Moonshine Voice...")
+            _run_moonshine_download(python, "MEDIUM_STREAMING", label="Moonshine Voice")
+        else:
+            _progress(on_progress, "models", "Moonshine Voice present, skipping", 90)
+            print("ASR models: Moonshine Voice present, skipping download.")
+
     _progress(on_progress, "done", "ASR environment ready", 100)
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Deploy Memento ASR service")
+    parser = argparse.ArgumentParser(
+        description=(
+            "Deploy Memento ASR service. "
+            "Override HF hub with HF_ENDPOINT; Moonshine download falls back "
+            "across https://hf-mirror.com and https://huggingface.co when unset."
+        ),
+    )
     parser.add_argument("--device", choices=["cpu", "cuda", "mps", "auto"], default="auto")
+    parser.add_argument(
+        "--env-only",
+        action="store_true",
+        help="Only ensure the Python environment (venv/deps/torch); skip model downloads.",
+    )
+    parser.add_argument(
+        "--models",
+        default="",
+        help=(
+            "Comma-separated model slugs to install "
+            f"(choices: {', '.join(_MODEL_SLUGS)})."
+        ),
+    )
     args = parser.parse_args()
     device = args.device if args.device != "auto" else detect_best_device()
-    deploy(
-        device=device,
-        on_progress=lambda stage, detail, percent=None: print(f"{stage}: {detail}"),
-    )
+    on_progress = lambda stage, detail, percent=None: print(f"{stage}: {detail}")
+
+    if args.env_only:
+        ensure_environment(device=device, on_progress=on_progress)
+        return
+
+    model_slugs = [s.strip() for s in args.models.split(",") if s.strip()]
+    if model_slugs:
+        for slug in model_slugs:
+            if slug not in _MODEL_SLUGS:
+                raise SystemExit(
+                    f"Unknown ASR model slug: {slug!r}. "
+                    f"Valid slugs: {', '.join(_MODEL_SLUGS)}"
+                )
+        for slug in model_slugs:
+            info = _MODEL_SLUGS[slug]
+            install_model(
+                slug=slug,
+                model_id=str(info["model_id"]),
+                runtime=str(info["runtime"]),
+                spec=info["spec"],
+                device=device,
+                on_progress=on_progress,
+            )
+        return
+
+    deploy(device=device, on_progress=on_progress)
 
 
 if __name__ == "__main__":

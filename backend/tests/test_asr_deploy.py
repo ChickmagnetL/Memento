@@ -28,34 +28,133 @@ def test_deploy_creates_venv_installs_requirements_and_models(monkeypatch, tmp_p
     progress = []
     model_downloads = []
     venv_dir = tmp_path / ".venv"
+    models_dir = tmp_path / "models"
 
     def fake_run_command(args, cwd=None, env=None):
         commands.append(args)
         if args[:3] == [sys.executable, "-m", "venv"]:
             venv_dir.mkdir()
 
+    def fake_sensevoice(python, model_id, cache_dir):
+        model_downloads.append(("sensevoice", python, model_id))
+
+    def fake_moonshine(python, arch, *, label):
+        model_downloads.append(("moonshine", python, arch, label))
+
     monkeypatch.setattr(deploy_module, "SERVICE_DIR", tmp_path)
     monkeypatch.setattr(deploy_module, "VENV_DIR", venv_dir)
+    monkeypatch.setattr(deploy_module, "MODELS_DIR", models_dir)
     monkeypatch.setattr(deploy_module, "run_command", fake_run_command)
-    monkeypatch.setattr(
-        deploy_module,
-        "download_models",
-        lambda python, on_progress: model_downloads.append(python),
-    )
+    monkeypatch.setattr(deploy_module, "_run_sensevoice_download", fake_sensevoice)
+    monkeypatch.setattr(deploy_module, "_run_moonshine_download", fake_moonshine)
 
     deploy_module.deploy(on_progress=lambda stage, detail, percent=None: progress.append((stage, detail, percent)))
 
     assert [sys.executable, "-m", "venv", str(venv_dir)] in commands
     assert any("requirements.txt" in command for command in commands for command in command)
-    assert model_downloads == [deploy_module.python_bin()]
-    assert [stage for stage, _detail, _percent in progress] == [
+    assert model_downloads == [
+        ("sensevoice", deploy_module.python_bin(), "iic/SenseVoiceSmall"),
+        ("moonshine", deploy_module.python_bin(), "MEDIUM_STREAMING", "Moonshine Voice"),
+    ]
+    stages = [stage for stage, _detail, _percent in progress]
+    assert stages[:4] == [
         "venv",
         "dependencies",
         "torch",
         "environment",
-        "models",
-        "done",
     ]
+    assert "models" in stages
+    assert stages[-1] == "done"
+
+
+def test_deploy_skips_model_download_when_present(monkeypatch, tmp_path: Path):
+    """deploy always ensures env, but skips downloads when both models are cached."""
+    deploy_module = load_deploy_module()
+    commands = []
+    model_downloads = []
+    venv_dir = tmp_path / ".venv"
+    venv_dir.mkdir()
+    models_dir = tmp_path / "models"
+    # SenseVoice present
+    sense_pt = models_dir / "sensevoice" / "iic" / "SenseVoiceSmall" / "model.pt"
+    sense_pt.parent.mkdir(parents=True)
+    sense_pt.touch()
+    # Moonshine present
+    moon_dir = (
+        models_dir
+        / "moonshine"
+        / "download.moonshine.ai"
+        / "model"
+        / "medium-streaming-en"
+        / "quantized"
+    )
+    moon_dir.mkdir(parents=True)
+    (tmp_path / "requirements.txt").write_text("")
+
+    def fake_run_command(args, cwd=None, env=None):
+        commands.append(args)
+
+    monkeypatch.setattr(deploy_module, "SERVICE_DIR", tmp_path)
+    monkeypatch.setattr(deploy_module, "VENV_DIR", venv_dir)
+    monkeypatch.setattr(deploy_module, "MODELS_DIR", models_dir)
+    monkeypatch.setattr(deploy_module, "run_command", fake_run_command)
+    monkeypatch.setattr(
+        deploy_module,
+        "_run_sensevoice_download",
+        lambda *a, **k: model_downloads.append("sensevoice"),
+    )
+    monkeypatch.setattr(
+        deploy_module,
+        "_run_moonshine_download",
+        lambda *a, **k: model_downloads.append("moonshine"),
+    )
+
+    deploy_module.deploy(device="cpu")
+
+    # env repair still ran (pip / torch)
+    joined = [" ".join(str(a) for a in c) for c in commands]
+    assert any("requirements.txt" in c for c in joined)
+    assert any("torch" in c for c in joined)
+    assert model_downloads == []
+
+
+def test_deploy_downloads_only_missing_models(monkeypatch, tmp_path: Path):
+    """When only SenseVoice is missing, only that download runs."""
+    deploy_module = load_deploy_module()
+    model_downloads = []
+    venv_dir = tmp_path / ".venv"
+    venv_dir.mkdir()
+    models_dir = tmp_path / "models"
+    # Only moonshine present
+    moon_dir = (
+        models_dir
+        / "moonshine"
+        / "download.moonshine.ai"
+        / "model"
+        / "medium-streaming-en"
+        / "quantized"
+    )
+    moon_dir.mkdir(parents=True)
+    (tmp_path / "requirements.txt").write_text("")
+
+    monkeypatch.setattr(deploy_module, "SERVICE_DIR", tmp_path)
+    monkeypatch.setattr(deploy_module, "VENV_DIR", venv_dir)
+    monkeypatch.setattr(deploy_module, "MODELS_DIR", models_dir)
+    monkeypatch.setattr(deploy_module, "run_command", lambda *a, **k: None)
+    monkeypatch.setattr(
+        deploy_module,
+        "_run_sensevoice_download",
+        lambda *a, **k: model_downloads.append("sensevoice"),
+    )
+    monkeypatch.setattr(
+        deploy_module,
+        "_run_moonshine_download",
+        lambda *a, **k: model_downloads.append("moonshine"),
+    )
+
+    deploy_module.deploy(device="cpu")
+
+    assert model_downloads == ["sensevoice"]
 
 
 def test_torch_command_selects_platform_specific_wheel(monkeypatch, tmp_path: Path):
@@ -75,10 +174,12 @@ def test_torch_command_selects_platform_specific_wheel(monkeypatch, tmp_path: Pa
     ]
     assert "--index-url" not in deploy_module.torch_install_command(use_cuda=False)
 
-    # use_cuda=True -> CUDA index-url appended
+    # use_cuda=True -> CUDA index-url appended.
+    # cu124 (not cu121): the cu121 index tops out at torch 2.5.1, but torch.load
+    # requires >= 2.6 since CVE-2025-32434, which ASR model weights hit.
     assert deploy_module.torch_install_command(use_cuda=True)[-2:] == [
         "--index-url",
-        "https://download.pytorch.org/whl/cu121",
+        "https://download.pytorch.org/whl/cu124",
     ]
 
 
@@ -302,6 +403,32 @@ def test_download_model_moonshine_tiny_en(monkeypatch):
     assert envs[0]["MOONSHINE_VOICE_CACHE"] == str(deploy_module.MOONSHINE_CACHE_DIR)
 
 
+def test_download_model_moonshine_disables_xet(monkeypatch):
+    """Moonshine (HF) download env forces HF_HUB_DISABLE_XET=1.
+
+    With hf_xet installed, HF routes large LFS files through the xet native
+    protocol which stalls at 0 bytes/s on this network; the HTTP bridge (~9 MB/s)
+    is selected by disabling xet.
+    """
+    deploy_module = load_deploy_module()
+    envs = []
+
+    def fake_run_command(args, cwd=None, env=None):
+        envs.append(env)
+
+    monkeypatch.setattr(deploy_module, "run_command", fake_run_command)
+
+    deploy_module.download_model(
+        Path("/venv/bin/python"),
+        model_id="moonshine_voice/tiny-en",
+        runtime="moonshine",
+        spec="tiny-en",
+    )
+
+    assert envs
+    assert envs[0]["HF_HUB_DISABLE_XET"] == "1"
+
+
 def test_download_model_moonshine_base_en(monkeypatch):
     """download_model with moonshine base-en triggers BASE ModelArch."""
     deploy_module = load_deploy_module()
@@ -501,6 +628,108 @@ def test_install_model_sensevoice_small_only_triggers_sensevoice(monkeypatch, tm
 
 
 # ---------------------------------------------------------------------------
+# HF endpoint fallback (Moonshine download)
+# ---------------------------------------------------------------------------
+
+
+def test_hf_endpoint_candidates_default_order(monkeypatch):
+    deploy_module = load_deploy_module()
+    monkeypatch.setattr(deploy_module, "_USER_HF_ENDPOINT", None)
+    assert deploy_module._hf_endpoint_candidates() == [
+        "https://huggingface.co",
+        "https://hf-mirror.com",
+    ]
+
+
+def test_hf_endpoint_candidates_known_user_prefers_then_fallback(monkeypatch):
+    deploy_module = load_deploy_module()
+    monkeypatch.setattr(deploy_module, "_USER_HF_ENDPOINT", "https://huggingface.co")
+    assert deploy_module._hf_endpoint_candidates() == [
+        "https://huggingface.co",
+        "https://hf-mirror.com",
+    ]
+
+
+def test_hf_endpoint_candidates_custom_is_exclusive(monkeypatch):
+    deploy_module = load_deploy_module()
+    monkeypatch.setattr(deploy_module, "_USER_HF_ENDPOINT", "https://hf.example.internal")
+    assert deploy_module._hf_endpoint_candidates() == ["https://hf.example.internal"]
+
+
+def test_download_model_moonshine_falls_back_to_second_endpoint(monkeypatch):
+    """Moonshine download tries mirror first, then official on failure."""
+    deploy_module = load_deploy_module()
+    monkeypatch.setattr(deploy_module, "_USER_HF_ENDPOINT", None)
+    endpoints = []
+
+    def fake_run_command(args, cwd=None, env=None):
+        endpoint = env.get("HF_ENDPOINT") if env else None
+        endpoints.append(endpoint)
+        assert env and env.get("MOONSHINE_VOICE_CACHE") == str(deploy_module.MOONSHINE_CACHE_DIR)
+        if endpoint == "https://huggingface.co":
+            raise RuntimeError("could not connect to huggingface.co")
+
+    monkeypatch.setattr(deploy_module, "run_command", fake_run_command)
+
+    deploy_module.download_model(
+        Path("/venv/bin/python"),
+        model_id="moonshine_voice/tiny-en",
+        runtime="moonshine",
+        spec="tiny-en",
+    )
+
+    assert endpoints == [
+        "https://huggingface.co",
+        "https://hf-mirror.com",
+    ]
+
+
+def test_download_model_moonshine_raises_when_all_endpoints_fail(monkeypatch):
+    deploy_module = load_deploy_module()
+    monkeypatch.setattr(deploy_module, "_USER_HF_ENDPOINT", None)
+
+    def fake_run_command(args, cwd=None, env=None):
+        raise RuntimeError(f"down ({env.get('HF_ENDPOINT')})")
+
+    monkeypatch.setattr(deploy_module, "run_command", fake_run_command)
+
+    try:
+        deploy_module.download_model(
+            Path("/venv/bin/python"),
+            model_id="moonshine_voice/tiny-en",
+            runtime="moonshine",
+            spec="tiny-en",
+        )
+    except RuntimeError as exc:
+        msg = str(exc)
+        assert "all HF endpoints" in msg
+        assert "https://hf-mirror.com" in msg
+        assert "https://huggingface.co" in msg
+    else:
+        raise AssertionError("expected RuntimeError when all endpoints fail")
+
+
+def test_download_model_sensevoice_does_not_retry_hf_endpoints(monkeypatch):
+    """SenseVoice uses modelscope; single attempt, no HF endpoint loop."""
+    deploy_module = load_deploy_module()
+    monkeypatch.setattr(deploy_module, "_USER_HF_ENDPOINT", None)
+    calls = []
+
+    def fake_run_command(args, cwd=None, env=None):
+        calls.append(env.get("HF_ENDPOINT") if env else None)
+
+    monkeypatch.setattr(deploy_module, "run_command", fake_run_command)
+
+    deploy_module.download_model(
+        Path("/venv/bin/python"),
+        model_id="iic/SenseVoiceSmall",
+        runtime="sensevoice",
+    )
+
+    assert len(calls) == 1
+
+
+# ---------------------------------------------------------------------------
 # Task 3: uninstall_model / uninstall_all
 # ---------------------------------------------------------------------------
 
@@ -574,3 +803,242 @@ def test_uninstall_all_does_not_remove_unknown_parent_dirs(monkeypatch, tmp_path
     # But the unknown sibling dir and parent dirs should still exist
     assert unknown_dir.exists()
     assert parent_dir.exists()
+
+
+def test_ensure_environment_cuda_force_reinstalls_when_probe_fails(monkeypatch, tmp_path: Path):
+    deploy_module = load_deploy_module()
+    # Need unique module name? load_deploy_module always uses "asr_deploy_test" — existing pattern reuses name. OK if tests sequential.
+    commands = []
+    venv_dir = tmp_path / ".venv"
+    venv_dir.mkdir()
+    (tmp_path / "requirements.txt").write_text("")
+
+    def fake_run_command(args, cwd=None, env=None):
+        commands.append([str(a) for a in args])
+
+    probe_results = iter([False, True])
+
+    monkeypatch.setattr(deploy_module, "SERVICE_DIR", tmp_path)
+    monkeypatch.setattr(deploy_module, "VENV_DIR", venv_dir)
+    monkeypatch.setattr(deploy_module, "run_command", fake_run_command)
+    monkeypatch.setattr(deploy_module, "_torch_cuda_available", lambda: next(probe_results))
+
+    deploy_module.ensure_environment(device="cuda")
+
+    joined = [" ".join(c) for c in commands]
+    assert any("uninstall" in c and "torch" in c for c in joined)
+    assert any("torchaudio" in c and "uninstall" in c for c in joined)
+    force_cmds = [c for c in joined if "--force-reinstall" in c]
+    assert force_cmds
+    assert any("torchaudio" in c for c in force_cmds)
+    assert all("--index-url" in c for c in force_cmds)
+    assert all("pypi.tuna" not in c for c in force_cmds)
+
+
+def test_ensure_environment_cuda_skips_force_when_probe_ok(monkeypatch, tmp_path: Path):
+    deploy_module = load_deploy_module()
+    commands = []
+    venv_dir = tmp_path / ".venv"
+    venv_dir.mkdir()
+    (tmp_path / "requirements.txt").write_text("")
+
+    def fake_run_command(args, cwd=None, env=None):
+        commands.append([str(a) for a in args])
+
+    monkeypatch.setattr(deploy_module, "SERVICE_DIR", tmp_path)
+    monkeypatch.setattr(deploy_module, "VENV_DIR", venv_dir)
+    monkeypatch.setattr(deploy_module, "run_command", fake_run_command)
+    monkeypatch.setattr(deploy_module, "_torch_cuda_available", lambda: True)
+
+    deploy_module.ensure_environment(device="cuda")
+
+    joined = [" ".join(c) for c in commands]
+    assert not any("uninstall" in c for c in joined)
+    assert not any("--force-reinstall" in c for c in joined)
+
+
+# ---------------------------------------------------------------------------
+# Task 5: CLI --env-only / --models
+# ---------------------------------------------------------------------------
+
+
+def test_main_env_only_calls_ensure_environment_not_deploy(monkeypatch):
+    """main(--env-only) only ensures env; does not deploy or install models."""
+    deploy_module = load_deploy_module()
+    ensure_calls = []
+    deploy_calls = []
+    install_calls = []
+    download_calls = []
+
+    monkeypatch.setattr(sys, "argv", ["deploy.py", "--env-only", "--device", "cpu"])
+    monkeypatch.setattr(
+        deploy_module,
+        "ensure_environment",
+        lambda **kwargs: ensure_calls.append(kwargs),
+    )
+    monkeypatch.setattr(
+        deploy_module,
+        "deploy",
+        lambda **kwargs: deploy_calls.append(kwargs),
+    )
+    monkeypatch.setattr(
+        deploy_module,
+        "install_model",
+        lambda *a, **k: install_calls.append((a, k)),
+    )
+    monkeypatch.setattr(
+        deploy_module,
+        "download_model",
+        lambda *a, **k: download_calls.append((a, k)),
+    )
+    monkeypatch.setattr(deploy_module, "detect_best_device", lambda: "cpu")
+
+    deploy_module.main()
+
+    assert len(ensure_calls) == 1
+    assert ensure_calls[0]["device"] == "cpu"
+    assert deploy_calls == []
+    assert install_calls == []
+    assert download_calls == []
+
+
+def test_main_models_sensevoice_small_calls_install_model(monkeypatch):
+    """main(--models sensevoice-small) installs that slug via install_model."""
+    deploy_module = load_deploy_module()
+    install_calls = []
+    deploy_calls = []
+    ensure_calls = []
+
+    monkeypatch.setattr(
+        sys, "argv", ["deploy.py", "--models", "sensevoice-small", "--device", "cpu"]
+    )
+    monkeypatch.setattr(
+        deploy_module,
+        "install_model",
+        lambda slug, **kwargs: install_calls.append({"slug": slug, **kwargs}),
+    )
+    monkeypatch.setattr(
+        deploy_module,
+        "deploy",
+        lambda **kwargs: deploy_calls.append(kwargs),
+    )
+    monkeypatch.setattr(
+        deploy_module,
+        "ensure_environment",
+        lambda **kwargs: ensure_calls.append(kwargs),
+    )
+    monkeypatch.setattr(deploy_module, "detect_best_device", lambda: "cpu")
+
+    deploy_module.main()
+
+    assert len(install_calls) == 1
+    call = install_calls[0]
+    assert call["slug"] == "sensevoice-small"
+    assert call["model_id"] == "iic/SenseVoiceSmall"
+    assert call["runtime"] == "sensevoice"
+    assert call["spec"] is None
+    assert call["device"] == "cpu"
+    assert deploy_calls == []
+    # install_model owns ensure_environment; main does not call it separately
+    assert ensure_calls == []
+
+
+def test_main_models_unknown_slug_raises(monkeypatch):
+    """main(--models bad-slug) exits with a clear unknown-slug message."""
+    deploy_module = load_deploy_module()
+    install_calls = []
+    deploy_calls = []
+
+    monkeypatch.setattr(sys, "argv", ["deploy.py", "--models", "not-a-real-model"])
+    monkeypatch.setattr(
+        deploy_module,
+        "install_model",
+        lambda *a, **k: install_calls.append((a, k)),
+    )
+    monkeypatch.setattr(
+        deploy_module,
+        "deploy",
+        lambda **kwargs: deploy_calls.append(kwargs),
+    )
+    monkeypatch.setattr(deploy_module, "detect_best_device", lambda: "cpu")
+
+    try:
+        deploy_module.main()
+    except SystemExit as exc:
+        msg = str(exc)
+        assert "Unknown ASR model slug" in msg
+        assert "not-a-real-model" in msg
+    else:
+        raise AssertionError("expected SystemExit for unknown slug")
+
+    assert install_calls == []
+    assert deploy_calls == []
+
+
+def test_main_bare_calls_deploy(monkeypatch):
+    """Bare main() (no --env-only / --models) keeps backward-compat deploy()."""
+    deploy_module = load_deploy_module()
+    deploy_calls = []
+    ensure_calls = []
+    install_calls = []
+
+    monkeypatch.setattr(sys, "argv", ["deploy.py", "--device", "cpu"])
+    monkeypatch.setattr(
+        deploy_module,
+        "deploy",
+        lambda **kwargs: deploy_calls.append(kwargs),
+    )
+    monkeypatch.setattr(
+        deploy_module,
+        "ensure_environment",
+        lambda **kwargs: ensure_calls.append(kwargs),
+    )
+    monkeypatch.setattr(
+        deploy_module,
+        "install_model",
+        lambda *a, **k: install_calls.append((a, k)),
+    )
+    monkeypatch.setattr(deploy_module, "detect_best_device", lambda: "cpu")
+
+    deploy_module.main()
+
+    assert len(deploy_calls) == 1
+    assert deploy_calls[0]["device"] == "cpu"
+    assert ensure_calls == []
+    assert install_calls == []
+
+
+def test_main_env_only_prefers_over_models(monkeypatch):
+    """When both --env-only and --models are passed, only ensure_environment runs."""
+    deploy_module = load_deploy_module()
+    ensure_calls = []
+    install_calls = []
+    deploy_calls = []
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["deploy.py", "--env-only", "--models", "sensevoice-small", "--device", "cpu"],
+    )
+    monkeypatch.setattr(
+        deploy_module,
+        "ensure_environment",
+        lambda **kwargs: ensure_calls.append(kwargs),
+    )
+    monkeypatch.setattr(
+        deploy_module,
+        "install_model",
+        lambda *a, **k: install_calls.append((a, k)),
+    )
+    monkeypatch.setattr(
+        deploy_module,
+        "deploy",
+        lambda **kwargs: deploy_calls.append(kwargs),
+    )
+    monkeypatch.setattr(deploy_module, "detect_best_device", lambda: "cpu")
+
+    deploy_module.main()
+
+    assert len(ensure_calls) == 1
+    assert install_calls == []
+    assert deploy_calls == []
