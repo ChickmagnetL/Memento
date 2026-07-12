@@ -1,138 +1,64 @@
 # Memento
 
-Video content to searchable knowledge base assistant.
+Memento 是一款把视频内容转化为可检索知识库的桌面应用。粘贴 B 站或抖音链接，应用会自动提取字幕（无字幕的视频则做语音转录），AI 清洗后入库，之后你就可以像对话一样，从这些视频内容里检索和提问。
 
-## Quick Start
+目前 Memento 还没有打包好的安装包，需要克隆仓库后用一条命令启动（详见下文）。
 
-### Prerequisites
+## 运行 Memento
 
-- Python 3.10+
-- Node 18+
-- [ffmpeg](https://ffmpeg.org) — required for audio extraction (`brew install ffmpeg` on macOS)
-- `jq` — optional, used by the smoke-test script
+Memento 当前以开发态方式运行（暂未提供 .dmg / .exe 安装包）。准备好环境后，一条命令即可启动桌面应用。
 
-### 1. Backend
+### 一次性准备
 
+1. 安装基础依赖：Python 3.10+、Node 18+、ffmpeg（音频提取必需，macOS 用 `brew install ffmpeg`）。
+2. 后端 Python 环境：
 ```bash
 cd backend
 python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+source venv/bin/activate          # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-uvicorn main:app --reload
+cd ..
+```
+3. 前端依赖：
+```bash
+cd frontend && npm install && cd ..
 ```
 
-Audio extraction requires [ffmpeg](https://ffmpeg.org) (`brew install ffmpeg` on macOS).
+> 桌面壳依赖（`desktop/node_modules`）如果缺失，启动脚本会自动 `npm install`，无需手动处理。
 
-### 2. Frontend
+### 启动
 
 ```bash
-cd frontend
-npm install
-npm run dev
+./scripts/dev.sh
 ```
 
-Open http://localhost:3000 once both servers are running.
+`dev.sh` 会拉起前端与桌面壳；桌面壳会再启动后端（端口 8000）和抖音抓取服务，ASR 服务按需懒启动（首次转录音频时才拉起）。关闭窗口或 Ctrl-C 会一并回收所有进程。打开后即进入桌面应用界面。
 
-### 3. ASR Service (optional)
+## 配置模型
 
-Only needed for videos that have no subtitles. See
-[`services/asr/README.md`](services/asr/README.md) for install and startup
-instructions. Videos with soft subtitles skip ASR entirely.
+首次使用前，在应用内的 **Settings** 页面配置两类模型（都必需）：
 
-### 4. Model Configuration
+- **对话模型（chat）**：用于 Chat 页面的问答。
+- **嵌入模型（embedding）**：用于把视频内容向量化入库。
 
-Configure chat and embedding models through the in-app **Settings** page.
-Both a chat model and an embedding model are required.
+两者既可以用云端 API（如 DeepSeek、硅基流动、OpenAI 兼容接口），也可以用本地 Ollama。Settings 里用「预设」管理多套配置。
 
-### 5. First Video
+> 如果你想在本机或另一台 GPU 机器上自建 ASR + Embedding 服务，可以用统一入口 `services/node/bootstrap.py`（跨平台、隔离环境、自动设备检测，固定端口 ASR=16888 / Embedding=16889），详见 [`services/node/README.md`](services/node/README.md)。这条仅在你选「本地」provider 时才需要；用云端 API 的话跳过。
 
-1. Open **Home**, paste a Bilibili or Douyin URL, click *Add video*.
-2. In the imported video cards, click *Process* to extract subtitles (or ASR-transcribe audio).
-3. Go to **Knowledge Base**, select the generated document, click *Index* to
-   vectorize it.
-4. Go to **Chat** and ask questions about the indexed content.
+## 使用流程
 
-### 6. Test & Smoke
+1. 打开应用进入 **Home**，粘贴 B 站或抖音链接，添加视频。
+2. 在导入的视频上点「处理」，提取字幕（无字幕的视频会自动做语音转录）。
+3. 进入 **Knowledge Base（知识库）**，选中生成的文档，清理并入库（向量化）。
+4. 进入 **Chat（对话）**，针对已入库的内容提问。
 
-Backend tests:
+## 常见问题
 
-```bash
-cd backend
-source venv/bin/activate
-pip install -r requirements-dev.txt
-pytest
-```
-
-Frontend lint:
-
-```bash
-cd frontend
-npm run lint
-```
-
-Phase 1 smoke test from the project root:
-
-```bash
-./scripts/smoke-test.sh
-```
-
-> Tip: an in-app tutorial is available at **Help** in the sidebar (or `/help`).
-
-## Phase 2A: Video Intake
-
-With backend and frontend running, open http://localhost:3000 and submit a
-Bilibili or Douyin URL from the Home page. The app creates a pending SQLite
-video record and displays it in the imported-video card carousel/list.
-
-## Phase 2B: Video Processing Workflow
-
-After submitting a Bilibili or Douyin URL, use the processing action on the
-saved video record. Phase 2B updates the record status to `completed`.
-
-Real subtitle extraction, video download, ASR, and OCR are outside the Phase 2B
-scope.
-
-## Phase 2C: Bilibili Subtitle Drafts
-
-Phase 2C supports the first real processing slice for saved Bilibili videos.
-When a Bilibili record has available soft subtitles, clicking `Process` writes a
-Markdown draft to `~/memento_data/knowledge/bilibili/<video_id>.md`, creates a
-document metadata row, and marks the video as `completed`.
-
-Old or public Bilibili subtitles may work without a cookie. Bilibili AI
-subtitles often require an explicit local cookie. Prefer setting it with an
-environment variable for manual testing, then restart the backend:
-
-```bash
-export VIDEO_PROCESSING__BILIBILI_COOKIE='SESSDATA=your-cookie; bili_jct=...'
-```
-
-Do not commit real cookie values.
-
-Unsupported records and Bilibili records without soft subtitles are marked as
-`failed` in this phase. Douyin, ASR, OCR, AI cleanup, chunking, and Qdrant
-indexing are not part of Phase 2C.
-
-## Project Structure
-
-- `backend/` - FastAPI backend server
-- `frontend/` - Next.js frontend application
-- `services/` - Independent model services (ASR, Ollama)
-- `data/` - User data storage (knowledge base, databases)
-
-## Ollama (Local Models)
-
-Set provider to "ollama" in the in-app **Settings** page under chat and/or
-embedding model configuration.
-
-Pull the models first:
-
+- **内置教程**：侧边栏的 **Help** 页面有完整的应用使用教程。
+- **B 站字幕需要 cookie**：B 站的 AI 字幕通常需要 cookie。在 Settings 里配置 B 站 cookie 即可（切勿把真实 cookie 提交到代码库）。
+- **用 Ollama 跑本地模型**：在 Settings 里把 provider 选为 ollama，先拉取模型：
 ```bash
 ollama pull qwen3
 ollama pull qwen3-embedding:0.6b
 ```
-
-**Switching embedding models:** Different embedding models output different
-vector dimensions. When switching models, update `vector_size` in Settings to
-match (e.g. `qwen3-embedding:0.6b` outputs 1024-dim vectors), then delete
-`data/qdrant/` and re-index all documents.
+`qwen3-embedding:0.6b` 输出 1024 维向量。
