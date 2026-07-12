@@ -27,7 +27,7 @@ venv/
 .venv/
 *.egg-info/
 dist/
-build/
+/build/
 *.spec
 
 # Node
@@ -63,3 +63,6 @@ services/*/models/
 # Isolated toolchain (downloaded binaries, machine-specific)
 services/.bin/
 services/.python/
+
+# Desktop packaging artifacts
+desktop/resources/

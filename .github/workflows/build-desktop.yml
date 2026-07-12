@@ -1,0 +1,181 @@
+name: Build Desktop Installers
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'desktop/**'
+      - 'scripts/build-backend.sh'
+      - '.github/workflows/build-desktop.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'desktop/**'
+      - 'scripts/build-backend.sh'
+      - '.github/workflows/build-desktop.yml'
+  workflow_dispatch:
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install ffmpeg
+        run: brew install ffmpeg
+
+      - name: Setup backend venv
+        run: |
+          cd backend
+          python -m venv venv
+          source venv/bin/activate
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Install frontend dependencies
+        run: cd frontend && npm ci
+
+      - name: Install desktop dependencies
+        run: cd desktop && npm ci
+
+      - name: Build backend (PyInstaller)
+        run: |
+          cd backend
+          source venv/bin/activate
+          pyinstaller --noconfirm --onedir --name memento-backend \
+            --paths . \
+            --add-data "storage/schema.sql:storage" \
+            --add-data "config/default.yaml:config" \
+            --collect-data jieba \
+            --collect-submodules qdrant_client \
+            --collect-submodules pydantic_ai \
+            --collect-submodules yt_dlp \
+            --hidden-import aiosqlite \
+            --copy-metadata genai-prices \
+            --copy-metadata pydantic-ai-slim \
+            --copy-metadata openai \
+            --copy-metadata pydantic \
+            --copy-metadata pydantic-settings \
+            --copy-metadata fastapi \
+            --copy-metadata uvicorn \
+            --copy-metadata starlette \
+            desktop_entry.py
+
+      - name: Build frontend (Next.js standalone)
+        run: |
+          cd frontend
+          npm run build
+          cp -r .next/static .next/standalone/.next/static
+          cp -r public .next/standalone/public
+
+      - name: Stage resources
+        run: |
+          cd desktop
+          rm -rf resources
+          mkdir -p resources
+          cp -r ../backend/dist/memento-backend resources/backend
+          cp -r ../frontend/.next/standalone resources/frontend
+
+      - name: Build macOS installer (electron-builder)
+        run: cd desktop && npx electron-builder --mac
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Memento-macOS
+          path: desktop/dist/*.dmg
+          if-no-files-found: error
+
+  build-windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install ffmpeg
+        run: choco install ffmpeg --no-progress
+
+      - name: Setup backend venv
+        run: |
+          cd backend
+          python -m venv venv
+          .\venv\Scripts\Activate.ps1
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Install frontend dependencies
+        run: cd frontend && npm ci
+
+      - name: Install desktop dependencies
+        run: cd desktop && npm ci
+
+      - name: Build backend (PyInstaller)
+        run: |
+          cd backend
+          .\venv\Scripts\Activate.ps1
+          pyinstaller --noconfirm --onedir --name memento-backend `
+            --paths . `
+            --add-data "storage/schema.sql;storage" `
+            --add-data "config/default.yaml;config" `
+            --collect-data jieba `
+            --collect-submodules qdrant_client `
+            --collect-submodules pydantic_ai `
+            --collect-submodules yt_dlp `
+            --hidden-import aiosqlite `
+            --copy-metadata genai-prices `
+            --copy-metadata pydantic-ai-slim `
+            --copy-metadata openai `
+            --copy-metadata pydantic `
+            --copy-metadata pydantic-settings `
+            --copy-metadata fastapi `
+            --copy-metadata uvicorn `
+            --copy-metadata starlette `
+            desktop_entry.py
+
+      - name: Build frontend (Next.js standalone)
+        run: |
+          cd frontend
+          npm run build
+          cp -r .next/static .next/standalone/.next/static
+          cp -r public .next/standalone/public
+
+      - name: Stage resources
+        run: |
+          cd desktop
+          rm -r -Force resources -ErrorAction SilentlyContinue
+          mkdir -Force resources
+          cp -r ../backend/dist/memento-backend resources/backend
+          cp -r ../frontend/.next/standalone resources/frontend
+
+      - name: Build Windows installer (electron-builder)
+        run: cd desktop && npx electron-builder --win
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Memento-Windows
+          path: desktop/dist/*.exe
+          if-no-files-found: error

@@ -14,10 +14,23 @@ const { LoginWindowManager } = require("./login-manager");
 const { VideoPlayerManager } = require("./video-player");
 const { CookieRefreshScheduler } = require("./cookie-refresh");
 
+const FRONTEND_PORT = 3123;
 const FRONTEND_URL =
-  process.env.MEMENTO_FRONTEND_URL || "http://localhost:3000";
+  process.env.MEMENTO_FRONTEND_URL ||
+  (isPackaged() ? `http://localhost:${FRONTEND_PORT}` : "http://localhost:3000");
 const BACKEND_HEALTH_URL = "http://localhost:8000/api/health";
 const DOUYIN_FETCHER_HEALTH_URL = "http://127.0.0.1:8002/health";
+
+function isPackaged() {
+  return app.isPackaged;
+}
+
+function dataDirEnv() {
+  if (!isPackaged()) {
+    return {};
+  }
+  return { STORAGE__DATA_DIR: path.join(app.getPath("userData"), "data") };
+}
 
 let backendProcess = null;
 let douyinFetcherProcess = null;
@@ -31,6 +44,7 @@ function resolveBackendEnv() {
   return {
     ...process.env,
     MEMENTO_PROJECT_ROOT: projectRoot,
+    ...dataDirEnv(),
   };
 }
 
@@ -39,6 +53,13 @@ function resolveBackendCommand() {
   if (process.env.MEMENTO_BACKEND_CMD) {
     const [command, ...args] = process.env.MEMENTO_BACKEND_CMD.split(" ");
     return { command, args, cwd: path.join(__dirname, "..", "backend") };
+  }
+  if (isPackaged()) {
+    const binary = path.join(
+      process.resourcesPath, "backend", "memento-backend",
+      process.platform === "win32" ? "memento-backend.exe" : "memento-backend"
+    );
+    return { command: binary, args: [], cwd: path.dirname(binary) };
   }
   const binary = path.join(
     __dirname, "..", "backend", "dist", "memento-backend", "memento-backend"
@@ -159,10 +180,68 @@ async function waitForHealth(timeoutMs = 30000) {
   throw new Error("Backend did not become healthy in time");
 }
 
+async function waitForFrontendHealth(timeoutMs = 30000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      const response = await fetch(`http://localhost:${FRONTEND_PORT}`);
+      if (response.ok) {
+        return;
+      }
+    } catch {
+      // not up yet
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  throw new Error("Frontend did not become healthy in time");
+}
+
 function stopBackend() {
   if (backendProcess) {
     backendProcess.kill();
     backendProcess = null;
+  }
+}
+
+let frontendProcess = null;
+
+function startFrontend() {
+  if (!isPackaged()) {
+    console.log("[frontend] Dev mode, skipping packaged frontend server.");
+    return;
+  }
+  console.log("[frontend] Starting packaged frontend server...");
+  const serverJs = path.join(
+    process.resourcesPath, "frontend", "server.js"
+  );
+  frontendProcess = spawn(process.execPath, [serverJs], {
+    cwd: path.dirname(serverJs),
+    env: {
+      ...process.env,
+      ELECTRON_RUN_AS_NODE: "1",
+      PORT: String(FRONTEND_PORT),
+      HOSTNAME: "127.0.0.1",
+    },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  frontendProcess.stdout.on("data", (d) => process.stdout.write(`[frontend] ${d}`));
+  frontendProcess.stderr.on("data", (d) => process.stderr.write(`[frontend] ${d}`));
+  frontendProcess.on("error", (error) => {
+    console.warn(`[frontend] Failed to start: ${error.message}`);
+    frontendProcess = null;
+  });
+  frontendProcess.on("exit", (code) => {
+    frontendProcess = null;
+    if (code !== 0 && code !== null) {
+      console.warn(`[frontend] Exited with code ${code}`);
+    }
+  });
+}
+
+function stopFrontend() {
+  if (frontendProcess) {
+    frontendProcess.kill();
+    frontendProcess = null;
   }
 }
 
@@ -174,6 +253,7 @@ function stopDouyinFetcher() {
 }
 
 function stopSidecars() {
+  stopFrontend();
   stopDouyinFetcher();
   stopBackend();
 }
@@ -197,8 +277,12 @@ async function loadBilibiliRefreshToken() {
 app.whenReady().then(async () => {
   await startDouyinFetcher();
   await startBackend();
+  await startFrontend();
   try {
     await waitForHealth();
+    if (isPackaged()) {
+      await waitForFrontendHealth();
+    }
   } catch (error) {
     dialog.showErrorBox("Memento", String(error));
     stopSidecars();
