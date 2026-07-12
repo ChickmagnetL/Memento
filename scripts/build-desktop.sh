@@ -23,6 +23,9 @@ rm -rf resources
 mkdir -p resources
 cp -r "$ROOT/backend/dist/memento-backend" resources/backend
 cp -r "$ROOT/frontend/.next/standalone" resources/frontend
+# electron-builder strips node_modules from extraResources; ship deps as node_deps
+# and resolve them at runtime via NODE_PATH (see desktop/main.js startFrontend).
+mv resources/frontend/node_modules resources/frontend/node_deps
 
 echo "==> electron-builder"
 npm run dist

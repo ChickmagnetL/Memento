@@ -93,6 +93,9 @@ jobs:
           mkdir -p resources
           cp -r ../backend/dist/memento-backend resources/backend
           cp -r ../frontend/.next/standalone resources/frontend
+          # electron-builder strips node_modules from extraResources; ship deps as node_deps
+          # and resolve them at runtime via NODE_PATH (see desktop/main.js startFrontend).
+          mv resources/frontend/node_modules resources/frontend/node_deps
 
       - name: Build macOS installer (electron-builder)
         run: cd desktop && npx electron-builder --mac
@@ -176,6 +179,9 @@ jobs:
           mkdir -Force resources
           cp -r ../backend/dist/memento-backend resources/backend
           cp -r ../frontend/.next/standalone resources/frontend
+          # electron-builder strips node_modules from extraResources; ship deps as node_deps
+          # and resolve them at runtime via NODE_PATH (see desktop/main.js startFrontend).
+          mv resources/frontend/node_modules resources/frontend/node_deps
 
       - name: Build Windows installer (electron-builder)
         run: cd desktop && npx electron-builder --win

@@ -7,6 +7,25 @@
 2. Start frontend: `cd frontend && npm run dev`
 3. Start desktop: `cd desktop && npm start`
 
+## Installation
+
+### macOS
+
+1. Open the `.dmg`, drag **Memento** into **Applications**.
+2. Because the app is unsigned, macOS marks it "damaged" and blocks first launch. Clear the quarantine attribute:
+
+   ```bash
+   xattr -cr /Applications/Memento.app
+   ```
+
+3. Launch Memento from Applications (or Spotlight). First launch may still prompt — right-click → **Open** → **Open** to confirm.
+
+> Why: apps downloaded outside the App Store get a `com.apple.quarantine` extended attribute. Unsigned apps can't clear Gatekeeper on their own, so the attribute must be removed manually. Proper code signing + notarization (see below) removes this step entirely.
+
+### Windows
+
+Run the `.exe` installer. Because it is unsigned, SmartScreen will warn — click **More info** → **Run anyway**.
+
 ## Building Installers
 
 Build a desktop installer for the current platform:

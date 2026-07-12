@@ -56,7 +56,7 @@ function resolveBackendCommand() {
   }
   if (isPackaged()) {
     const binary = path.join(
-      process.resourcesPath, "backend", "memento-backend",
+      process.resourcesPath, "backend",
       process.platform === "win32" ? "memento-backend.exe" : "memento-backend"
     );
     return { command: binary, args: [], cwd: path.dirname(binary) };
@@ -211,16 +211,18 @@ function startFrontend() {
     return;
   }
   console.log("[frontend] Starting packaged frontend server...");
-  const serverJs = path.join(
-    process.resourcesPath, "frontend", "server.js"
-  );
+  const frontendDir = path.join(process.resourcesPath, "frontend");
+  const serverJs = path.join(frontendDir, "server.js");
   frontendProcess = spawn(process.execPath, [serverJs], {
-    cwd: path.dirname(serverJs),
+    cwd: frontendDir,
     env: {
       ...process.env,
       ELECTRON_RUN_AS_NODE: "1",
       PORT: String(FRONTEND_PORT),
       HOSTNAME: "127.0.0.1",
+      // electron-builder strips dirs named "node_modules" from extraResources,
+      // so the standalone deps are shipped as "node_deps" and exposed via NODE_PATH.
+      NODE_PATH: path.join(frontendDir, "node_deps"),
     },
     stdio: ["ignore", "pipe", "pipe"],
   });
