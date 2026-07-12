@@ -12,7 +12,14 @@ from fastapi import APIRouter, HTTPException, Query, Request, status
 from config.settings import get_settings
 from core.video.asr_client import AsrServiceClient
 from core.video.audio import AudioDownloader
-from core.video.bilibili import BilibiliSubtitleClient, BilibiliSubtitleError, extract_bvid
+from core.video.bilibili import (
+    BilibiliSubtitleClient,
+    REASON_AUTH_EXPIRED,
+    REASON_MESSAGES,
+    REASON_NOT_LOGGED_IN,
+    REASON_OK,
+    extract_bvid,
+)
 from core.video.douyin import (
     DouyinAudioDownloader,
     _build_http_resolver as build_douyin_http_resolver,
@@ -154,6 +161,7 @@ async def process_video(
     video_id: str,
     request: Request,
     subtitle_fallback: Literal["asr"] | None = Query(default=None),
+    allow_non_chinese: bool = Query(default=False),
 ) -> dict:
     """Trigger skeleton processing for a video record."""
     sqlite = get_sqlite(request)
@@ -218,9 +226,13 @@ async def process_video(
     )
     try:
         if subtitle_fallback == "asr":
-            result = await pipeline.process_with_asr(processing_video)
+            result = await pipeline.process_with_asr(
+                processing_video, allow_non_chinese=allow_non_chinese
+            )
         else:
-            result = await pipeline.process(processing_video)
+            result = await pipeline.process(
+                processing_video, allow_non_chinese=allow_non_chinese
+            )
         final_status = "completed" if result.status == "completed" else "failed"
         error_message = result.error
     except Exception:
@@ -260,18 +272,26 @@ async def check_subtitles(video_id: str, request: Request) -> dict:
         raise HTTPException(status_code=404, detail="Video not found")
     platform = video.get("platform")
     if platform != "bilibili":
-        return {"has_subtitles": True, "platform": platform}
+        return {
+            "has_subtitles": True,
+            "platform": platform,
+            "reason": REASON_OK,
+            "message": REASON_MESSAGES[REASON_OK],
+        }
     settings = get_settings()
     client = BilibiliSubtitleClient(cookie=settings.video_processing.bilibili_cookie)
-    try:
-        entries = await asyncio.to_thread(client.fetch, video)
-        has_subtitles = bool(entries)
-    except (BilibiliSubtitleError, OSError) as exc:
-        logger.info(
-            "check-subtitles: subtitle fetch failed for %s: %s", video_id, exc
-        )
-        has_subtitles = False
-    return {"has_subtitles": has_subtitles, "platform": "bilibili"}
+    outcome = await asyncio.to_thread(client.fetch_outcome, video)
+    payload = {
+        "has_subtitles": outcome.has_subtitles,
+        "platform": "bilibili",
+        "reason": outcome.reason,
+        "message": outcome.message,
+    }
+    if outcome.reason in (REASON_NOT_LOGGED_IN, REASON_AUTH_EXPIRED):
+        payload["login_path"] = "/login"
+    if getattr(outcome, "available_languages", None):
+        payload["available_languages"] = list(outcome.available_languages)
+    return payload
 
 
 @router.patch("/{video_id}/status", response_model=VideoRecord)

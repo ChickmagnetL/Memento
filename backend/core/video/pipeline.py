@@ -48,24 +48,51 @@ class VideoPipeline:
         self.asr_client = asr_client
         self.asr_model = asr_model
 
-    async def process(self, video: dict) -> VideoProcessingResult:
-        return await self._process(video, allow_asr_fallback=False)
+    async def process(
+        self, video: dict, *, allow_non_chinese: bool = False
+    ) -> VideoProcessingResult:
+        return await self._process(
+            video, allow_asr_fallback=False, allow_non_chinese=allow_non_chinese
+        )
 
-    async def process_with_asr(self, video: dict) -> VideoProcessingResult:
-        return await self._process(video, allow_asr_fallback=True)
+    async def process_with_asr(
+        self, video: dict, *, allow_non_chinese: bool = False
+    ) -> VideoProcessingResult:
+        return await self._process(
+            video, allow_asr_fallback=True, allow_non_chinese=allow_non_chinese
+        )
 
     async def _process(
-        self, video: dict, *, allow_asr_fallback: bool
+        self,
+        video: dict,
+        *,
+        allow_asr_fallback: bool,
+        allow_non_chinese: bool = False,
     ) -> VideoProcessingResult:
         try:
             if video["platform"] == "bilibili":
-                entries = await asyncio.to_thread(self.subtitle_client.fetch, video)
+                if hasattr(self.subtitle_client, "fetch_outcome"):
+                    outcome = await asyncio.to_thread(
+                        self.subtitle_client.fetch_outcome,
+                        video,
+                        allow_non_chinese=allow_non_chinese,
+                    )
+                    entries = outcome.entries
+                    empty_error = BilibiliSubtitleError(outcome.message, reason=outcome.reason)
+                else:
+                    entries = await asyncio.to_thread(
+                        self.subtitle_client.fetch,
+                        video,
+                        allow_non_chinese=allow_non_chinese,
+                    )
+                    empty_error = BilibiliSubtitleError(
+                        "This Bilibili video has no usable soft subtitles. You can transcribe it with ASR instead.",
+                        reason="no_subtitles",
+                    )
                 if not entries and allow_asr_fallback:
                     entries = await self._transcribe_fallback(video, self.audio_downloader)
                 if not entries:
-                    raise BilibiliSubtitleError(
-                        "No subtitles returned — Bilibili may require login cookie or ASR fallback"
-                    )
+                    raise empty_error
             elif video["platform"] == "douyin":
                 entries = await self._transcribe_fallback(video, self.douyin_downloader)
                 if not entries:

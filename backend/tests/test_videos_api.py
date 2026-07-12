@@ -8,7 +8,12 @@ import pytest
 from fastapi.testclient import TestClient
 
 from api import videos
-from core.video.bilibili import BilibiliSubtitleClient, BilibiliSubtitleError
+from core.video.bilibili import (
+    BilibiliSubtitleClient,
+    REASON_NO_SUBTITLES,
+    REASON_NON_CHINESE_SUBTITLES,
+    outcome_for,
+)
 from core.video.douyin import DouyinMetadata
 from core.video.pipeline import VideoPipeline, VideoProcessingResult
 from main import app
@@ -71,7 +76,9 @@ def test_create_bilibili_video_uses_fetched_metadata(client: TestClient, monkeyp
     seen_cookies = []
 
     def get_settings_spy():
-        raise AssertionError("Bilibili metadata import should not read settings")
+        return SimpleNamespace(
+            video_processing=SimpleNamespace(bilibili_cookie=""),
+        )
 
     def fetch_metadata(self, bvid: str):
         assert bvid == "BV1234567890"
@@ -234,7 +241,7 @@ def test_process_pending_video_completes_record(client: TestClient, monkeypatch)
     created = _create_video(client)
     seen_statuses = []
 
-    async def process_spy(self, video: dict) -> VideoProcessingResult:
+    async def process_spy(self, video: dict, *, allow_non_chinese: bool = False) -> VideoProcessingResult:
         seen_statuses.append(video["status"])
         return VideoProcessingResult(video_id=video["id"], status="completed")
 
@@ -287,7 +294,7 @@ def test_process_video_passes_configured_cookie_and_asr_model_to_pipeline(
         seen_cookies.append(cookie)
         seen_asr_models.append(kwargs["asr_model"])
 
-    async def process_spy(self, video: dict) -> VideoProcessingResult:
+    async def process_spy(self, video: dict, *, allow_non_chinese: bool = False) -> VideoProcessingResult:
         return VideoProcessingResult(video_id=video["id"], status="completed")
 
     monkeypatch.setattr(videos, "get_settings", get_settings_spy)
@@ -334,7 +341,7 @@ def test_process_video_passes_asr_protocol_and_api_key_to_client(
     def pipeline_init_spy(self, *, sqlite, data_dir, cookie="", **kwargs):
         pass
 
-    async def process_spy(self, video: dict) -> VideoProcessingResult:
+    async def process_spy(self, video: dict, *, allow_non_chinese: bool = False) -> VideoProcessingResult:
         return VideoProcessingResult(video_id=video["id"], status="completed")
 
     monkeypatch.setattr(videos, "get_settings", get_settings_spy)
@@ -382,7 +389,7 @@ def test_process_video_does_not_run_pipeline_when_claim_fails(
         await sqlite.update_video_status(video_id, "processing")
         return None
 
-    async def process_spy(self, video: dict) -> VideoProcessingResult:
+    async def process_spy(self, video: dict, *, allow_non_chinese: bool = False) -> VideoProcessingResult:
         nonlocal process_called
         process_called = True
         return VideoProcessingResult(video_id=video["id"], status="completed")
@@ -457,7 +464,7 @@ def test_process_completed_video_reprocesses_and_keeps_completed_status(
     monkeypatch.setattr(app.state.qdrant, "delete_for_document", delete_mock)
     seen_statuses = []
 
-    async def process_spy(self, video: dict) -> VideoProcessingResult:
+    async def process_spy(self, video: dict, *, allow_non_chinese: bool = False) -> VideoProcessingResult:
         seen_statuses.append(video["status"])
         return VideoProcessingResult(video_id=video["id"], status="completed")
 
@@ -490,7 +497,7 @@ def test_process_completed_video_without_canonical_document_does_not_fail(
     created = _create_video(client)
     _set_video_status(client, created["id"], "completed")
 
-    async def process_spy(self, video: dict) -> VideoProcessingResult:
+    async def process_spy(self, video: dict, *, allow_non_chinese: bool = False) -> VideoProcessingResult:
         return VideoProcessingResult(video_id=video["id"], status="completed")
 
     monkeypatch.setattr(VideoPipeline, "process", process_spy)
@@ -550,7 +557,7 @@ def test_process_completed_video_reset_failure_restores_completed_status(
     monkeypatch.setattr(app.state.qdrant, "delete_for_document", delete_raises)
     process_called = False
 
-    async def process_spy(self, video: dict) -> VideoProcessingResult:
+    async def process_spy(self, video: dict, *, allow_non_chinese: bool = False) -> VideoProcessingResult:
         nonlocal process_called
         process_called = True
         return VideoProcessingResult(video_id=video["id"], status="completed")
@@ -570,7 +577,7 @@ def test_process_failed_video_completes_record(client: TestClient, monkeypatch):
     created = _create_video(client)
     _set_video_status(client, created["id"], "failed")
 
-    async def process_spy(self, video: dict) -> VideoProcessingResult:
+    async def process_spy(self, video: dict, *, allow_non_chinese: bool = False) -> VideoProcessingResult:
         return VideoProcessingResult(video_id=video["id"], status="completed")
 
     monkeypatch.setattr(VideoPipeline, "process", process_spy)
@@ -586,7 +593,7 @@ def test_process_failed_video_completes_record(client: TestClient, monkeypatch):
 def test_process_pipeline_failure_marks_video_failed(client: TestClient, monkeypatch):
     created = _create_video(client)
 
-    async def process_spy(self, video: dict) -> VideoProcessingResult:
+    async def process_spy(self, video: dict, *, allow_non_chinese: bool = False) -> VideoProcessingResult:
         return VideoProcessingResult(
             video_id=video["id"],
             status="failed",
@@ -606,7 +613,7 @@ def test_process_pipeline_failure_marks_video_failed(client: TestClient, monkeyp
 def test_process_pipeline_exception_marks_video_failed(client: TestClient, monkeypatch):
     created = _create_video(client)
 
-    async def process_spy(self, video: dict) -> VideoProcessingResult:
+    async def process_spy(self, video: dict, *, allow_non_chinese: bool = False) -> VideoProcessingResult:
         raise KeyError("boom")
 
     monkeypatch.setattr(VideoPipeline, "process", process_spy)
@@ -641,20 +648,18 @@ def test_delete_missing_video_returns_404(client: TestClient):
     assert resp.status_code == 404
 
 
-def test_check_subtitles_returns_false_for_bilibili_without_cookie(
-    client: TestClient, monkeypatch
-):
+def test_check_subtitles_not_logged_in_without_usable_cookie(client: TestClient):
     created = _create_video(client)
-
-    def fake_fetch(self, video):
-        return []
-
-    monkeypatch.setattr(BilibiliSubtitleClient, "fetch", fake_fetch)
 
     resp = client.get(f"/api/videos/{created['id']}/check-subtitles")
 
     assert resp.status_code == 200
-    assert resp.json() == {"has_subtitles": False, "platform": "bilibili"}
+    data = resp.json()
+    assert data["has_subtitles"] is False
+    assert data["platform"] == "bilibili"
+    assert data["reason"] == "not_logged_in"
+    assert "Login" in data["message"] or "login" in data["message"]
+    assert data["login_path"] == "/login"
 
 
 def test_check_subtitles_true_for_non_bilibili(client: TestClient):
@@ -666,25 +671,134 @@ def test_check_subtitles_true_for_non_bilibili(client: TestClient):
     resp = client.get(f"/api/videos/{created['id']}/check-subtitles")
 
     assert resp.status_code == 200
-    assert resp.json() == {"has_subtitles": True, "platform": "douyin"}
+    data = resp.json()
+    assert data["has_subtitles"] is True
+    assert data["platform"] == "douyin"
+    assert data["reason"] == "ok"
+    assert "available" in data["message"].lower()
+    assert "login_path" not in data
 
 
-@pytest.mark.parametrize(
-    "exc",
-    [BilibiliSubtitleError("malformed"), OSError("network down")],
-    ids=["subtitle-error", "network-error"],
-)
-def test_check_subtitles_returns_false_when_fetch_fails(
-    client: TestClient, monkeypatch, exc
+def test_check_subtitles_maps_fetch_outcome(
+    client: TestClient, monkeypatch, tmp_path: Path
 ):
     created = _create_video(client)
 
-    def fake_fetch(self, video):
-        raise exc
+    def get_settings_with_cookie():
+        return SimpleNamespace(
+            storage=SimpleNamespace(data_dir=tmp_path, keep_videos=False),
+            video_processing=SimpleNamespace(
+                bilibili_cookie="SESSDATA=alive",
+                douyin_cookie="",
+                douyin_fetcher_endpoint="",
+            ),
+            models=SimpleNamespace(
+                asr=SimpleNamespace(endpoint=None, model="iic/SenseVoiceSmall")
+            ),
+        )
 
-    monkeypatch.setattr(BilibiliSubtitleClient, "fetch", fake_fetch)
+    outcome = outcome_for(REASON_NO_SUBTITLES)
+
+    def fake_fetch_outcome(self, video):
+        return outcome
+
+    monkeypatch.setattr(videos, "get_settings", get_settings_with_cookie)
+    monkeypatch.setattr(BilibiliSubtitleClient, "fetch_outcome", fake_fetch_outcome)
 
     resp = client.get(f"/api/videos/{created['id']}/check-subtitles")
 
     assert resp.status_code == 200
-    assert resp.json() == {"has_subtitles": False, "platform": "bilibili"}
+    data = resp.json()
+    assert data["has_subtitles"] is False
+    assert data["platform"] == "bilibili"
+    assert data["reason"] == REASON_NO_SUBTITLES
+    assert data["message"] == outcome.message
+    assert "login_path" not in data
+
+
+def test_check_subtitles_maps_non_chinese_available_languages(
+    client: TestClient, monkeypatch, tmp_path: Path
+):
+    created = _create_video(client)
+
+    def get_settings_with_cookie():
+        return SimpleNamespace(
+            storage=SimpleNamespace(data_dir=tmp_path, keep_videos=False),
+            video_processing=SimpleNamespace(
+                bilibili_cookie="SESSDATA=alive",
+                douyin_cookie="",
+                douyin_fetcher_endpoint="",
+            ),
+            models=SimpleNamespace(
+                asr=SimpleNamespace(endpoint=None, model="iic/SenseVoiceSmall")
+            ),
+        )
+
+    outcome = outcome_for(
+        REASON_NON_CHINESE_SUBTITLES,
+        available_languages=("ai-en", "ai-ja"),
+    )
+
+    def fake_fetch_outcome(self, video, *, allow_non_chinese: bool = False):
+        return outcome
+
+    monkeypatch.setattr(videos, "get_settings", get_settings_with_cookie)
+    monkeypatch.setattr(BilibiliSubtitleClient, "fetch_outcome", fake_fetch_outcome)
+
+    resp = client.get(f"/api/videos/{created['id']}/check-subtitles")
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["has_subtitles"] is False
+    assert data["platform"] == "bilibili"
+    assert data["reason"] == REASON_NON_CHINESE_SUBTITLES
+    assert data["message"] == outcome.message
+    assert data["available_languages"] == ["ai-en", "ai-ja"]
+    assert "login_path" not in data
+
+
+def test_process_video_passes_allow_non_chinese(
+    client: TestClient, monkeypatch
+):
+    created = _create_video(client)
+    seen = {}
+
+    async def process_spy(
+        self, video: dict, *, allow_non_chinese: bool = False
+    ) -> VideoProcessingResult:
+        seen["allow_non_chinese"] = allow_non_chinese
+        return VideoProcessingResult(
+            video_id=video["id"],
+            status="completed",
+            document_id="d1",
+            document_path="x",
+        )
+
+    monkeypatch.setattr(VideoPipeline, "process", process_spy)
+
+    resp = client.post(
+        f"/api/videos/{created['id']}/process?allow_non_chinese=true"
+    )
+
+    assert resp.status_code == 200
+    assert seen.get("allow_non_chinese") is True
+
+
+def test_process_video_defaults_allow_non_chinese_false(
+    client: TestClient, monkeypatch
+):
+    created = _create_video(client)
+    seen = {}
+
+    async def process_spy(
+        self, video: dict, *, allow_non_chinese: bool = False
+    ) -> VideoProcessingResult:
+        seen["allow_non_chinese"] = allow_non_chinese
+        return VideoProcessingResult(video_id=video["id"], status="completed")
+
+    monkeypatch.setattr(VideoPipeline, "process", process_spy)
+
+    resp = client.post(f"/api/videos/{created['id']}/process")
+
+    assert resp.status_code == 200
+    assert seen.get("allow_non_chinese") is False

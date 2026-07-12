@@ -7,6 +7,8 @@ from core.video.bilibili import (
     BilibiliSubtitleClient,
     BilibiliSubtitleError,
     SubtitleEntry,
+    SubtitleFetchOutcome,
+    cookie_is_usable,
     extract_bvid,
 )
 
@@ -24,6 +26,347 @@ def test_extract_bvid_from_bilibili_urls():
 
 def test_extract_bvid_returns_none_for_missing_bvid():
     assert extract_bvid("https://www.bilibili.com/video/av123") is None
+
+
+def test_cookie_is_usable_requires_sessdata():
+    assert cookie_is_usable("") is False
+    assert cookie_is_usable("   ") is False
+    assert cookie_is_usable("bili_jct=abc") is False
+    assert cookie_is_usable("SESSDATA=xyz") is True
+    assert cookie_is_usable("bili_jct=1; SESSDATA=xyz; sid=2") is True
+
+
+def test_fetch_outcome_not_logged_in_without_cookie():
+    client = BilibiliSubtitleClient(cookie="")
+
+    def boom(*args, **kwargs):
+        raise AssertionError("must not call network without cookie")
+
+    client.fetch_json = boom  # type: ignore[method-assign]
+    outcome = client.fetch_outcome({"url": "https://www.bilibili.com/video/BV1abcDEF234"})
+    assert isinstance(outcome, SubtitleFetchOutcome)
+    assert outcome.entries == []
+    assert outcome.reason == "not_logged_in"
+    assert "Login" in outcome.message
+    assert "Settings" not in outcome.message
+
+
+def test_fetch_outcome_auth_expired_on_player_code_minus_101():
+    def fake_fetch_json(url: str, referer: str | None = None, cookie: str | None = None):
+        if "pagelist" in url:
+            return {"code": 0, "data": [{"cid": 456}]}
+        if "player/v2" in url:
+            return {"code": -101, "message": "账号未登录", "data": None}
+        raise AssertionError(url)
+
+    client = BilibiliSubtitleClient(
+        fetch_json=fake_fetch_json, cookie="SESSDATA=alive"
+    )
+    outcome = client.fetch_outcome({"url": "https://www.bilibili.com/video/BV1abcDEF234"})
+    assert outcome.reason == "auth_expired"
+    assert outcome.entries == []
+    assert "Login" in outcome.message
+    assert "Settings" not in outcome.message
+
+
+def test_fetch_outcome_auth_expired_on_pagelist_code_minus_101():
+    def fake_fetch_json(url: str, referer: str | None = None, cookie: str | None = None):
+        if "pagelist" in url:
+            return {"code": -101, "message": "账号未登录", "data": None}
+        raise AssertionError(f"must stop at pagelist: {url}")
+
+    client = BilibiliSubtitleClient(
+        fetch_json=fake_fetch_json, cookie="SESSDATA=alive"
+    )
+    outcome = client.fetch_outcome({"url": "https://www.bilibili.com/video/BV1abcDEF234"})
+    assert outcome.reason == "auth_expired"
+    assert outcome.entries == []
+    assert "Login" in outcome.message
+    assert "Settings" not in outcome.message
+
+
+def test_fetch_outcome_no_subtitles_when_empty_track_list(monkeypatch):
+    monkeypatch.setattr("core.video.bilibili.PLAYER_SUBTITLE_RETRY_SECONDS", 0.05)
+    monkeypatch.setattr("core.video.bilibili.PLAYER_SUBTITLE_RETRY_INTERVAL_SECONDS", 0.0)
+    monkeypatch.setattr("core.video.bilibili.time.sleep", lambda _s: None)
+
+    def fake_fetch_json(url: str, referer: str | None = None, cookie: str | None = None):
+        if "pagelist" in url:
+            return {"code": 0, "data": [{"cid": 456}]}
+        if "player/v2" in url:
+            return {"code": 0, "data": {"subtitle": {"subtitles": []}}}
+        raise AssertionError(url)
+
+    client = BilibiliSubtitleClient(
+        fetch_json=fake_fetch_json, cookie="SESSDATA=alive"
+    )
+    outcome = client.fetch_outcome({"url": "https://www.bilibili.com/video/BV1abcDEF234"})
+    assert outcome.reason == "no_subtitles"
+    assert outcome.entries == []
+    message = outcome.message
+    assert ("soft subtitles" in message) or ("ASR" in message)
+    assert "Settings" not in message
+
+
+def test_fetch_outcome_empty_track_list_retries_then_ok(monkeypatch):
+    monkeypatch.setattr("core.video.bilibili.PLAYER_SUBTITLE_RETRY_SECONDS", 0.05)
+    monkeypatch.setattr("core.video.bilibili.PLAYER_SUBTITLE_RETRY_INTERVAL_SECONDS", 0.0)
+    monkeypatch.setattr("core.video.bilibili.time.sleep", lambda _s: None)
+    good_url = (
+        "https://aisubtitle.hdslb.com/bfs/ai_subtitle/prod/"
+        "123456789456zh0001/subtitle.json"
+    )
+    responses = iter(
+        [
+            {"code": 0, "data": {"aid": 123456789, "subtitle": {"subtitles": []}}},
+            {
+                "code": 0,
+                "data": {
+                    "aid": 123456789,
+                    "subtitle": {
+                        "subtitles": [
+                            {"lan": "ai-zh", "subtitle_url": good_url}
+                        ]
+                    },
+                },
+            },
+        ]
+    )
+
+    def fake_fetch_json(url: str, referer: str | None = None, cookie: str | None = None):
+        if "pagelist" in url:
+            return {"code": 0, "data": [{"cid": 456}]}
+        if "player/v2" in url:
+            return next(responses)
+        if url == good_url:
+            return {"body": [{"from": 1.0, "content": "late subtitle"}]}
+        raise AssertionError(url)
+
+    client = BilibiliSubtitleClient(
+        fetch_json=fake_fetch_json, cookie="SESSDATA=alive"
+    )
+    outcome = client.fetch_outcome({"url": "https://www.bilibili.com/video/BV1abcDEF234"})
+    assert outcome.reason == "ok"
+    assert outcome.entries == [
+        SubtitleEntry(start_seconds=1.0, text="late subtitle")
+    ]
+
+
+def test_fetch_outcome_digit_leading_hex_hash_is_usable():
+    # expected_prefix = "123456789456" (aid 123456789 + cid 456)
+    # prod starts with digits but head has letters → HASH usable
+    hash_url = (
+        "https://aisubtitle.hdslb.com/bfs/ai_subtitle/prod/"
+        "259de896abcdef0123456789/subtitle.json"
+    )
+
+    def fake_fetch_json(url: str, referer: str | None = None, cookie: str | None = None):
+        if "pagelist" in url:
+            return {"code": 0, "data": [{"cid": 456}]}
+        if "player/v2" in url:
+            return {
+                "code": 0,
+                "data": {
+                    "aid": 123456789,
+                    "subtitle": {
+                        "subtitles": [
+                            {"lan": "ai-zh", "subtitle_url": hash_url}
+                        ]
+                    },
+                },
+            }
+        if url == hash_url:
+            return {"body": [{"from": 1.0, "content": "digit-leading hash subtitle"}]}
+        raise AssertionError(url)
+
+    client = BilibiliSubtitleClient(
+        fetch_json=fake_fetch_json, cookie="SESSDATA=alive"
+    )
+    outcome = client.fetch_outcome({"url": "https://www.bilibili.com/video/BV1abcDEF234"})
+    assert outcome.reason == "ok"
+    assert outcome.entries == [
+        SubtitleEntry(start_seconds=1.0, text="digit-leading hash subtitle")
+    ]
+
+
+def test_fetch_outcome_subtitle_unstable_when_ai_prefix_never_matches(monkeypatch):
+    mismatched = (
+        "https://aisubtitle.hdslb.com/bfs/subtitle/prod/"
+        "999888777000hexvalue.json"
+    )
+    monkeypatch.setattr("core.video.bilibili.PLAYER_SUBTITLE_RETRY_SECONDS", 0.05)
+    monkeypatch.setattr("core.video.bilibili.PLAYER_SUBTITLE_RETRY_INTERVAL_SECONDS", 0.0)
+    monkeypatch.setattr("core.video.bilibili.time.sleep", lambda _s: None)
+
+    def fake_fetch_json(url: str, referer: str | None = None, cookie: str | None = None):
+        if "pagelist" in url:
+            return {"code": 0, "data": [{"cid": 456}]}
+        if "player/v2" in url:
+            return {
+                "code": 0,
+                "data": {
+                    "aid": 123,
+                    "subtitle": {
+                        "subtitles": [
+                            {"lan": "ai-zh", "subtitle_url": mismatched}
+                        ]
+                    },
+                },
+            }
+        raise AssertionError(f"body should not be fetched: {url}")
+
+    client = BilibiliSubtitleClient(
+        fetch_json=fake_fetch_json, cookie="SESSDATA=alive"
+    )
+    outcome = client.fetch_outcome({"url": "https://www.bilibili.com/video/BV1abcDEF234"})
+    assert outcome.reason == "subtitle_unstable"
+    assert outcome.entries == []
+    message = outcome.message
+    assert "Settings" not in message
+    assert ("Retry" in message) or ("temporarily" in message)
+
+
+def test_fetch_outcome_non_chinese_only_ai_en_hash_without_allow():
+    hash_url = (
+        "https://aisubtitle.hdslb.com/bfs/ai_subtitle/prod/"
+        "a1b2c3d4e5f67890abcdef12/subtitle.json"
+    )
+
+    def fake_fetch_json(url: str, referer: str | None = None, cookie: str | None = None):
+        if "pagelist" in url:
+            return {"code": 0, "data": [{"cid": 456}]}
+        if "player/v2" in url:
+            return {
+                "code": 0,
+                "data": {
+                    "aid": 123456789,
+                    "subtitle": {
+                        "subtitles": [
+                            {"lan": "ai-en", "subtitle_url": hash_url}
+                        ]
+                    },
+                },
+            }
+        raise AssertionError(f"body should not be fetched: {url}")
+
+    client = BilibiliSubtitleClient(
+        fetch_json=fake_fetch_json, cookie="SESSDATA=alive"
+    )
+    outcome = client.fetch_outcome({"url": "https://www.bilibili.com/video/BV1abcDEF234"})
+    assert outcome.reason == "non_chinese_subtitles"
+    assert outcome.entries == []
+    assert "ai-en" in outcome.available_languages
+    assert outcome.has_subtitles is False
+    assert ("other languages" in outcome.message.lower()) or ("official" in outcome.message.lower())
+
+
+def test_fetch_outcome_non_chinese_allow_imports_ai_en():
+    hash_url = (
+        "https://aisubtitle.hdslb.com/bfs/ai_subtitle/prod/"
+        "a1b2c3d4e5f67890abcdef12/subtitle.json"
+    )
+
+    def fake_fetch_json(url: str, referer: str | None = None, cookie: str | None = None):
+        if "pagelist" in url:
+            return {"code": 0, "data": [{"cid": 456}]}
+        if "player/v2" in url:
+            return {
+                "code": 0,
+                "data": {
+                    "aid": 123456789,
+                    "subtitle": {
+                        "subtitles": [
+                            {"lan": "ai-en", "subtitle_url": hash_url}
+                        ]
+                    },
+                },
+            }
+        if url == hash_url or url.endswith("subtitle.json"):
+            return {"body": [{"from": 1.0, "content": "english ai subtitle"}]}
+        raise AssertionError(f"unexpected URL: {url}")
+
+    client = BilibiliSubtitleClient(
+        fetch_json=fake_fetch_json, cookie="SESSDATA=alive"
+    )
+    outcome = client.fetch_outcome(
+        {"url": "https://www.bilibili.com/video/BV1abcDEF234"},
+        allow_non_chinese=True,
+    )
+    assert outcome.reason == "ok"
+    assert outcome.entries == [
+        SubtitleEntry(start_seconds=1.0, text="english ai subtitle")
+    ]
+
+
+def test_fetch_outcome_digit_other_only_not_non_chinese_success(monkeypatch):
+    mismatched = (
+        "https://aisubtitle.hdslb.com/bfs/subtitle/prod/"
+        "999888777000hexvalue.json"
+    )
+    monkeypatch.setattr("core.video.bilibili.PLAYER_SUBTITLE_RETRY_SECONDS", 0.05)
+    monkeypatch.setattr("core.video.bilibili.PLAYER_SUBTITLE_RETRY_INTERVAL_SECONDS", 0.0)
+    monkeypatch.setattr("core.video.bilibili.time.sleep", lambda _s: None)
+
+    def fake_fetch_json(url: str, referer: str | None = None, cookie: str | None = None):
+        if "pagelist" in url:
+            return {"code": 0, "data": [{"cid": 456}]}
+        if "player/v2" in url:
+            return {
+                "code": 0,
+                "data": {
+                    "aid": 123,
+                    "subtitle": {
+                        "subtitles": [
+                            {"lan": "ai-en", "subtitle_url": mismatched}
+                        ]
+                    },
+                },
+            }
+        raise AssertionError(f"body should not be fetched: {url}")
+
+    client = BilibiliSubtitleClient(
+        fetch_json=fake_fetch_json, cookie="SESSDATA=alive"
+    )
+    outcome = client.fetch_outcome({"url": "https://www.bilibili.com/video/BV1abcDEF234"})
+    assert outcome.reason == "subtitle_unstable"
+    assert outcome.reason != "non_chinese_subtitles"
+    assert outcome.entries == []
+
+
+def test_fetch_outcome_ai_zh_match_still_ok_without_allow():
+    match_url = (
+        "https://aisubtitle.hdslb.com/bfs/ai_subtitle/prod/"
+        "123456789456zh0001/subtitle.json"
+    )
+
+    def fake_fetch_json(url: str, referer: str | None = None, cookie: str | None = None):
+        if "pagelist" in url:
+            return {"code": 0, "data": [{"cid": 456}]}
+        if "player/v2" in url:
+            return {
+                "code": 0,
+                "data": {
+                    "aid": 123456789,
+                    "subtitle": {
+                        "subtitles": [
+                            {"lan": "ai-en", "subtitle_url": match_url.replace("zh0001", "en0001")},
+                            {"lan": "ai-zh", "subtitle_url": match_url},
+                        ]
+                    },
+                },
+            }
+        if url == match_url:
+            return {"body": [{"from": 1.0, "content": "chinese ai subtitle"}]}
+        raise AssertionError(f"unexpected URL: {url}")
+
+    client = BilibiliSubtitleClient(
+        fetch_json=fake_fetch_json, cookie="SESSDATA=alive"
+    )
+    outcome = client.fetch_outcome({"url": "https://www.bilibili.com/video/BV1abcDEF234"})
+    assert outcome.reason == "ok"
+    assert outcome.entries == [
+        SubtitleEntry(start_seconds=1.0, text="chinese ai subtitle")
+    ]
 
 
 def test_fetch_json_uses_urllib_headers_timeout_and_parses_json(monkeypatch):
@@ -211,7 +554,11 @@ def test_fetch_subtitles_normalizes_body_entries(
     assert calls[2] == (expected_fetch_url, source_url)
 
 
-def test_fetch_subtitles_returns_empty_when_player_has_no_subtitles():
+def test_fetch_subtitles_returns_empty_when_player_has_no_subtitles(monkeypatch):
+    monkeypatch.setattr("core.video.bilibili.PLAYER_SUBTITLE_RETRY_SECONDS", 0.05)
+    monkeypatch.setattr("core.video.bilibili.PLAYER_SUBTITLE_RETRY_INTERVAL_SECONDS", 0.0)
+    monkeypatch.setattr("core.video.bilibili.time.sleep", lambda _s: None)
+
     def fake_fetch_json(url: str, referer: str | None = None, cookie: str | None = None) -> dict:
         if url.startswith("https://api.bilibili.com/x/player/pagelist"):
             return {"data": [{"cid": 456}]}
@@ -279,6 +626,80 @@ def test_fetch_subtitles_prefers_human_track_and_skips_ai_prod_prefix_validation
     assert entries == [SubtitleEntry(start_seconds=1.0, text="human subtitle")]
     assert calls[-1][0] == human_url
     assert ai_url not in [call[0] for call in calls]
+
+
+def test_fetch_subtitles_accepts_hash_style_ai_prod_segment():
+    calls = []
+    hash_url = (
+        "https://aisubtitle.hdslb.com/bfs/ai_subtitle/prod/"
+        "a1b2c3d4e5f67890abcdef12/subtitle.json"
+    )
+
+    def fake_fetch_json(url: str, referer: str | None = None, cookie: str | None = None) -> dict:
+        calls.append((url, referer, cookie))
+        if url.startswith("https://api.bilibili.com/x/player/pagelist"):
+            return {"data": [{"cid": 456}]}
+        if url.startswith("https://api.bilibili.com/x/player/v2"):
+            return {
+                "data": {
+                    "aid": 123456789,
+                    "subtitle": {
+                        "subtitles": [
+                            {"lan": "ai-zh", "subtitle_url": hash_url}
+                        ]
+                    },
+                }
+            }
+        if url == hash_url:
+            return {"body": [{"from": 1.0, "content": "hash style subtitle"}]}
+        raise AssertionError(f"unexpected URL: {url}")
+
+    client = BilibiliSubtitleClient(fetch_json=fake_fetch_json)
+
+    entries = client.fetch({"url": "https://www.bilibili.com/video/BV1abcDEF234"})
+
+    assert entries == [SubtitleEntry(start_seconds=1.0, text="hash style subtitle")]
+    assert calls[-1][0] == hash_url
+
+
+def test_fetch_subtitles_prefers_ai_zh_over_ai_en_when_no_human_track():
+    calls = []
+    ai_en_url = (
+        "https://aisubtitle.hdslb.com/bfs/ai_subtitle/prod/"
+        "123456789456en0001/subtitle.json"
+    )
+    ai_zh_url = (
+        "https://aisubtitle.hdslb.com/bfs/ai_subtitle/prod/"
+        "123456789456zh0001/subtitle.json"
+    )
+
+    def fake_fetch_json(url: str, referer: str | None = None, cookie: str | None = None) -> dict:
+        calls.append((url, referer, cookie))
+        if url.startswith("https://api.bilibili.com/x/player/pagelist"):
+            return {"data": [{"cid": 456}]}
+        if url.startswith("https://api.bilibili.com/x/player/v2"):
+            return {
+                "data": {
+                    "aid": 123456789,
+                    "subtitle": {
+                        "subtitles": [
+                            {"lan": "ai-en", "subtitle_url": ai_en_url},
+                            {"lan": "ai-zh", "subtitle_url": ai_zh_url},
+                        ]
+                    },
+                }
+            }
+        if url == ai_zh_url:
+            return {"body": [{"from": 1.0, "content": "chinese ai subtitle"}]}
+        raise AssertionError(f"unexpected URL: {url}")
+
+    client = BilibiliSubtitleClient(fetch_json=fake_fetch_json)
+
+    entries = client.fetch({"url": "https://www.bilibili.com/video/BV1abcDEF234"})
+
+    assert entries == [SubtitleEntry(start_seconds=1.0, text="chinese ai subtitle")]
+    assert calls[-1][0] == ai_zh_url
+    assert ai_en_url not in [call[0] for call in calls]
 
 
 def test_fetch_subtitles_retries_until_player_returns_matching_prod_prefix():
@@ -464,7 +885,12 @@ def test_fetch_subtitles_raises_for_malformed_subtitle_url_without_fetching_body
         {"data": {"subtitle": {"subtitles": [{"subtitle_url": ""}]}}},
     ],
 )
-def test_fetch_subtitles_returns_empty_for_missing_player_subtitles(player_response):
+def test_fetch_subtitles_returns_empty_for_missing_player_subtitles(
+    player_response, monkeypatch
+):
+    monkeypatch.setattr("core.video.bilibili.PLAYER_SUBTITLE_RETRY_SECONDS", 0.05)
+    monkeypatch.setattr("core.video.bilibili.PLAYER_SUBTITLE_RETRY_INTERVAL_SECONDS", 0.0)
+    monkeypatch.setattr("core.video.bilibili.time.sleep", lambda _s: None)
     assert _fetch_subtitles_with_player_response(player_response) == []
 
 

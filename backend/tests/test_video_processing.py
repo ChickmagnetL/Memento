@@ -25,9 +25,17 @@ class FakeSubtitleClient:
         self.entries = entries
         self.calls = 0
 
-    def fetch(self, video: dict) -> list[SubtitleEntry]:
+    def fetch(self, video: dict, *, allow_non_chinese: bool = False) -> list[SubtitleEntry]:
         self.calls += 1
         return self.entries
+
+    def fetch_outcome(self, video: dict, *, allow_non_chinese: bool = False):
+        from core.video.bilibili import outcome_for, REASON_OK, REASON_NO_SUBTITLES
+
+        self.calls += 1
+        if self.entries:
+            return outcome_for(REASON_OK, self.entries)
+        return outcome_for(REASON_NO_SUBTITLES)
 
 
 class UnavailableDraftWriter:
@@ -39,9 +47,18 @@ class ThreadRecordingSubtitleClient:
     def __init__(self) -> None:
         self.thread_id: int | None = None
 
-    def fetch(self, video: dict) -> list[SubtitleEntry]:
+    def fetch(self, video: dict, *, allow_non_chinese: bool = False) -> list[SubtitleEntry]:
         self.thread_id = threading.get_ident()
         return [SubtitleEntry(start_seconds=1.0, text="第一行")]
+
+    def fetch_outcome(self, video: dict, *, allow_non_chinese: bool = False):
+        from core.video.bilibili import outcome_for, REASON_OK
+
+        self.thread_id = threading.get_ident()
+        return outcome_for(
+            REASON_OK,
+            [SubtitleEntry(start_seconds=1.0, text="第一行")],
+        )
 
 
 class ThreadRecordingDraftWriter:
@@ -271,6 +288,8 @@ async def test_process_douyin_video_returns_failed(
 async def test_process_empty_subtitles_without_fallback_returns_failed(
     sqlite: SQLiteClient, tmp_path: Path
 ):
+    from core.video.bilibili import REASON_MESSAGES, REASON_NO_SUBTITLES
+
     pipeline = VideoPipeline(
         sqlite=sqlite,
         data_dir=tmp_path,
@@ -284,7 +303,42 @@ async def test_process_empty_subtitles_without_fallback_returns_failed(
     assert result.status == "failed"
     assert result.document_id is None
     assert result.document_path is None
-    assert "cookie" in result.error.lower()
+    assert result.error == REASON_MESSAGES[REASON_NO_SUBTITLES]
+    assert "cookie" not in result.error.lower()
+    assert (
+        "No subtitles returned — Bilibili may require login cookie or ASR fallback"
+        not in result.error
+    )
+
+
+@pytest.mark.asyncio
+async def test_process_uses_fetch_outcome_message(
+    sqlite: SQLiteClient, tmp_path: Path
+):
+    from core.video.bilibili import (
+        REASON_AUTH_EXPIRED,
+        REASON_MESSAGES,
+        outcome_for,
+    )
+
+    class AuthExpiredClient:
+        def fetch_outcome(self, video, *, allow_non_chinese: bool = False):
+            return outcome_for(REASON_AUTH_EXPIRED)
+
+        def fetch(self, video, *, allow_non_chinese: bool = False):
+            raise AssertionError("fetch should not be used when fetch_outcome exists")
+
+    pipeline = VideoPipeline(
+        sqlite=sqlite,
+        data_dir=tmp_path,
+        subtitle_client=AuthExpiredClient(),
+    )
+    video = make_video("video-1", "bilibili")
+
+    result = await pipeline.process(video)
+
+    assert result.status == "failed"
+    assert result.error == REASON_MESSAGES[REASON_AUTH_EXPIRED]
 
 
 @pytest.mark.asyncio
