@@ -42,6 +42,37 @@ function actionLabel(status: string): string {
   return "Process";
 }
 
+async function refreshBilibiliCookieIfPossible() {
+  if (typeof window === "undefined" || !window.electron?.refreshBilibiliCookie) return;
+  try {
+    await window.electron.refreshBilibiliCookie();
+  } catch {
+    // ignore
+  }
+}
+
+function mapSoftSubtitleError(
+  errorMessage: string
+): { reason: string; message?: string } | null {
+  const lower = errorMessage.toLowerCase();
+  if (errorMessage.includes("No Chinese soft subtitles")) {
+    return { reason: "non_chinese_subtitles", message: errorMessage };
+  }
+  if (errorMessage.includes("no usable soft subtitles")) {
+    return { reason: "no_subtitles", message: errorMessage };
+  }
+  if (errorMessage.includes("temporarily unavailable")) {
+    return { reason: "subtitle_unstable", message: errorMessage };
+  }
+  if (lower.includes("login expired")) {
+    return { reason: "auth_expired", message: errorMessage };
+  }
+  if (lower.includes("login is required")) {
+    return { reason: "not_logged_in", message: errorMessage };
+  }
+  return null;
+}
+
 export function VideoIntake({ initialVideos }: VideoIntakeProps) {
   const router = useRouter();
   const [url, setUrl] = useState("");
@@ -53,6 +84,9 @@ export function VideoIntake({ initialVideos }: VideoIntakeProps) {
   const [pendingSubtitleDecision, setPendingSubtitleDecision] = useState<{
     videoId: string;
     title: string;
+    reason: string;
+    message?: string;
+    availableLanguages?: string[];
   } | null>(null);
 
   // Carousel state
@@ -94,13 +128,29 @@ export function VideoIntake({ initialVideos }: VideoIntakeProps) {
     }
   }
 
-  async function runProcess(videoId: string, fallback?: "asr") {
+  async function runProcess(
+    videoId: string,
+    fallback?: "asr",
+    options?: { allowNonChinese?: boolean }
+  ) {
     setProcessingVideoId(videoId);
     try {
-      const processed = await processVideo(videoId, fallback);
+      const processed = await processVideo(videoId, fallback, options);
       await refreshVideos();
       if (processed.status === "failed" && processed.error_message) {
-        setError(processed.error_message);
+        const mapped = mapSoftSubtitleError(processed.error_message);
+        if (mapped) {
+          const title =
+            videos.find((item) => item.id === videoId)?.title ?? "Video";
+          setPendingSubtitleDecision({
+            videoId,
+            title,
+            reason: mapped.reason,
+            message: mapped.message,
+          });
+        } else {
+          setError(processed.error_message);
+        }
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Operation failed");
@@ -121,15 +171,35 @@ export function VideoIntake({ initialVideos }: VideoIntakeProps) {
 
   async function handleProcess(video: VideoRecord) {
     setError("");
-    if (video.status === "completed") {
+    // Only non-bilibili completed can bypass pre-check; bilibili always checks
+    if (video.status === "completed" && video.platform !== "bilibili") {
       await runProcess(video.id);
       return;
     }
     setCheckingVideoId(video.id);
     let hasSubtitles = true;
+    let reason = "no_subtitles";
+    let message: string | undefined;
+    let availableLanguages: string[] | undefined;
     try {
-      const result = await checkSubtitles(video.id);
+      if (video.platform === "bilibili") {
+        await refreshBilibiliCookieIfPossible();
+      }
+      let result = await checkSubtitles(video.id);
       hasSubtitles = result.has_subtitles;
+      reason = result.reason ?? "no_subtitles";
+      message = result.message;
+      availableLanguages = result.available_languages;
+
+      // One recheck after auth_expired for bilibili
+      if (video.platform === "bilibili" && !hasSubtitles && reason === "auth_expired") {
+        await refreshBilibiliCookieIfPossible();
+        result = await checkSubtitles(video.id);
+        hasSubtitles = result.has_subtitles;
+        reason = result.reason ?? "no_subtitles";
+        message = result.message;
+        availableLanguages = result.available_languages;
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Operation failed");
       setCheckingVideoId(null);
@@ -139,7 +209,13 @@ export function VideoIntake({ initialVideos }: VideoIntakeProps) {
     if (hasSubtitles) {
       await runProcess(video.id);
     } else {
-      setPendingSubtitleDecision({ videoId: video.id, title: video.title });
+      setPendingSubtitleDecision({
+        videoId: video.id,
+        title: video.title,
+        reason,
+        message,
+        availableLanguages,
+      });
     }
   }
 
@@ -255,13 +331,32 @@ export function VideoIntake({ initialVideos }: VideoIntakeProps) {
       {pendingSubtitleDecision ? (
         <SubtitleDecisionDialog
           videoTitle={pendingSubtitleDecision.title}
+          reason={pendingSubtitleDecision.reason}
+          message={pendingSubtitleDecision.message}
+          availableLanguages={pendingSubtitleDecision.availableLanguages}
           onCancel={() => setPendingSubtitleDecision(null)}
           onUseAsr={() => {
             const { videoId } = pendingSubtitleDecision;
             setPendingSubtitleDecision(null);
             void runProcess(videoId, "asr");
           }}
-          onConfigureCookie={() => router.push("/settings")}
+          onUseOfficial={() => {
+            const { videoId } = pendingSubtitleDecision;
+            setPendingSubtitleDecision(null);
+            void runProcess(videoId, undefined, { allowNonChinese: true });
+          }}
+          onGoToLogin={() => {
+            setPendingSubtitleDecision(null);
+            router.push("/login");
+          }}
+          onRetry={() => {
+            const { videoId } = pendingSubtitleDecision;
+            setPendingSubtitleDecision(null);
+            const video = videos.find((item) => item.id === videoId);
+            if (video) {
+              void handleProcess(video);
+            }
+          }}
         />
       ) : null}
       </div>

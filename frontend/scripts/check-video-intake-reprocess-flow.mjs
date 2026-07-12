@@ -10,18 +10,32 @@ if (handleProcessStart === -1) {
 
 const handleProcessBody = videoIntake.slice(handleProcessStart);
 
-const completedBranch = /if\s*\(\s*video\.status\s*===\s*"completed"\s*\)\s*\{\s*await\s+runProcess\(video\.id\);\s*return;\s*\}/s;
+// Non-bilibili completed may still bypass pre-check
+const nonBiliCompletedBypass =
+  /if\s*\(\s*video\.status\s*===\s*"completed"\s*&&\s*video\.platform\s*!==\s*"bilibili"\s*\)\s*\{\s*await\s+runProcess\(video\.id\);\s*return;\s*\}/s;
 
-if (!completedBranch.test(handleProcessBody)) {
+if (!nonBiliCompletedBypass.test(handleProcessBody)) {
   console.error(
-    "FAIL: completed videos should bypass subtitle pre-check and re-process immediately"
+    "FAIL: non-bilibili completed videos should still bypass subtitle pre-check"
   );
   process.exit(1);
 }
 
-const hasSubtitleCheck = handleProcessBody.includes(
-  'const result = await checkSubtitles(video.id);'
-);
+// Bilibili completed must NOT unconditionally bypass (old behavior)
+const unconditionalCompletedBypass =
+  /if\s*\(\s*video\.status\s*===\s*"completed"\s*\)\s*\{\s*await\s+runProcess\(video\.id\);\s*return;\s*\}/s;
+
+if (unconditionalCompletedBypass.test(handleProcessBody)) {
+  console.error(
+    "FAIL: bilibili completed videos must run subtitle pre-check (no unconditional completed bypass)"
+  );
+  process.exit(1);
+}
+
+// First-time / bilibili processing should keep the subtitle pre-check flow
+const hasSubtitleCheck =
+  handleProcessBody.includes("const result = await checkSubtitles(video.id);") ||
+  handleProcessBody.includes("let result = await checkSubtitles(video.id);");
 
 if (!hasSubtitleCheck) {
   console.error(
@@ -30,4 +44,21 @@ if (!hasSubtitleCheck) {
   process.exit(1);
 }
 
-console.log("Completed re-process bypasses subtitle pre-check.");
+// Soft process failures should map to SubtitleDecisionDialog
+if (!videoIntake.includes("function mapSoftSubtitleError")) {
+  console.error(
+    "FAIL: mapSoftSubtitleError helper is required for soft process failures"
+  );
+  process.exit(1);
+}
+
+if (!videoIntake.includes("setPendingSubtitleDecision")) {
+  console.error(
+    "FAIL: soft failures should open SubtitleDecisionDialog via setPendingSubtitleDecision"
+  );
+  process.exit(1);
+}
+
+console.log(
+  "Non-bilibili completed re-process bypasses pre-check; bilibili always prechecks; soft failures map to dialog."
+);

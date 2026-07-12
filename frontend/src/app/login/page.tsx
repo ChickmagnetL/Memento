@@ -68,7 +68,12 @@ export default function LoginPage() {
       try {
         const updatePayload =
           data.platform === "bilibili"
-            ? { bilibili_cookie: data.cookies }
+            ? {
+                bilibili_cookie: data.cookies,
+                ...(data.refresh_token
+                  ? { bilibili_refresh_token: data.refresh_token }
+                  : {}),
+              }
             : { douyin_cookie: data.cookies };
         const updated = await updateVideoProcessingSettings(updatePayload);
         setSettings(updated);
@@ -82,7 +87,12 @@ export default function LoginPage() {
       try {
         const updatePayload =
           data.platform === "bilibili"
-            ? { bilibili_cookie: data.cookies }
+            ? {
+                bilibili_cookie: data.cookies,
+                ...(data.refresh_token
+                  ? { bilibili_refresh_token: data.refresh_token }
+                  : {}),
+              }
             : { douyin_cookie: data.cookies };
         const updated = await updateVideoProcessingSettings(updatePayload);
         setSettings(updated);
@@ -121,7 +131,11 @@ export default function LoginPage() {
       // Clear backend cookie
       const updatePayload =
         platform === "bilibili"
-          ? { bilibili_cookie: "" }
+          ? {
+              bilibili_cookie: "",
+              bilibili_refresh_token: "",
+              bilibili_cookie_expires_at: 0,
+            }
           : { douyin_cookie: "" };
       const updated = await updateVideoProcessingSettings(updatePayload);
       setSettings(updated);

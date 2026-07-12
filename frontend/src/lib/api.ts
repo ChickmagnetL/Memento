@@ -74,9 +74,13 @@ export async function createVideo(
 
 export async function processVideo(
   videoId: string,
-  fallback?: "asr"
+  fallback?: "asr",
+  options?: { allowNonChinese?: boolean }
 ): Promise<VideoRecord> {
-  const qs = fallback ? `?subtitle_fallback=${fallback}` : "";
+  const params = new URLSearchParams();
+  if (fallback) params.set("subtitle_fallback", fallback);
+  if (options?.allowNonChinese) params.set("allow_non_chinese", "true");
+  const qs = params.toString() ? `?${params.toString()}` : "";
   const res = await fetch(`${API_BASE_URL}/api/videos/${videoId}/process${qs}`, {
     method: "POST",
   });
@@ -96,6 +100,10 @@ export async function deleteVideo(videoId: string): Promise<void> {
 export interface SubtitleCheckResult {
   has_subtitles: boolean;
   platform: string;
+  reason?: string;
+  message?: string;
+  login_path?: string;
+  available_languages?: string[];
 }
 
 export async function checkSubtitles(

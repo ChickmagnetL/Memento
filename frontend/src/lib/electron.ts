@@ -5,12 +5,27 @@
  * Login event listeners return a cleanup function for unsubscription.
  */
 
+export type CookieEventPayload = {
+  platform: string;
+  cookies: string;
+  refresh_token?: string;
+};
+
 export interface ElectronAPI {
-  openLogin: (platform: 'bilibili' | 'douyin') => void;
-  clearLoginSession: (platform: 'bilibili' | 'douyin') => Promise<void>;
-  onCookieReady: (callback: (data: { platform: string; cookies: string }) => void) => () => void;
-  onCookieRefreshed: (callback: (data: { platform: string; cookies: string }) => void) => () => void;
-  openVideoPlayer: (params: { platform: string; videoId: string; timestamp?: number }) => void;
+  openLogin: (platform: "bilibili" | "douyin") => void;
+  clearLoginSession: (platform: "bilibili" | "douyin") => Promise<void>;
+  onCookieReady: (callback: (data: CookieEventPayload) => void) => () => void;
+  onCookieRefreshed: (callback: (data: CookieEventPayload) => void) => () => void;
+  refreshBilibiliCookie?: () => Promise<{
+    ok: boolean;
+    refreshed: boolean;
+    reason?: string;
+  }>;
+  openVideoPlayer: (params: {
+    platform: string;
+    videoId: string;
+    timestamp?: number;
+  }) => void;
 }
 
 declare global {
