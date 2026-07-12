@@ -121,52 +121,46 @@ body {
 .wiki-nav-theme:hover { color: var(--accent); border-color: var(--accent); }
 
 /* ============================================
-   4. Layout Wrapper
+   4. Layout — centered block via fixed positioning + calc
+   Docsify puts .sidebar and .content as siblings under <body> (not
+   inside #app). So we pin the sidebar to the centered layout's left
+   edge and pad the content to sit beside it. Layout width = 1000px
+   (sidebar 230 + content 770).
    ============================================ */
 
-.wiki-layout {
-  max-width: 1000px;
-  margin: 0 auto;
-  padding-top: 48px;
-}
-
-/* Make sidebar + content sit side by side */
-#app {
-  display: flex !important;
-  min-height: calc(100vh - 48px);
-}
-
-/* ============================================
-   5. Sidebar — override Docsify defaults
-   ============================================ */
-
-/* Docsify default: position:fixed left:0. Override to relative so it
-   flows inside #app's flex container. */
 .sidebar {
-  position: relative !important;
-  top: auto !important; left: auto !important;
-  bottom: auto !important; right: auto !important;
+  position: fixed !important;
+  left: calc(50% - 500px) !important;
+  top: 48px !important;
+  bottom: 0 !important;
   width: 230px !important;
-  min-width: 230px;
-  flex-shrink: 0;
-  transform: none !important;
-  transition: none !important;
   background: var(--bg-sidebar) !important;
   border-right: 1px solid var(--border-light) !important;
   padding: 24px 0 !important;
   overflow-y: auto;
-  max-height: calc(100vh - 48px);
-  z-index: 1;
+  z-index: 10;
 }
+
+.content {
+  position: relative !important;
+  left: 0 !important;
+  margin-left: calc(50% - 500px + 230px) !important;
+  margin-right: calc(50% - 500px) !important;
+  max-width: 770px;
+  padding-top: 48px !important;
+  background: var(--bg-content);
+  min-height: calc(100vh - 48px);
+}
+
+/* Keep sidebar visible regardless of Docsify's body.close toggle */
+body.close .sidebar {
+  left: calc(50% - 500px) !important;
+  transform: none !important;
+}
+body.close .content { margin-left: calc(50% - 500px + 230px) !important; }
 
 /* Hide sidebar close button on desktop */
 .sidebar > .close { display: none !important; }
-
-/* Docsify body.close hides sidebar. On desktop we always show it. */
-body.close .sidebar {
-  transform: none !important;
-  width: 230px !important;
-}
 
 /* ============================================
    5b. Sidebar nav styling
@@ -445,8 +439,12 @@ body.close .content { left: 0 !important; }
     border-right: 1px solid var(--border-color) !important;
     padding-top: 48px !important;
   }
-  body.close .sidebar { transform: translateX(-280px) !important; }
-  body:not(.close) .sidebar { transform: translateX(0) !important; }
+  body.close .sidebar { transform: translateX(-280px) !important; left: 0 !important; }
+  body:not(.close) .sidebar { transform: translateX(0) !important; left: 0 !important; }
+  .content {
+    margin-left: 0 !important; margin-right: 0 !important;
+    left: 0 !important; flex: auto;
+  }
 
   .sidebar > .close { display: block !important; }
 
