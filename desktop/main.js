@@ -23,6 +23,7 @@ let backendProcess = null;
 let douyinFetcherProcess = null;
 let videoPlayerManager = null;
 let cookieRefreshScheduler = null;
+let mainWindow = null;
 let isQuitting = false;
 
 function resolveBackendEnv() {
@@ -177,6 +178,22 @@ function stopSidecars() {
   stopBackend();
 }
 
+async function loadBilibiliRefreshToken() {
+  try {
+    const res = await fetch("http://127.0.0.1:8000/api/video-processing");
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data.bilibili_refresh_token) {
+      cookieRefreshScheduler.setRefreshToken(data.bilibili_refresh_token);
+    }
+  } catch (e) {
+    console.warn(
+      "[main] Failed to load bilibili_refresh_token:",
+      e && e.message ? e.message : e
+    );
+  }
+}
+
 app.whenReady().then(async () => {
   await startDouyinFetcher();
   await startBackend();
@@ -198,11 +215,15 @@ app.whenReady().then(async () => {
       nodeIntegration: false,
     }
   });
+  mainWindow = window;
   window.loadURL(FRONTEND_URL);
 
   const loginManager = new LoginWindowManager(window);
   videoPlayerManager = new VideoPlayerManager();
-  cookieRefreshScheduler = new CookieRefreshScheduler();
+  cookieRefreshScheduler = new CookieRefreshScheduler({
+    getMainWindow: () => mainWindow,
+  });
+  await loadBilibiliRefreshToken();
   cookieRefreshScheduler.start();
 
   window.on('close', () => {
@@ -230,6 +251,13 @@ app.whenReady().then(async () => {
     const platformSession = session.fromPartition(`persist:${platform}`);
     await platformSession.clearStorageData();
     console.log(`[main] Session cleared for ${platform}`);
+  });
+
+  ipcMain.handle('refresh-bilibili-cookie', async () => {
+    if (!cookieRefreshScheduler) {
+      return { ok: false, refreshed: false, reason: 'unavailable' };
+    }
+    return cookieRefreshScheduler.refreshIfNeeded();
   });
 
   ipcMain.on('open-video-player', (event, params) => {

@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('electron', {
   // Login management
   openLogin: (platform) => ipcRenderer.send('open-login', platform),
   clearLoginSession: (platform) => ipcRenderer.invoke('clear-login-session', platform),
+  refreshBilibiliCookie: () => ipcRenderer.invoke('refresh-bilibili-cookie'),
   onCookieReady: (callback) => {
     const handler = (_, data) => callback(data);
     ipcRenderer.on('cookie-ready', handler);

@@ -8,6 +8,7 @@
 
 const { BrowserView, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
+const { setActiveRefreshToken } = require('./cookie-refresh');
 
 const LOGIN_URLS = {
   bilibili: 'https://passport.bilibili.com/login',
@@ -129,6 +130,7 @@ class LoginWindowManager {
     this.currentPlatform = null;
     this.errorCount = 0;
     this.MAX_ERRORS = 5;
+    this.loginCompleted = false;
   }
 
   async open(platform) {
@@ -143,6 +145,7 @@ class LoginWindowManager {
     }
 
     this.currentPlatform = platform;
+    this.loginCompleted = false;
 
     // Create a frameless modal window — the custom shell provides all chrome
     // Size per platform to fit the login element tightly
@@ -261,13 +264,21 @@ class LoginWindowManager {
   startCookiePolling(session, platform) {
     this.pollInterval = setInterval(async () => {
       try {
+        if (this.loginCompleted) return;
+
         const cookies = await session.cookies.get({});
         this.errorCount = 0;
 
         const checkFunc = COOKIE_CHECKS[platform];
         if (checkFunc && checkFunc(cookies)) {
           console.log(`[login-manager] Login success detected for ${platform}`);
-          this.onLoginSuccess(cookies, platform);
+          this.loginCompleted = true;
+          // stop polling before async work
+          if (this.pollInterval) {
+            clearInterval(this.pollInterval);
+            this.pollInterval = null;
+          }
+          await this.onLoginSuccess(cookies, platform);
         }
       } catch (error) {
         console.error(`[login-manager] Cookie polling error:`, error);
@@ -280,7 +291,7 @@ class LoginWindowManager {
     }, 1000);
   }
 
-  onLoginSuccess(cookies, platform) {
+  async onLoginSuccess(cookies, platform) {
     // Guard: main window may have been destroyed
     if (this.mainWindow.isDestroyed()) {
       this.close();
@@ -289,10 +300,47 @@ class LoginWindowManager {
 
     const cookieString = cookies.map(c => `${c.name}=${c.value}`).join('; ');
 
-    this.mainWindow.webContents.send('cookie-ready', {
+    let refreshToken = '';
+    if (platform === 'bilibili' && this.authView && !this.authView.webContents.isDestroyed()) {
+      try {
+        for (let attempt = 0; attempt < 3; attempt++) {
+          refreshToken = await this.authView.webContents.executeJavaScript(`
+            (() => {
+              try { return window.localStorage.getItem('ac_time_value') || ''; }
+              catch (e) { return ''; }
+            })()
+          `);
+          if (refreshToken) break;
+          if (attempt < 2) {
+            await new Promise((r) => setTimeout(r, 200));
+          }
+        }
+        if (!refreshToken) {
+          console.warn(
+            "[login-manager] Bilibili login succeeded but ac_time_value missing; auto-refresh unavailable"
+          );
+        }
+      } catch (err) {
+        console.warn(
+          "[login-manager] Failed to read ac_time_value:",
+          err && err.message ? err.message : err
+        );
+      }
+    }
+
+    if (refreshToken) {
+      setActiveRefreshToken(refreshToken);
+    }
+
+    const payload = {
       platform,
       cookies: cookieString
-    });
+    };
+    if (refreshToken) {
+      payload.refresh_token = refreshToken;
+    }
+
+    this.mainWindow.webContents.send('cookie-ready', payload);
 
     this.close();
   }
@@ -311,6 +359,7 @@ class LoginWindowManager {
     }
 
     this.currentPlatform = null;
+    this.loginCompleted = false;
   }
 
   cleanup() {
@@ -321,6 +370,7 @@ class LoginWindowManager {
     this.loginWindow = null;
     this.authView = null;
     this.currentPlatform = null;
+    this.loginCompleted = false;
   }
 }
 
