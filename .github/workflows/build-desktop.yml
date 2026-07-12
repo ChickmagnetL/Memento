@@ -35,6 +35,9 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
+          cache-dependency-path: |
+            frontend/package-lock.json
+            desktop/package-lock.json
 
       - name: Install ffmpeg
         run: brew install ffmpeg
@@ -115,6 +118,9 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
+          cache-dependency-path: |
+            frontend/package-lock.json
+            desktop/package-lock.json
 
       - name: Install ffmpeg
         run: choco install ffmpeg --no-progress
