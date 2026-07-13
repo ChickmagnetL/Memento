@@ -306,13 +306,19 @@ def get_settings() -> Settings:
     config_data = _merge_dicts(config_data, _load_yaml_data(user_config_path))
     config_data = _merge_dicts(config_data, _load_yaml_data(local_config_path))
 
-    # Resolve data_dir to find the DB (in case YAML has relative/~/ paths)
+    # Resolve data_dir to find the DB. STORAGE__DATA_DIR (set by the
+    # packaged Electron shell) takes precedence over YAML, since the YAML
+    # default is a relative path that resolves against project_root, which
+    # is wrong inside a packaged app where the DB lives under userData.
+    env_data_dir = os.environ.get("STORAGE__DATA_DIR")
+    if env_data_dir:
+        config_data.setdefault("storage", {})["data_dir"] = env_data_dir
     data_dir = config_data.get("storage", {}).get("data_dir", "~/memento_data")
     data_dir_path = Path(data_dir).expanduser()
     if not data_dir_path.is_absolute():
         data_dir_path = project_root / data_dir_path
 
-    # Load DB config and merge (DB overrides YAML values except data_dir)
+    # Load and merge DB config; Settings applies environment variables afterward.
     db_path = data_dir_path / "memento.db"
     db_config = _load_db_config(db_path)
     config_data = _merge_dicts(config_data, db_config)

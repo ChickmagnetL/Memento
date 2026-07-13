@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -77,10 +77,20 @@ export function SettingsForm() {
   const [isDeployingAsr, setIsDeployingAsr] = useState(false);
   const [showLocalAsrModal, setShowLocalAsrModal] = useState(false);
 
-  useEffect(() => {
-    getServiceStatus().then(setStatus).catch(() => {});
-    getAsrDeployStatus().then(setAsrDeployStatus).catch(() => {});
+  const refreshStatus = useCallback(async () => {
+    try {
+      setStatus(await getServiceStatus());
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "Operation failed");
+    }
   }, []);
+
+  useEffect(() => {
+    // The refresh waits for the status request before updating state.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void refreshStatus();
+    getAsrDeployStatus().then(setAsrDeployStatus).catch(() => {});
+  }, [refreshStatus]);
 
   useEffect(() => {
     if (!isDeployingAsr) {
@@ -205,6 +215,7 @@ export function SettingsForm() {
         fields={FIELDS}
         status={status[activeTab]}
         asrExtras={activeTab === "asr" ? renderAsrExtras : undefined}
+        onStatusRefresh={refreshStatus}
       />
 
       <LocalAsrModal

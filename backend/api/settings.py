@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import os
 import sqlite3
 from pathlib import Path
 from typing import Any, Literal
@@ -297,6 +298,9 @@ def _resolve_embedding_config(raw_config: dict[str, Any]) -> ModelConfig:
         settings_module._load_yaml_data(local_config_path),
     )
 
+    env_data_dir = os.environ.get("STORAGE__DATA_DIR")
+    if env_data_dir:
+        config_data.setdefault("storage", {})["data_dir"] = env_data_dir
     data_dir = config_data.get("storage", {}).get("data_dir", "~/memento_data")
     data_dir_path = Path(data_dir).expanduser()
     if not data_dir_path.is_absolute():

@@ -636,3 +636,69 @@ storage:
     assert preset1_after["model"] == "gpt-4-turbo"
     # preset_2 (inactive) should be unchanged
     assert preset2_after["model"] == "gpt-3.5-turbo"
+
+
+def test_storage_env_selects_packaged_model_database(tmp_path, monkeypatch):
+    backend_config_dir = _isolate_project_config(tmp_path, monkeypatch)
+    bundled_data_dir = tmp_path / "bundled-data"
+    packaged_data_dir = tmp_path / "userData" / "data"
+    bundled_data_dir.mkdir()
+    packaged_data_dir.mkdir(parents=True)
+
+    (backend_config_dir / "default.yaml").write_text(
+        f"""
+storage:
+  data_dir: "{bundled_data_dir.as_posix()}"
+models:
+  chat:
+    endpoint: null
+    api_key: ""
+    model: deepseek-chat
+""",
+        encoding="utf-8",
+    )
+
+    conn = sqlite3.connect(packaged_data_dir / "memento.db")
+    conn.executescript(
+        """
+        CREATE TABLE model_presets (
+            id TEXT PRIMARY KEY,
+            model_name TEXT NOT NULL,
+            name TEXT NOT NULL,
+            config TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(model_name, name)
+        );
+        CREATE TABLE active_preset (
+            model_name TEXT PRIMARY KEY,
+            preset_id TEXT,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (preset_id) REFERENCES model_presets(id) ON DELETE SET NULL
+        );
+        """
+    )
+    packaged_chat = {
+        "endpoint": "https://example.invalid/v1",
+        "api_key": "packaged-key",
+        "model": "packaged-chat",
+    }
+    conn.execute(
+        "INSERT INTO model_presets (id, model_name, name, config) VALUES (?, ?, ?, ?)",
+        ("chat_packaged", "chat", "Packaged", json.dumps(packaged_chat)),
+    )
+    conn.execute(
+        "INSERT INTO active_preset (model_name, preset_id) VALUES (?, ?)",
+        ("chat", "chat_packaged"),
+    )
+    conn.commit()
+    conn.close()
+
+    monkeypatch.setenv("STORAGE__DATA_DIR", str(packaged_data_dir))
+
+    settings = get_settings()
+
+    assert settings.storage.data_dir == packaged_data_dir
+    assert settings.models.chat.endpoint == "https://example.invalid/v1"
+    assert settings.models.chat.api_key == "packaged-key"
+    assert settings.models.chat.model == "packaged-chat"

@@ -13,6 +13,10 @@ const modelPanelSource = readFileSync(
   join(__dirname, "../src/app/settings/model-panel.tsx"),
   "utf8"
 );
+const settingsFormSource = readFileSync(
+  join(__dirname, "../src/app/settings/settings-form.tsx"),
+  "utf8"
+);
 const apiSource = readFileSync(join(__dirname, "../src/lib/api.ts"), "utf8");
 
 test("model list control uses dropdown options with an external get button", () => {
@@ -53,6 +57,39 @@ test("model panel clears model options when request inputs change", () => {
   assert.match(
     modelPanelSource,
     /if \(key === "endpoint" \|\| key === "api_key" \|\| key === "protocol"\) \{\s*clearModelOptions\(\);\s*\}/
+  );
+});
+
+test("successful preset runtime changes refresh parent-owned service status", () => {
+  const refreshStatusBlock =
+    settingsFormSource.match(
+      /const refreshStatus = useCallback\(async \(\) => \{[\s\S]*?\}, \[\]\);/
+    )?.[0] ?? "";
+  const activateRegularPresetBlock =
+    modelPanelSource.match(
+      /async function activateRegularPreset\([\s\S]*?\n  \}/
+    )?.[0] ?? "";
+  const handleSaveBlock =
+    modelPanelSource.match(
+      /async function handleSave\(\) \{[\s\S]*?\n  \}\n\n  const previewPreset/
+    )?.[0] ?? "";
+
+  assert.match(refreshStatusBlock, /setStatus\(await getServiceStatus\(\)\)/);
+  assert.match(
+    settingsFormSource,
+    /<ModelPanel[\s\S]*?onStatusRefresh=\{refreshStatus\}/
+  );
+  assert.match(
+    modelPanelSource,
+    /onStatusRefresh: \(\) => Promise<void>;/
+  );
+  assert.match(
+    activateRegularPresetBlock,
+    /await switchActivePreset\([\s\S]*?markPresetActiveFromList\([\s\S]*?await onStatusRefresh\(\);[\s\S]*?setInlineMessage\(""\);/
+  );
+  assert.match(
+    handleSaveBlock,
+    /if \(modelName === "embedding"\) \{[\s\S]*?await saveSelectedPresetConfig\([\s\S]*?await onStatusRefresh\(\);\s*setInlineMessage\("Saved\."\);\s*return;[\s\S]*?\}\s*await saveSelectedPresetConfig\([\s\S]*?await onStatusRefresh\(\);\s*setInlineMessage\("Saved\."\);/
   );
 });
 
