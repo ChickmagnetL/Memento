@@ -101,7 +101,7 @@ jobs:
         run: cd desktop && npx electron-builder --mac
 
       - name: Verify packaged login window
-        run: cd desktop && npx asar list dist/mac*/Memento.app/Contents/Resources/app.asar | grep -qx '/login-shell.html'
+        run: cd desktop && npx @electron/asar list dist/mac*/Memento.app/Contents/Resources/app.asar | grep -qx '/login-shell.html'
 
       - uses: actions/upload-artifact@v4
         with:
@@ -192,7 +192,7 @@ jobs:
       - name: Verify packaged login window
         shell: pwsh
         run: |
-          $files = npx asar list desktop/dist/win-unpacked/resources/app.asar | ForEach-Object { $_ -replace '\\', '/' }
+          $files = npx @electron/asar list desktop/dist/win-unpacked/resources/app.asar | ForEach-Object { $_ -replace '\\', '/' }
           if ($files -notcontains '/login-shell.html') {
             throw 'The packaged login window is missing.'
           }
