@@ -100,6 +100,9 @@ jobs:
       - name: Build macOS installer (electron-builder)
         run: cd desktop && npx electron-builder --mac
 
+      - name: Verify packaged login window
+        run: cd desktop && npx asar list dist/mac*/Memento.app/Contents/Resources/app.asar | grep -qx '/login-shell.html'
+
       - uses: actions/upload-artifact@v4
         with:
           name: Memento-macOS
@@ -185,6 +188,14 @@ jobs:
 
       - name: Build Windows installer (electron-builder)
         run: cd desktop && npx electron-builder --win
+
+      - name: Verify packaged login window
+        shell: pwsh
+        run: |
+          $files = npx asar list desktop/dist/win-unpacked/resources/app.asar
+          if ($files -notcontains '/login-shell.html') {
+            throw 'The packaged login window is missing.'
+          }
 
       - uses: actions/upload-artifact@v4
         with:
