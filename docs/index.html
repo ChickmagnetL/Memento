@@ -27,7 +27,7 @@
       repo: '',
       loadSidebar: true,
       coverpage: false,
-      subMaxLevel: 0,
+      subMaxLevel: 3,
       auto2top: true,
       search: {
         placeholder: '搜索文档…',
@@ -63,6 +63,33 @@
         observer.disconnect();
       }, { once: true });
     }
+  })();
+  </script>
+
+  <script>
+  (function() {
+    function syncSidebarActive() {
+      var current = window.location.hash || '#/';
+      var route = current.split('?')[0];
+      document.querySelectorAll('.sidebar-nav a').forEach(function(link) {
+        if (link.closest('.app-sub-sidebar')) {
+          link.parentElement.classList.toggle('active', link.getAttribute('href') === current);
+          return;
+        }
+        var linkRoute = (link.getAttribute('href') || '#/').split('?')[0];
+        link.parentElement.classList.toggle('active', linkRoute === route);
+      });
+    }
+
+    var observer = new MutationObserver(syncSidebarActive);
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ['class'],
+      childList: true,
+      subtree: true,
+    });
+    window.addEventListener('hashchange', syncSidebarActive);
+    window.addEventListener('load', syncSidebarActive, { once: true });
   })();
   </script>
 
