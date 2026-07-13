@@ -324,7 +324,10 @@ app.whenReady().then(async () => {
       return;
     }
     console.log(`[main] Received open-login request for ${platform}`);
-    loginManager.open(platform);
+    loginManager.open(platform).catch((error) => {
+      console.error(`[main] Failed to open login window for ${platform}:`, error);
+      dialog.showErrorBox("Memento", "登录窗口打开失败，请重新安装最新版本后重试。");
+    });
   });
 
   ipcMain.handle('clear-login-session', async (event, platform) => {

@@ -21,6 +21,7 @@
       "main.js",
       "preload.js",
       "login-manager.js",
+      "login-shell.html",
       "video-player.js",
       "cookie-refresh.js"
     ],
