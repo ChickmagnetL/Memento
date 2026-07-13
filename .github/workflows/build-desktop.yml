@@ -192,7 +192,7 @@ jobs:
       - name: Verify packaged login window
         shell: pwsh
         run: |
-          $files = npx asar list desktop/dist/win-unpacked/resources/app.asar
+          $files = npx asar list desktop/dist/win-unpacked/resources/app.asar | ForEach-Object { $_ -replace '\\', '/' }
           if ($files -notcontains '/login-shell.html') {
             throw 'The packaged login window is missing.'
           }
