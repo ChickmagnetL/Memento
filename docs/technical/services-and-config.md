@@ -38,14 +38,16 @@
   - `chat_audio` → `{endpoint}/chat/completions`（部分云厂商）
 - 健康检查会先 **剥掉** endpoint 的 `/v1` path，再请求 `{base}/health`
 
-**懒启动**（`backend/core/video/asr_supervisor.py`）：
+**有限条件下的懒启动**（`backend/core/video/asr_supervisor.py`）：
 
-1. 仅 hostname 为 `localhost` / `127.0.0.1` / `::1` 才可能 spawn
-2. 已健康则立即返回
-3. 否则检查 **`services/asr/.venv/bin/uvicorn`** 是否存在（不是“有 `.venv` 目录即可”）；不存在则 **静默返回**
-4. 存在则在 `127.0.0.1:<port>` spawn（port 来自 endpoint）
-5. 默认最多等 **120s**，超时抛错
-6. backend lifespan / `atexit` 调用 `shutdown()` 回收子进程
+1. 仅 `transcriptions` 协议会进入 supervisor；`chat_audio` 要求 endpoint 已经运行
+2. 仅 hostname 为 `localhost` / `127.0.0.1` / `::1` 才可能 spawn
+3. 已健康则立即返回
+4. 否则检查 **`services/asr/.venv/bin/uvicorn`** 是否存在（不是“有 `.venv` 目录即可”）；不存在则 **静默返回**
+5. 该路径和进程组回收逻辑目前按 macOS / Linux 实现；Windows 常见的 `.venv/Scripts/uvicorn.exe` 不会被发现，需手动启动或使用 Remote Node
+6. 存在则在 `127.0.0.1:<port>` spawn（port 来自 endpoint）
+7. 默认最多等 **120s**，超时抛错
+8. backend lifespan / `atexit` 调用 `shutdown()` 回收子进程
 
 应用内 ASR 管理 API 前缀：`/api/asr`（deploy status / deploy / progress、local 模型管理等）。
 
@@ -57,7 +59,7 @@
 | 默认地址 | `0.0.0.0:8003` |
 | 常用 env | `EMBEDDING_HOST` / `EMBEDDING_PORT` / `EMBEDDING_DEVICE` |
 | 部署 | `python deploy.py [--device ...] [--model ...]` |
-| 默认模型 | `all-MiniLM-L6-v2`（sentence-transformers） |
+| 默认模型 | `BAAI/bge-m3`（sentence-transformers，输出 1024 维） |
 
 ### API（OpenAI 兼容）
 
@@ -73,6 +75,8 @@
 - 默认 yaml 常指向 Ollama（如 `http://localhost:11434/v1`）；以当前激活 preset 为准
 - backend **不**懒启动 embedding 服务
 
+独立服务默认的 BGE-M3 为 1024 维，而 `RAGConfig.vector_size` 默认 768。首次使用前须把两者配成一致；已有 Qdrant 集合须通过 switch / reindex 重建，不能只改 `rag.vector_size`。
+
 ## Remote Node（bootstrap）
 
 路径：`services/node/bootstrap.py`  
@@ -82,17 +86,16 @@
 |------|------|
 | `probe` | 探测 device + 模型是否已缓存 |
 | `deploy` | 对缺失的服务跑各自 `deploy.py` |
-| `serve` | 启动 ASR:8001 + Embedding:8003，打印局域网配置提示 |
-| `run` | deploy + serve |
+| `serve` | 启动 ASR:16888 + Embedding:16889，打印局域网配置提示 |
 
 典型用法：GPU / 另一台机器当推理节点，主应用 Settings 填：
 
 ```
-ASR:       http://<lan-ip>:8001/v1
-Embedding: http://<lan-ip>:8003/v1
+ASR:       http://<lan-ip>:16888/v1
+Embedding: http://<lan-ip>:16889/v1
 ```
 
-另有 `services/node/diag.py` 做连通与延迟诊断。
+`probe` 的实现位于 `services/node/node_app/diag.py`，用于检查主机加速设备、已安装模型以及两个服务 venv 的 torch device；当前不做网络连通性或延迟测试。
 
 ## 配置系统
 
@@ -118,7 +121,7 @@ endpoint, api_key, model, protocol
 ### Preset
 
 - 每个服务名（chat / embedding / asr）可有多套 preset，一套 active
-- embedding 切换若改变向量维度，必须走 preview + 确认 reindex（见 [存储与检索](./storage-and-retrieval.md)）
+- embedding 切换须走 preview / switch；跨维度需要确认 reindex，同维度也只有在新旧 embedding 空间明确兼容时才能安全跳过重建（见 [存储与检索](./storage-and-retrieval.md)）
 - embedding **禁止** 直接 `PUT /models/embedding/active`
 
 ### Settings API 概览（`/api/settings`）
@@ -138,13 +141,14 @@ endpoint, api_key, model, protocol
 
 1. douyin_fetcher venv 存在时启动（:8002）
 2. 若 `GET http://localhost:8000/api/health` 未就绪则 spawn backend（约 30s 超时）
-3. 健康后 `loadURL(MEMENTO_FRONTEND_URL)`，默认 `http://localhost:3000`
-4. 退出时结束 sidecar
+3. 打包态启动 `resources/frontend/server.js` 并等待 `127.0.0.1:3123`；开发态前端由外部 Next dev server 提供，默认 `http://localhost:3000`
+4. 健康后 `loadURL(MEMENTO_FRONTEND_URL)`；未覆盖时按开发态 / 打包态分别使用 3000 / 3123
+5. 退出时结束 sidecar
 
 | | 开发态 | 打包态（以 main.js 为准） |
 |--|--------|---------------------------|
-| Backend | `MEMENTO_BACKEND_CMD` / venv uvicorn | 默认产物路径 `backend/dist/memento-backend/memento-backend`（`scripts/build-backend.sh`） |
-| Frontend | `MEMENTO_FRONTEND_URL`（常 :3000） | **同样**通过 URL 加载（main.js 无内建静态目录分支） |
+| Backend | `MEMENTO_BACKEND_CMD` / venv uvicorn；未覆盖时可用开发产物 `backend/dist/memento-backend/memento-backend` | `process.resourcesPath/backend/memento-backend[.exe]` |
+| Frontend | 外部 Next dev server；`MEMENTO_FRONTEND_URL` 默认 :3000 | Electron 启动 `process.resourcesPath/frontend/server.js`，默认监听 127.0.0.1:3123，再通过 URL 加载 |
 | 项目根 | `MEMENTO_PROJECT_ROOT` 传给 backend | 冻结路径规则见 backend 打包入口 |
 
 开发一键脚本：`scripts/dev.sh`。
@@ -158,6 +162,7 @@ endpoint, api_key, model, protocol
 | Douyin fetcher | 8002 |
 | Embedding 本地服务 | 8003 |
 | Frontend dev | 3000 |
+| Frontend 打包态 | 3123 |
 | Ollama（常见外部 embedding/chat） | 11434 |
 
 ## 相关文档

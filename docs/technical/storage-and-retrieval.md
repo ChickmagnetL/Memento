@@ -47,12 +47,14 @@ schema 中另有历史表 `config`（key/value），**当前代码未使用**；
 | 集合 | 默认名 | 内容 |
 |------|--------|------|
 | 主集合 | `documents` | L1 切块向量 |
-| 摘要集合 | `document_summaries` | 每文档一个点：L3 `brief` 向量 |
+| 摘要集合 | `document_summaries` | 每个已有 L3 `brief` 的文档至多一个点 |
 
 - 距离：COSINE
 - `vector_size` 默认 **768**（`RAGConfig` / settings 默认值），必须与当前 embedding 输出维度一致
 - 主集合 payload 常见字段：`document_id`、`video_id`、`chunk_index`、`title_path`、`text`、`start_timestamp`
 - 摘要集合 payload：`document_id`、`title`、`brief`
+
+**默认值冲突**：独立 Embedding 服务默认模型 `BAAI/bge-m3` 输出 **1024** 维，与 RAG 的 768 默认值不兼容。首次用该服务前应把 `rag.vector_size` 配为 1024；若集合已经创建，仅修改配置不会调整已有集合，须通过 embedding switch / reindex 流程重建。
 
 **不变量**：摘要向量与原文切块分集合存放，细节检索不会被摘要「抢走」位置。
 
@@ -95,15 +97,18 @@ clean 成功路径会自动 index；也可单独触发 index API（不生成 L2/
 - 可指向：云厂商、Ollama、本仓库 `services/embedding`、Remote Node（都是 endpoint 目标，不是第二套 client）
 - 构造要求 `endpoint` / `api_key` / `model` 均非空；本地无真实 key 时填占位（如 `local`）
 
-## 维度切换与重建
+## Embedding 切换与重建
 
-当切换 embedding 模型导致 **向量维度变化** 时：
+当前 switch 流程以**向量维度**决定是否重建：
 
 1. Settings preview：探测新维度 vs 当前 Qdrant 维度
-2. 同维度：可直接激活 preset，**不**启 reindex
+2. 同维度：当前实现会直接激活 preset，**不**启 reindex
+   这只在新旧 preset 使用完全相同或明确兼容的 embedding 空间时才安全。不同模型、版本或不兼容服务即使维度相同，向量也不能混用；当前流程不会识别这种情况，应避免直接切换并另行完整重建
 3. 跨维度：需 `confirm_reindex=true` → `EmbeddingReindexJobManager` 后台单任务  
    激活 preset → 重建主集合与摘要集合 → 重索引所有 `indexed` 文档及 summary  
    失败文档：删向量点 + 重置索引状态；任务可处于 `completed_with_errors`
+
+**后台任务限制**：reindex job 和进度只保存在 backend 进程内存中，不能在重启后续跑。任务会先激活新 preset、重建（清空）两个集合，再逐文档写回；执行期间须保持 backend 运行，中断可能留下部分重建的索引，需要重新实施完整重建。
 
 主要路由（前缀 `/api/settings`）：
 
@@ -114,6 +119,16 @@ clean 成功路径会自动 index；也可单独触发 index API（不生成 L2/
 - `GET /embedding-reindex-jobs/{job_id}`
 
 embedding **禁止** 直接 `PUT .../active`，须走 switch 流程。
+
+## 文档删除与重新导入
+
+`DELETE /api/documents/{id}` 总会删除 document 数据库记录和主集合中的 L1 切块；是否删除磁盘文件由 `delete_source_file` 控制：
+
+- 默认 `false`：保留当前 `file_path` 指向的 markdown，之后可在知识库页面使用「Scan unimported」扫描并重新导入
+- `true`：同时删除当前 `file_path` 指向的 markdown，不能再从该文件重新导入
+- 未导入扫描当前只覆盖 `{data_dir}/knowledge/{platform}/raw/*.md`；cleaned 文件本身不在扫描范围内。已清洗视频通常仍保留 canonical raw 文件，重新导入时创建的是指向该 raw 文件的新 document 记录和新 ID，后续仍需重新 clean / index
+
+**当前限制**：删除接口只清理主集合中的 L1 点，不会删除 `document_summaries` 中的 L3 点。因此 `lookup_documents` 仍可能返回已删除的旧 document ID；重新导入也不会复用或自动清理该旧摘要点。
 
 ## 关键代码入口
 
