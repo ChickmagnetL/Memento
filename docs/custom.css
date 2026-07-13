@@ -8,9 +8,15 @@
    ============================================ */
 
 :root, [data-theme="light"] {
+  --wiki-shell-width: 1180px;
+  --wiki-shell-half: 590px;
+  --wiki-sidebar-width: 272px;
+  --wiki-nav-height: 56px;
+  --wiki-shell-edge: max(24px, calc(50vw - var(--wiki-shell-half)));
+
   --bg-body: #ffffff;
   --bg-nav: rgba(255,255,255,0.92);
-  --bg-sidebar: #f8f9fa;
+  --bg-sidebar: #f4f7fb;
   --bg-content: #ffffff;
   --bg-code: #f6f8fa;
   --bg-code-inline: #f0f1f3;
@@ -29,6 +35,7 @@
   --accent: #0969da;
   --accent-hover: #0550ae;
   --accent-dim: rgba(9, 105, 218, 0.08);
+  --active-bg: #e6f0ff;
 
   --shadow-nav: 0 1px 3px rgba(0,0,0,0.06);
   --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
@@ -42,7 +49,7 @@
 [data-theme="dark"] {
   --bg-body: #0d1117;
   --bg-nav: rgba(13,17,23,0.92);
-  --bg-sidebar: #0d1117;
+  --bg-sidebar: #10161f;
   --bg-content: #0d1117;
   --bg-code: #161b22;
   --bg-code-inline: #1c2128;
@@ -55,12 +62,13 @@
   --text-sidebar: #e6edf3;
   --text-muted: #6e7681;
 
-  --border-color: #30363d;
+  --border-color: #2b3139;
   --border-light: #21262d;
 
   --accent: #58a6ff;
   --accent-hover: #79c0ff;
   --accent-dim: rgba(88, 166, 255, 0.12);
+  --active-bg: rgba(88, 166, 255, 0.14);
 
   --shadow-nav: 0 1px 3px rgba(0,0,0,0.3);
   --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
@@ -83,13 +91,26 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+.wiki-layout {
+  overflow-x: clip;
+}
+
+.wiki-layout > main {
+  width: 100%;
+  min-width: 0;
+}
+
 /* ============================================
-   3. Top Nav Bar
+   3. Centered shell and navigation
    ============================================ */
 
 .wiki-nav {
-  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-  height: 48px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  height: var(--wiki-nav-height);
   background: var(--bg-nav);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -98,131 +119,180 @@ body {
 }
 
 .wiki-nav-inner {
-  max-width: 1000px; margin: 0 auto; height: 100%;
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 0 24px;
+  width: calc(100% - 48px);
+  max-width: var(--wiki-shell-width);
+  height: 100%;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: var(--wiki-sidebar-width) minmax(0, 1fr) 36px;
+  gap: 24px;
+  align-items: center;
 }
 
 .wiki-nav-title {
-  font-size: 15px; font-weight: 600;
-  color: var(--text-heading); text-decoration: none;
+  min-width: 0;
+  padding-left: 20px;
+  overflow: hidden;
+  color: var(--text-heading);
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .wiki-nav-title:hover { color: var(--accent); }
 
+.wiki-nav-search {
+  position: relative;
+  width: min(100%, 420px);
+  min-width: 0;
+  justify-self: center;
+}
+
 .wiki-nav-theme {
-  width: 32px; height: 32px;
-  border: 1px solid var(--border-color); border-radius: 50%;
-  background: transparent; color: var(--text-secondary);
-  cursor: pointer; font-size: 15px;
-  display: flex; align-items: center; justify-content: center;
-  padding: 0; line-height: 1; flex-shrink: 0;
-  transition: all 0.2s;
+  width: 32px;
+  height: 32px;
+  justify-self: end;
+  border: 1px solid var(--border-color);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 1;
+  transition: color 0.2s, border-color 0.2s;
 }
 .wiki-nav-theme:hover { color: var(--accent); border-color: var(--accent); }
 
-/* ============================================
-   4. Layout — centered block via fixed positioning + calc
-   Docsify puts .sidebar and .content as siblings under <body> (not
-   inside #app). So we pin the sidebar to the centered layout's left
-   edge and pad the content to sit beside it. Layout width = 1000px
-   (sidebar 230 + content 770).
-   ============================================ */
-
 .sidebar {
   position: fixed !important;
-  left: calc(50% - 500px) !important;
-  top: 48px !important;
+  top: var(--wiki-nav-height) !important;
   bottom: 0 !important;
-  width: 230px !important;
+  left: var(--wiki-shell-edge) !important;
+  width: var(--wiki-sidebar-width) !important;
+  display: flex;
+  flex-direction: column;
+  padding: 24px 0 32px !important;
+  overflow: hidden;
   background: var(--bg-sidebar) !important;
   border-right: 1px solid var(--border-light) !important;
-  padding: 24px 0 !important;
-  overflow-y: auto;
   z-index: 10;
 }
 
-.content {
-  position: relative !important;
-  left: 0 !important;
-  margin-left: calc(50% - 500px + 230px) !important;
-  margin-right: calc(50% - 500px) !important;
-  max-width: 770px;
-  padding-top: 48px !important;
-  background: var(--bg-content);
-  min-height: calc(100vh - 48px);
-}
-
-/* Keep sidebar visible regardless of Docsify's body.close toggle */
 body.close .sidebar {
-  left: calc(50% - 500px) !important;
+  left: var(--wiki-shell-edge) !important;
   transform: none !important;
 }
-body.close .content { margin-left: calc(50% - 500px + 230px) !important; }
 
-/* Hide sidebar close button on desktop */
+.sidebar .app-name,
 .sidebar > .close { display: none !important; }
 
-/* ============================================
-   5b. Sidebar nav styling
-   ============================================ */
+.sidebar-nav {
+  min-height: 0;
+  padding: 0 20px;
+  overflow-y: auto !important;
+}
 
-.sidebar-nav { padding: 0 20px; }
 .sidebar-nav ul { list-style: none; padding: 0; margin: 0; }
-.sidebar-nav li { margin: 0; line-height: 1.6; }
+.sidebar-nav li { margin: 0; line-height: 1.5; }
+
+.sidebar-nav li > strong {
+  display: block;
+  margin: 22px 10px 6px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.sidebar-nav > ul > li:first-child + li > strong { margin-top: 14px; }
 
 .sidebar-nav a {
-  display: block; padding: 4px 12px;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
   color: var(--text-sidebar) !important;
-  font-size: 13.5px; text-decoration: none;
-  border-radius: var(--radius-sm);
-  transition: all 0.15s;
+  font-size: 13.5px;
+  text-decoration: none;
+  transition: color 0.15s, background-color 0.15s;
 }
+
+.sidebar-nav ul ul a {
+  padding-left: 20px;
+  color: var(--text-secondary) !important;
+  font-size: 13px;
+}
+
+.sidebar-nav .app-sub-sidebar {
+  margin: 2px 0 10px 10px;
+  padding: 4px 0 4px 10px;
+  border-left: 1px solid var(--border-light);
+}
+
+.sidebar-nav .app-sub-sidebar ul { padding-left: 10px; }
+
+.sidebar-nav .app-sub-sidebar li::before { display: none !important; }
+
+.sidebar-nav .app-sub-sidebar a {
+  min-height: 30px;
+  padding: 5px 8px;
+  color: var(--text-muted) !important;
+  font-size: 12px;
+}
+
+.sidebar-nav .app-sub-sidebar .active > a {
+  background: transparent;
+  color: var(--accent) !important;
+  font-weight: 500;
+}
+
 .sidebar-nav a:hover {
   color: var(--accent) !important;
   background: var(--accent-dim);
   text-decoration: none;
 }
+
 .sidebar-nav .active > a {
   color: var(--accent) !important;
+  background: var(--active-bg);
   font-weight: 600;
-  background: var(--accent-dim);
 }
 
-/* Section headers */
-.sidebar-nav li > p {
-  font-size: 11px; font-weight: 600;
-  text-transform: uppercase; letter-spacing: 0.06em;
-  color: var(--text-muted);
-  margin: 16px 12px 6px 12px; padding: 0;
-}
-
-.sidebar-nav ul ul a {
-  padding-left: 24px; font-size: 13px;
-  color: var(--text-secondary) !important;
-}
-
-/* ============================================
-   6. Content Area — override Docsify defaults
-   ============================================ */
-
-/* Docsify default: position:absolute left:300px. Override to relative
-   so it flows inside #app's flex container. */
-.content {
+.content,
+body.close .content {
   position: relative !important;
-  left: 0 !important; right: auto !important;
-  top: auto !important; bottom: auto !important;
-  flex: 1; min-width: 0;
-  transition: none !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: 0 !important;
+  min-width: 0;
+  min-height: 100vh;
+  max-width: none;
+  margin-left: calc(var(--wiki-shell-edge) + var(--wiki-sidebar-width)) !important;
+  margin-right: var(--wiki-shell-edge) !important;
+  padding-top: var(--wiki-nav-height) !important;
   background: var(--bg-content);
+  transition: none !important;
 }
-
-/* Docsify body.close moves content to left:0. We already have that. */
-body.close .content { left: 0 !important; }
 
 .markdown-section {
-  max-width: 720px;
-  padding: 48px 48px 64px 48px;
-  margin: 0;
+  max-width: 908px !important;
+  margin: 0 auto;
+  padding: 48px 48px 64px;
+  overflow-wrap: anywhere;
+}
+
+.markdown-section h1,
+.markdown-section h2,
+.markdown-section h3,
+.markdown-section h4 {
+  scroll-margin-top: calc(var(--wiki-nav-height) + 16px);
 }
 
 /* --- Headings --- */
@@ -319,10 +389,11 @@ body.close .content { left: 0 !important; }
    ============================================ */
 
 .markdown-section table {
-  display: table; width: 100%;
+  display: block;
+  width: 100%;
   border-collapse: separate; border-spacing: 0;
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-md); overflow: hidden;
+  border-radius: var(--radius-md); overflow-x: auto;
   margin: 1.2em 0; font-size: 0.92em;
   box-shadow: var(--shadow-sm);
 }
@@ -375,8 +446,12 @@ body.close .content { left: 0 !important; }
    11. Search
    ============================================ */
 
-.search { margin: 0 20px 16px 20px; }
-.search input {
+.wiki-nav-search .search {
+  position: relative;
+  margin: 0;
+  padding: 0;
+}
+.wiki-nav-search .search input {
   background: var(--bg-body) !important;
   border: 1px solid var(--border-color) !important;
   color: var(--text-primary) !important;
@@ -385,12 +460,18 @@ body.close .content { left: 0 !important; }
   font-size: 13px !important; width: 100% !important;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
-.search input:focus {
+.wiki-nav-search .search input:focus {
   border-color: var(--accent) !important; outline: none;
   box-shadow: 0 0 0 3px var(--accent-dim);
 }
-.search input::placeholder { color: var(--text-muted); }
-.search .results-panel {
+.wiki-nav-search .search input::placeholder { color: var(--text-muted); }
+.wiki-nav-search .search .results-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  max-height: min(60vh, 480px);
+  overflow-y: auto;
   background: var(--bg-body) !important;
   border: 1px solid var(--border-color) !important;
   border-radius: var(--radius-md) !important;
@@ -420,47 +501,81 @@ body.close .content { left: 0 !important; }
 .cover, .cover-show { display: none !important; }
 
 /* ============================================
-   14. Mobile
+   14. Responsive drawer
    ============================================ */
 
-@media (max-width: 768px) {
-  .wiki-nav-inner { padding: 0 16px; }
-  .wiki-layout { max-width: none; }
+@media (max-width: 1023px) {
+  .wiki-nav-inner {
+    width: 100%;
+    max-width: none;
+    grid-template-columns: minmax(140px, 1fr) minmax(180px, 360px) 36px;
+    gap: 12px;
+    padding: 0 16px;
+  }
 
-  /* Restore Docsify default sidebar on mobile */
+  .wiki-nav-title { padding-left: 40px; }
+
   .sidebar {
     position: fixed !important;
-    top: 0 !important; left: 0 !important;
+    top: var(--wiki-nav-height) !important;
+    left: 0 !important;
     bottom: 0 !important;
-    width: 280px !important; min-width: 0;
-    max-height: none; z-index: 40;
-    transform: translateX(-280px) !important;
+    width: min(320px, 86vw) !important;
+    padding-top: 20px !important;
+    transform: translateX(-100%) !important;
     transition: transform 250ms ease !important;
     border-right: 1px solid var(--border-color) !important;
-    padding-top: 48px !important;
+    z-index: 90;
   }
-  body.close .sidebar { transform: translateX(-280px) !important; left: 0 !important; }
-  body:not(.close) .sidebar { transform: translateX(0) !important; left: 0 !important; }
-  .content {
-    margin-left: 0 !important; margin-right: 0 !important;
-    left: 0 !important; flex: auto;
+  body.close .sidebar {
+    left: 0 !important;
+    transform: translateX(-100%) !important;
+  }
+  body:not(.close) .sidebar {
+    left: 0 !important;
+    transform: translateX(0) !important;
   }
 
-  .sidebar > .close { display: block !important; }
+  .sidebar-nav a { min-height: 44px; }
+  .sidebar-nav .app-sub-sidebar a { min-height: 36px; }
+
+  .content,
+  body.close .content,
+  body:not(.close) .content {
+    left: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-top: var(--wiki-nav-height) !important;
+  }
 
   .sidebar-toggle {
     display: block !important;
-    position: fixed; top: 56px; left: 12px; z-index: 50;
-    background: var(--bg-nav) !important;
-    border-radius: 50%; width: 36px; height: 36px;
-    padding: 8px !important;
-    box-shadow: var(--shadow-md);
-    border: 1px solid var(--border-color);
+    position: fixed;
+    top: 10px !important;
+    left: 12px;
+    z-index: 120;
+    width: 36px;
+    height: 36px;
+    padding: 9px !important;
+    border: 0;
+    border-radius: 50%;
+    background: transparent !important;
   }
   .sidebar-toggle span { background-color: var(--text-secondary) !important; }
 
-  .content { left: 0 !important; flex: auto; }
-  .markdown-section { max-width: none; padding: 32px 20px 48px 20px; }
+  .markdown-section { max-width: none; padding: 40px 24px 56px; }
+}
+
+@media (max-width: 640px) {
+  .wiki-nav-inner {
+    grid-template-columns: minmax(84px, 1fr) minmax(112px, 1.4fr) 32px;
+    gap: 8px;
+  }
+
+  .wiki-nav-title { font-size: 13px; }
+  .wiki-nav-theme { width: 32px; height: 32px; }
+  .wiki-nav-search .search input { font-size: 12px !important; }
+  .markdown-section { padding: 32px 20px 48px; }
   .markdown-section h1 { font-size: 1.5em; }
   .markdown-section h2 { font-size: 1.2em; }
 }

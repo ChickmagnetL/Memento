@@ -11,7 +11,8 @@
   <!-- Top Nav Bar -->
   <header class="wiki-nav">
     <div class="wiki-nav-inner">
-      <a class="wiki-nav-title" href="/">Memento 技术 Wiki</a>
+      <a class="wiki-nav-title" href="#/">Memento 技术 Wiki</a>
+      <div class="wiki-nav-search" id="wiki-search" aria-label="文档搜索" role="search"></div>
       <button class="wiki-nav-theme" id="theme-toggle" title="切换主题" aria-label="切换浅色/暗色主题">☾</button>
     </div>
   </header>
@@ -22,18 +23,75 @@
 
   <script>
     window.$docsify = {
-      name: 'Memento 技术 Wiki',
+      name: '',
       repo: '',
       loadSidebar: true,
       coverpage: false,
-      subMaxLevel: 2,
+      subMaxLevel: 3,
       auto2top: true,
-      search: 'auto',
+      search: {
+        placeholder: '搜索文档…',
+        noData: '没有找到相关内容',
+        depth: 3,
+      },
       relativePath: true,
     }
   </script>
   <script src="//cdn.jsdelivr.net/npm/docsify@4/lib/docsify.min.js"></script>
   <script src="//cdn.jsdelivr.net/npm/docsify@4/lib/plugins/search.min.js"></script>
+  <script>
+  (function() {
+    var target = document.getElementById('wiki-search');
+    if (!target) return;
+
+    function mountSearch() {
+      var search = document.querySelector('.sidebar .search');
+      if (!search) return false;
+      var input = search.querySelector('input');
+      if (input) input.setAttribute('aria-label', '文档搜索');
+      target.appendChild(search);
+      return true;
+    }
+
+    if (!mountSearch()) {
+      var observer = new MutationObserver(function() {
+        if (mountSearch()) observer.disconnect();
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+      window.addEventListener('load', function() {
+        mountSearch();
+        observer.disconnect();
+      }, { once: true });
+    }
+  })();
+  </script>
+
+  <script>
+  (function() {
+    function syncSidebarActive() {
+      var current = window.location.hash || '#/';
+      var route = current.split('?')[0];
+      document.querySelectorAll('.sidebar-nav a').forEach(function(link) {
+        if (link.closest('.app-sub-sidebar')) {
+          link.parentElement.classList.toggle('active', link.getAttribute('href') === current);
+          return;
+        }
+        var linkRoute = (link.getAttribute('href') || '#/').split('?')[0];
+        link.parentElement.classList.toggle('active', linkRoute === route);
+      });
+    }
+
+    var observer = new MutationObserver(syncSidebarActive);
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ['class'],
+      childList: true,
+      subtree: true,
+    });
+    window.addEventListener('hashchange', syncSidebarActive);
+    window.addEventListener('load', syncSidebarActive, { once: true });
+  })();
+  </script>
 
   <script>
   (function() {
