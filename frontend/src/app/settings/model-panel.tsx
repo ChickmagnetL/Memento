@@ -36,6 +36,7 @@ export interface ModelPanelProps {
   modelName: PresetModelName;
   status?: ServiceStatus;
   fields: { key: keyof ModelConfig; label: string }[];
+  onStatusRefresh: () => Promise<void>;
   /**
    * Render-prop called for the selected card when modelName === "asr".
    * ModelPanel injects the selected ASR preset's `protocol`/`endpoint` plus
@@ -117,6 +118,7 @@ export function ModelPanel({
   status,
   fields,
   asrExtras,
+  onStatusRefresh,
 }: ModelPanelProps) {
   const messageSourceRef = useRef<"poll" | "other" | null>(null);
   const [presets, setPresets] = useState<PresetResponse[]>([]);
@@ -447,6 +449,7 @@ export function ModelPanel({
   ) {
     await switchActivePreset(modelName, presetId);
     markPresetActiveFromList(presetId, presetList);
+    await onStatusRefresh();
     setInlineMessage("");
   }
 
@@ -468,6 +471,7 @@ export function ModelPanel({
       }
       const result = await switchEmbeddingPreset(nextPresetId, true);
       handleEmbeddingSwitchResult(result, presetList);
+      await onStatusRefresh();
     } catch (e) {
       setInlineMessage(e instanceof Error ? e.message : "Operation failed");
     } finally {
@@ -539,6 +543,7 @@ export function ModelPanel({
         }
         const result = await switchEmbeddingPreset(selectedPresetId, false);
         handleEmbeddingSwitchResult(result, presetList);
+        await onStatusRefresh();
         return;
       }
 
@@ -626,8 +631,6 @@ export function ModelPanel({
     }
   }
 
-  // Save writes the selected ACTIVE preset. Status refresh is the parent's concern —
-  // `status` arrives as a prop with no callback path on this interface.
   async function handleSave() {
     if (!selectedPresetId || !selectedIsActive || !selectedIsDirty) {
       return;
@@ -664,10 +667,12 @@ export function ModelPanel({
           return;
         }
         await saveSelectedPresetConfig(selectedPresetId, saveConfig);
+        await onStatusRefresh();
         setInlineMessage("Saved.");
         return;
       }
       await saveSelectedPresetConfig(selectedPresetId, saveConfig);
+      await onStatusRefresh();
       setInlineMessage("Saved.");
     } catch (e) {
       setInlineMessage(e instanceof Error ? e.message : "Operation failed");
