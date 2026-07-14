@@ -17,6 +17,64 @@ function copyDirectory(source, target, options = {}) {
   fs.cpSync(source, target, { recursive: true, force: true, ...options });
 }
 
+/**
+ * fs.cpSync resolves relative symlinks to absolute paths when copying.
+ * After copyDirectory, rewrite them back to relative so the app bundle is portable.
+ */
+function fixPyinstallerSymlinks(distDir) {
+  const internalDir = path.join(distDir, "_internal");
+  if (!fs.existsSync(internalDir)) {
+    console.log(`  No _internal directory in ${distDir}, skipping symlink fix`);
+    return;
+  }
+  const fwDir = path.join(internalDir, "Python.framework");
+  if (!fs.existsSync(fwDir)) {
+    console.log(`  No Python.framework in ${internalDir}, skipping symlink fix`);
+    return;
+  }
+  const versionsDir = path.join(fwDir, "Versions");
+
+  // 1. Find the version directory (e.g. "3.12")
+  const entries = fs.readdirSync(versionsDir, { withFileTypes: true });
+  const versionDir = entries.find((e) => e.isDirectory()).name;
+
+  // 2. Fix Versions/Current -> <version>
+  const currentLink = path.join(versionsDir, "Current");
+  const currentTarget = fs.readlinkSync(currentLink);
+  if (path.isAbsolute(currentTarget)) {
+    fs.unlinkSync(currentLink);
+    fs.symlinkSync(versionDir, currentLink);
+  }
+
+  // 3. Fix Python -> Versions/Current/Python
+  const pythonLink = path.join(fwDir, "Python");
+  const pythonTarget = fs.readlinkSync(pythonLink);
+  if (path.isAbsolute(pythonTarget)) {
+    fs.unlinkSync(pythonLink);
+    fs.symlinkSync("Versions/Current/Python", pythonLink);
+  }
+
+  // 4. Fix Resources -> Versions/Current/Resources
+  const resourcesLink = path.join(fwDir, "Resources");
+  const resourcesTarget = fs.readlinkSync(resourcesLink);
+  if (path.isAbsolute(resourcesTarget)) {
+    fs.unlinkSync(resourcesLink);
+    fs.symlinkSync("Versions/Current/Resources", resourcesLink);
+  }
+
+  // 5. Fix _internal/Python -> Python.framework/Versions/Current/Python
+  const pythonBin = path.join(internalDir, "Python");
+  if (fs.existsSync(pythonBin)) {
+    const binTarget = fs.readlinkSync(pythonBin);
+    if (path.isAbsolute(binTarget)) {
+      fs.unlinkSync(pythonBin);
+      fs.symlinkSync("Python.framework/Versions/Current/Python", pythonBin);
+    }
+  }
+
+  console.log(`  Fixed PyInstaller symlinks in ${distDir}`);
+}
+
 function copyRuntimeService(name) {
   const source = path.join(root, "services", name);
   const target = path.join(resourcesDir, "services", name);
@@ -45,6 +103,8 @@ copyDirectory(
   path.join(root, "backend", "dist", "memento-backend"),
   path.join(resourcesDir, "backend"),
 );
+fixPyinstallerSymlinks(path.join(resourcesDir, "backend"));
+
 copyDirectory(
   path.join(root, "frontend", ".next", "standalone"),
   path.join(resourcesDir, "frontend"),
@@ -57,6 +117,7 @@ copyDirectory(
   path.join(root, "services", "douyin_fetcher", "dist", "memento-douyin-fetcher"),
   path.join(resourcesDir, "douyin-fetcher"),
 );
+fixPyinstallerSymlinks(path.join(resourcesDir, "douyin-fetcher"));
 
 for (const service of ["asr", "embedding", "node"]) {
   copyRuntimeService(service);
