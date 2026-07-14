@@ -6,7 +6,7 @@
   "scripts": {
     "start": "electron .",
     "dist": "electron-builder",
-    "test": "node --test tests/*.test.js"
+    "test": "node --test"
   },
   "devDependencies": {
     "@electron/asar": "^3.4.1",
