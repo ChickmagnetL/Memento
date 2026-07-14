@@ -286,6 +286,36 @@ jobs:
       - name: Build Windows installer (electron-builder)
         run: cd desktop && npx electron-builder --win
 
+      - name: Smoke test packaged Windows app
+        shell: pwsh
+        run: |
+          $app = Start-Process -FilePath 'desktop/dist/win-unpacked/Memento.exe' -PassThru
+          try {
+            $windowReady = $false
+            $backendReady = $false
+            $frontendReady = $false
+            foreach ($attempt in 1..120) {
+              if ($app.HasExited) { throw "Packaged app exited with code $($app.ExitCode)." }
+              $app.Refresh()
+              $windowReady = $windowReady -or $app.MainWindowHandle -ne 0
+              try {
+                Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8000/api/health | Out-Null
+                $backendReady = $true
+              } catch {}
+              try {
+                Invoke-WebRequest -UseBasicParsing http://127.0.0.1:3123 | Out-Null
+                $frontendReady = $true
+              } catch {}
+              if ($windowReady -and $backendReady -and $frontendReady) { break }
+              Start-Sleep -Seconds 1
+            }
+            if (-not $windowReady) { throw 'Packaged app did not create a window.' }
+            if (-not $backendReady) { throw 'Packaged app backend did not become healthy.' }
+            if (-not $frontendReady) { throw 'Packaged app frontend did not become healthy.' }
+          } finally {
+            taskkill.exe /PID $app.Id /T /F 2>$null | Out-Null
+          }
+
       - name: Verify packaged login window
         shell: pwsh
         run: |

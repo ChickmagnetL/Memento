@@ -13,7 +13,10 @@ const path = require("path");
 const { LoginWindowManager } = require("./login-manager");
 const { VideoPlayerManager } = require("./video-player");
 const { CookieRefreshScheduler } = require("./cookie-refresh");
-const { createMainWindowOptions } = require("./window-options");
+const {
+  createMainWindowOptions,
+  STARTUP_PAGE_URL,
+} = require("./window-options");
 
 const FRONTEND_PORT = 3123;
 const FRONTEND_URL =
@@ -333,33 +336,37 @@ app.whenReady().then(async () => {
   if (process.platform === "darwin" && app.dock) {
     app.dock.setIcon(APP_ICON_PATH);
   }
-  preparePackagedRuntime();
-  await startDouyinFetcher();
-  await startBackend();
-  await startFrontend();
+  let window = null;
   try {
+    window = new BrowserWindow({
+      ...createMainWindowOptions(
+        process.platform,
+        path.join(__dirname, "preload.js")
+      ),
+      icon: APP_ICON_PATH,
+    });
+    if (process.platform === "win32") {
+      window.setMenu(null);
+    }
+    mainWindow = window;
+    await window.loadURL(STARTUP_PAGE_URL);
+    window.show();
+
+    preparePackagedRuntime();
+    await startDouyinFetcher();
+    await startBackend();
+    await startFrontend();
     await waitForHealth();
     if (isPackaged()) {
       await waitForFrontendHealth();
     }
+    await window.loadURL(FRONTEND_URL);
   } catch (error) {
     dialog.showErrorBox("Memento", String(error));
     stopSidecars();
     app.quit();
     return;
   }
-  const window = new BrowserWindow({
-    ...createMainWindowOptions(
-      process.platform,
-      path.join(__dirname, "preload.js")
-    ),
-    icon: APP_ICON_PATH,
-  });
-  if (process.platform === "win32") {
-    window.setMenu(null);
-  }
-  mainWindow = window;
-  window.loadURL(FRONTEND_URL);
 
   const loginManager = new LoginWindowManager(window, APP_ICON_PATH);
   videoPlayerManager = new VideoPlayerManager(APP_ICON_PATH);
