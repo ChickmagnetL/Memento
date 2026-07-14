@@ -26,6 +26,21 @@ for (const relative of required) {
   }
 }
 
+const iconPath = path.resolve("desktop/build/icon.png");
+if (!fs.existsSync(iconPath)) {
+  throw new Error(`Desktop app icon is missing: ${iconPath}`);
+}
+const icon = fs.readFileSync(iconPath);
+const pngSignature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+if (
+  icon.length < 24 ||
+  !icon.subarray(0, 8).equals(pngSignature) ||
+  icon.readUInt32BE(16) !== 1024 ||
+  icon.readUInt32BE(20) !== 1024
+) {
+  throw new Error(`Desktop app icon must be a 1024x1024 PNG: ${iconPath}`);
+}
+
 for (const tool of [`ffmpeg${executableSuffix}`, `ffprobe${executableSuffix}`]) {
   const target = path.join(resourcesDir, "bin", tool);
   const result = spawnSync(target, ["-version"], { encoding: "utf8" });

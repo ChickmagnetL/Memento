@@ -41,7 +41,7 @@ function isWebUrl(url) {
   }
 }
 
-function configureAuthNavigationGuards(webContents) {
+function configureAuthNavigationGuards(webContents, icon) {
   const blockUnsafeNavigation = (event, url) => {
     if (!isWebUrl(url)) {
       event.preventDefault();
@@ -51,9 +51,15 @@ function configureAuthNavigationGuards(webContents) {
 
   webContents.on('will-navigate', blockUnsafeNavigation);
   webContents.on('will-redirect', blockUnsafeNavigation);
-  webContents.setWindowOpenHandler(({ url }) => ({
-    action: isWebUrl(url) ? 'allow' : 'deny',
-  }));
+  webContents.setWindowOpenHandler(({ url }) => {
+    if (!isWebUrl(url)) {
+      return { action: 'deny' };
+    }
+    return {
+      action: 'allow',
+      ...(icon ? { overrideBrowserWindowOptions: { icon } } : {}),
+    };
+  });
 }
 
 // Platform-specific CSS to hide non-login content
@@ -167,8 +173,9 @@ const DOUYIN_AUTO_LOGIN_JS = `
 `;
 
 class LoginWindowManager {
-  constructor(mainWindow) {
+  constructor(mainWindow, icon) {
     this.mainWindow = mainWindow;
+    this.icon = icon;
     this.loginWindow = null;
     this.authView = null;
     this.pollInterval = null;
@@ -203,6 +210,7 @@ class LoginWindowManager {
       modal: false,
       show: false,
       frame: false,
+      icon: this.icon,
       width: windowSize.width,
       height: windowSize.height,
       resizable: false,
@@ -239,7 +247,7 @@ class LoginWindowManager {
     this.authView.webContents.setUserAgent(
       sanitizeUserAgent(this.authView.webContents.getUserAgent())
     );
-    configureAuthNavigationGuards(this.authView.webContents);
+    configureAuthNavigationGuards(this.authView.webContents, this.icon);
 
     // Attach BrowserView over the auth-surface region
     this.loginWindow.setBrowserView(this.authView);

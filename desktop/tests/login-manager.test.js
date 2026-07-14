@@ -16,7 +16,7 @@ test('auth navigation blocks custom protocols without blocking HTTPS', () => {
     on: (event, handler) => { handlers[event] = handler; },
     setWindowOpenHandler: (handler) => { windowOpenHandler = handler; },
   };
-  configureAuthNavigationGuards(webContents);
+  configureAuthNavigationGuards(webContents, '/tmp/icon.png');
 
   let prevented = false;
   handlers['will-navigate'](
@@ -34,7 +34,10 @@ test('auth navigation blocks custom protocols without blocking HTTPS', () => {
   assert.equal(prevented, false);
   assert.deepEqual(
     windowOpenHandler({ url: 'https://www.douyin.com/passport/login' }),
-    { action: 'allow' },
+    {
+      action: 'allow',
+      overrideBrowserWindowOptions: { icon: '/tmp/icon.png' },
+    },
   );
 });
 

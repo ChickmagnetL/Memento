@@ -20,7 +20,8 @@ const VIDEO_URL_BUILDERS = {
 };
 
 class VideoPlayerManager {
-  constructor() {
+  constructor(icon) {
+    this.icon = icon;
     this.players = new Map();
   }
 
@@ -52,6 +53,7 @@ class VideoPlayerManager {
       width: 1140,
       height: 900,
       frame: false,
+      icon: this.icon,
       title: displayTitle,
       webPreferences: {
         session: playerSession,

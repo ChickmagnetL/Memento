@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="background" x1="172" y1="112" x2="850" y2="920" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#18171E"/>
+      <stop offset="0.58" stop-color="#0E0E13"/>
+      <stop offset="1" stop-color="#09090B"/>
+    </linearGradient>
+    <radialGradient id="violetGlow" cx="0" cy="0" r="1" gradientTransform="translate(640 430) rotate(105) scale(410)">
+      <stop stop-color="#8B5CF6" stop-opacity="0.14"/>
+      <stop offset="1" stop-color="#8B5CF6" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="softShadow" x="150" y="150" width="730" height="730" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="20" stdDeviation="18" flood-color="#000000" flood-opacity="0.42"/>
+    </filter>
+  </defs>
+
+  <rect x="64" y="64" width="896" height="896" rx="216" fill="url(#background)"/>
+  <rect x="64" y="64" width="896" height="896" rx="216" fill="url(#violetGlow)"/>
+  <rect x="79" y="79" width="866" height="866" rx="202" fill="none" stroke="#F5EEDF" stroke-opacity="0.07" stroke-width="3"/>
+
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="82" filter="url(#softShadow)">
+    <path
+      d="M238 686C276 688 292 650 300 598L340 370C348 322 378 294 416 304C458 315 468 360 472 414L488 602C492 644 510 666 534 664C558 662 568 634 574 596L600 412C608 352 636 320 678 328C720 336 730 382 734 432L755 682"
+      stroke="#F5EEDF"
+    />
+    <path
+      d="M238 686C276 688 292 650 300 598L327 445"
+      stroke="#AAA297"
+    />
+    <path
+      d="M727 385C731 399 733 415 734 432L755 682"
+      stroke="#8B5CF6"
+    />
+  </g>
+</svg>

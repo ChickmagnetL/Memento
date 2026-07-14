@@ -21,6 +21,8 @@ const FRONTEND_URL =
   (isPackaged() ? `http://127.0.0.1:${FRONTEND_PORT}` : "http://localhost:3000");
 const BACKEND_HEALTH_URL = "http://127.0.0.1:8000/api/health";
 const DOUYIN_FETCHER_HEALTH_URL = "http://127.0.0.1:8002/health";
+const APP_ICON_PATH = path.join(__dirname, "build", "icon.png");
+const APP_ID = "dev.leo.memento";
 
 function isPackaged() {
   return app.isPackaged;
@@ -322,8 +324,15 @@ async function loadBilibiliRefreshToken() {
   }
 }
 
+if (process.platform === "win32") {
+  app.setAppUserModelId(APP_ID);
+}
+
 app.whenReady().then(async () => {
   nativeTheme.themeSource = "dark";
+  if (process.platform === "darwin" && app.dock) {
+    app.dock.setIcon(APP_ICON_PATH);
+  }
   preparePackagedRuntime();
   await startDouyinFetcher();
   await startBackend();
@@ -339,20 +348,21 @@ app.whenReady().then(async () => {
     app.quit();
     return;
   }
-  const window = new BrowserWindow(
-    createMainWindowOptions(
+  const window = new BrowserWindow({
+    ...createMainWindowOptions(
       process.platform,
       path.join(__dirname, "preload.js")
-    )
-  );
+    ),
+    icon: APP_ICON_PATH,
+  });
   if (process.platform === "win32") {
     window.setMenu(null);
   }
   mainWindow = window;
   window.loadURL(FRONTEND_URL);
 
-  const loginManager = new LoginWindowManager(window);
-  videoPlayerManager = new VideoPlayerManager();
+  const loginManager = new LoginWindowManager(window, APP_ICON_PATH);
+  videoPlayerManager = new VideoPlayerManager(APP_ICON_PATH);
   cookieRefreshScheduler = new CookieRefreshScheduler({
     getMainWindow: () => mainWindow,
   });
