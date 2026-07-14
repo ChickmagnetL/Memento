@@ -14,23 +14,24 @@ const chatPanelSource = readFileSync(
   "utf8"
 );
 
-test("Windows drag strip does not cover the chat header controls", () => {
+test("desktop drag strip is available on macOS and Windows without covering header controls", () => {
   const dragRule = globalsSource.match(
-    /html\[data-platform="win32"\] \.desktop-drag-region \{[\s\S]*?\}/
+    /html\[data-platform="darwin"\] \.desktop-drag-region,\s*html\[data-platform="win32"\] \.desktop-drag-region \{[\s\S]*?\}/
   )?.[0] ?? "";
 
+  assert.notEqual(dragRule, "");
   assert.match(dragRule, /height:\s*8px/);
   assert.match(dragRule, /margin-bottom:\s*-8px/);
   assert.doesNotMatch(dragRule, /height:\s*48px/);
 });
 
-test("Windows chat memory control stays clear of native window buttons", () => {
-  assert.match(
-    globalsSource,
-    /html\[data-platform="win32"\] \.desktop-window-controls-safe \{[\s\S]*?margin-right:\s*var\(--window-controls-width\)/
-  );
-  assert.match(
-    chatPanelSource,
-    /className="desktop-window-controls-safe flex justify-end"/
-  );
+test("chat memory control sits directly after the new-chat control", () => {
+  const newChatControl = chatPanelSource.indexOf('title="New Chat"');
+  const memoryControl = chatPanelSource.indexOf("<MemoryPopover", newChatControl);
+  const centeredControlsEnd = chatPanelSource.indexOf("</div>", memoryControl);
+
+  assert.notEqual(newChatControl, -1);
+  assert.notEqual(memoryControl, -1);
+  assert.ok(memoryControl < centeredControlsEnd);
+  assert.doesNotMatch(chatPanelSource, /desktop-window-controls-safe/);
 });

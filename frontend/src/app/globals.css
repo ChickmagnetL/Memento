@@ -10,18 +10,18 @@ body {
   display: none;
 }
 
+html[data-platform="darwin"] .desktop-drag-region,
 html[data-platform="win32"] .desktop-drag-region {
   display: block;
   position: sticky;
   top: 0;
   height: 8px;
   margin-bottom: -8px;
-  margin-right: var(--window-controls-width);
   z-index: var(--z-modal);
   -webkit-app-region: drag;
 }
 
-html[data-platform="win32"] .desktop-window-controls-safe {
+html[data-platform="win32"] .desktop-drag-region {
   margin-right: var(--window-controls-width);
 }
 
