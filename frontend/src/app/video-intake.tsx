@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 
@@ -308,9 +309,15 @@ export function VideoIntake({ initialVideos }: VideoIntakeProps) {
 
       {/* Hero: Memento handwriting */}
       <section className="flex flex-col items-center gap-2.5 mb-2">
-        <div className="brand-word" aria-label="Memento">
-          <span>M</span><span>e</span><span>m</span><span>e</span><span>n</span><span>t</span><span>o</span>
-        </div>
+        <Image
+          alt="Memento"
+          className="brand-word"
+          draggable={false}
+          height={180}
+          priority
+          src="/memento-wordmark.svg"
+          width={920}
+        />
       </section>
 
       {/* URL input card */}

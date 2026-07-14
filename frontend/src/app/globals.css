@@ -472,35 +472,16 @@ html[data-platform="win32"] .desktop-drag-region {
 
 /* Brand word handwriting */
 .brand-word {
-  position: relative;
-  display: inline-block;
-  color: #f5eedf;
-  font-family: var(--font-brand), cursive;
-  font-size: clamp(72px, 9vw, 116px);
-  line-height: .92;
-  font-weight: 700;
-  letter-spacing: -.08em;
+  display: block;
+  width: min(100%, clamp(280px, 42vw, 430px));
+  height: auto;
   transform: rotate(-1.4deg);
-  filter: url(#handwriting-rough);
-  text-shadow:
-    1px 1px 0 rgba(0, 0, 0, .9),
-    0 0 18px rgba(245, 238, 223, .08);
+  filter:
+    url(#handwriting-rough)
+    drop-shadow(1px 1px 0 rgba(0, 0, 0, .9))
+    drop-shadow(0 0 18px rgba(245, 238, 223, .08));
   user-select: none;
 }
-.brand-word span {
-  display: inline-block;
-}
-.brand-word span:nth-child(1) { transform: rotate(-4deg) translateY(3px); }
-.brand-word span:nth-child(2) { transform: rotate(2deg) translateY(-1px); }
-.brand-word span:nth-child(3) { transform: rotate(-3deg) translateY(4px); }
-.brand-word span:nth-child(4) { transform: rotate(2deg) translateY(-2px); }
-.brand-word span:nth-child(5) { transform: rotate(-2deg) translateY(2px); }
-.brand-word span:nth-child(6) {
-  color: #8b5cf6;
-  text-shadow: 1px 1px 0 rgba(0, 0, 0, .9), 0 0 14px rgba(139, 92, 246, .22);
-  transform: rotate(4deg) translateY(-1px);
-}
-.brand-word span:nth-child(7) { transform: rotate(-3deg) translateY(3px); }
 
 /* Page layout: center hero+url in viewport when collapsed, slide to top when expanded. */
 .page-shell {
