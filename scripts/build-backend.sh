@@ -26,3 +26,4 @@ cd "$(dirname "$0")/../backend"
   desktop_entry.py
 
 echo "Built: backend/dist/memento-backend/"
+"$(dirname "$0")/fix-pyi-symlinks.sh" dist/memento-backend

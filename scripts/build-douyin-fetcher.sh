@@ -19,3 +19,4 @@ fi
   desktop_entry.py
 
 echo "Built: services/douyin_fetcher/dist/memento-douyin-fetcher/"
+"$ROOT/scripts/fix-pyi-symlinks.sh" dist/memento-douyin-fetcher

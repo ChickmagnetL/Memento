@@ -97,6 +97,7 @@ jobs:
             --copy-metadata uvicorn \
             --copy-metadata starlette \
             desktop_entry.py
+          bash ../scripts/fix-pyi-symlinks.sh dist/memento-backend
 
       - name: Build Douyin fetcher (PyInstaller)
         run: |
@@ -106,6 +107,7 @@ jobs:
             --paths . \
             --collect-all f2 \
             desktop_entry.py
+          bash ../../scripts/fix-pyi-symlinks.sh dist/memento-douyin-fetcher
 
       - name: Build frontend (Next.js standalone)
         run: |
