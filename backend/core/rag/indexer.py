@@ -33,6 +33,12 @@ class DocumentIndexer:
 
     async def index(self, document: dict) -> dict:
         """Index one document and return the updated document record."""
+        video = (
+            await self.sqlite.get_video(document["video_id"])
+            if document["video_id"]
+            else None
+        )
+        platform = video["platform"] if video else None
         content = await asyncio.to_thread(
             Path(document["file_path"]).read_text, encoding="utf-8"
         )
@@ -59,6 +65,7 @@ class DocumentIndexer:
             payloads=[
                 {
                     "video_id": chunk.video_id,
+                    "platform": platform,
                     "document_id": chunk.document_id,
                     "chunk_index": chunk.chunk_index,
                     "title_path": chunk.title_path,

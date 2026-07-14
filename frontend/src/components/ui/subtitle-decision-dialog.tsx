@@ -23,7 +23,11 @@ function languageLabel(lan: string): string {
     case "ai-zh":
       return "Chinese";
     default:
-      return lan;
+      try {
+        return new Intl.DisplayNames(["en"], { type: "language" }).of(lan) ?? lan;
+      } catch {
+        return lan;
+      }
   }
 }
 

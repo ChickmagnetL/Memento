@@ -50,7 +50,7 @@ def _deps(retriever: object) -> ChatDeps:
 
 def _result(text: str) -> SearchResult:
     return SearchResult(
-        video_id="v1", document_id="d1", chunk_index=0,
+        video_id="v1", platform="youtube", document_id="d1", chunk_index=0,
         title_path="示例视频 > Transcript", text=text,
         start_timestamp="02:35", score=0.9,
     )
@@ -84,6 +84,7 @@ async def test_search_tool_formats_results_with_timestamps():
     # must contain the title path and the timestamp marker.
     text = str(result.output)
     assert "示例视频 > Transcript" in text
+    assert "platform: youtube" in text
     assert "02:35" in text
 
 

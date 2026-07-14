@@ -151,6 +151,8 @@ endpoint, api_key, model, protocol
 | Frontend | 外部 Next dev server；`MEMENTO_FRONTEND_URL` 默认 :3000 | Electron 启动 `process.resourcesPath/frontend/server.js`，默认监听 127.0.0.1:3123，再通过 URL 加载 |
 | 项目根 | `MEMENTO_PROJECT_ROOT` 传给 backend | 冻结路径规则见 backend 打包入口 |
 
+完整的 YouTube 支持要求 `yt-dlp` 同时能发现 JavaScript 运行时与 EJS 组件。开发态由系统 `PATH` 提供 Deno，后端依赖中的 `yt-dlp[default]` 安装 `yt-dlp-ejs`；打包态由 `scripts/stage-desktop-resources.mjs` 把锁定的 Deno 可执行文件放入 `resources/bin`，`desktop/main.js` 将该目录加入 backend 的 `PATH`，同时 `scripts/build-backend.sh` 通过 PyInstaller 收集 `yt_dlp_ejs`。两项缺一都不能视为完整的 YouTube 打包运行条件。
+
 开发一键脚本：`scripts/dev.sh`。
 
 ## 端口速查

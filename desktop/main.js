@@ -408,7 +408,7 @@ app.whenReady().then(async () => {
 
   ipcMain.on('open-video-player', (event, params) => {
     const { platform, videoId, timestamp, title } = params;
-    if (platform !== 'bilibili' && platform !== 'douyin') {
+    if (platform !== 'bilibili' && platform !== 'douyin' && platform !== 'youtube') {
       console.error(`[main] Invalid platform: ${platform}`);
       return;
     }

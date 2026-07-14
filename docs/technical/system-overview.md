@@ -1,6 +1,6 @@
 # 系统总览
 
-Memento 把 **B 站 / 抖音视频** 变成 **可检索的本地知识库**，再通过对话回答「视频里讲了什么」。  
+Memento 把 **B 站 / 抖音 / 公开 YouTube 视频** 变成 **可检索的本地知识库**，再通过对话回答「视频里讲了什么」。
 形态是 **单用户桌面应用**（开发态也可 web + 本地 backend）。
 
 ## 进程与目录边界
@@ -41,10 +41,11 @@ backend **不会**懒启动 embedding。ASR 懒启动也只覆盖本地 loopback
 下列是 **用户（或 UI）分别触发** 的阶段。process **不会**自动 clean/index。
 
 1. **导入**：粘贴 URL → `POST /api/videos` → video `pending`
-   导入时只按 host 识别平台；记录创建成功不代表该 URL 一定可处理。B 站处理需要可直接解析 BV 号的 `/video/BV...` URL，抖音需要 URL 路径或查询参数中带可解析的 `aweme_id`
+   导入时按 host 识别平台。B 站处理需要可直接解析 BV 号的 `/video/BV...` URL，抖音需要 URL 路径或查询参数中带可解析的 `aweme_id`；YouTube 支持公开单视频的 `youtube.com/watch`、`youtu.be` 和 `youtube.com/shorts` URL，并在导入时读取视频 ID、标题、频道名称、频道 ID 和时长
 2. **处理**：`POST /api/videos/{id}/process`  
    - B 站默认只取软字幕；无字幕失败；可选 `?subtitle_fallback=asr` 再走 ASR  
    - 抖音主路径为下载 + ASR  
+   - YouTube 默认优先中文字幕，同一语言优先创作者字幕；没有可用中文字幕时由用户选择其他语言字幕或 `?subtitle_fallback=asr`。当前不提供 YouTube 登录，不处理受限内容
    - 成功：写 raw markdown + document `raw`，video `completed`  
    - 失败：video `failed`，**不**新建 document
 3. **清洗 + 索引**（知识库侧另一步）：`POST /api/documents/{id}/clean`  

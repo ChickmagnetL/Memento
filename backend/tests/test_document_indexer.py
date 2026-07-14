@@ -75,8 +75,28 @@ async def test_index_writes_points_and_marks_document(
     assert updated["status"] == "indexed"
     assert updated["chunk_count"] == 1
     assert qdrant.count_for_document("d1") == 1
+    assert qdrant.scroll_all_points()[0]["platform"] == "bilibili"
     # Embedded texts are the chunk texts (title path + body).
     assert embedding.seen_texts[0][0].startswith("示例视频 > Transcript")
+
+
+@pytest.mark.asyncio
+async def test_index_standalone_document_has_no_platform(
+    sqlite: SQLiteClient, qdrant: QdrantStore, tmp_path: Path
+):
+    draft_path = tmp_path / "standalone.md"
+    draft_path.write_text(DRAFT, encoding="utf-8")
+    document = await sqlite.create_document(
+        document_id="standalone", file_path=str(draft_path)
+    )
+    indexer = DocumentIndexer(
+        sqlite=sqlite, qdrant=qdrant, embedding_client=FakeEmbeddingClient(),
+        chunk_size=800, overlap=80,
+    )
+
+    await indexer.index(document)
+
+    assert qdrant.scroll_all_points()[0]["platform"] is None
 
 
 @pytest.mark.asyncio

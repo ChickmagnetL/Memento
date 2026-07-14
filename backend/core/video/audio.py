@@ -35,11 +35,13 @@ class AudioDownloader:
         data_dir,
         keep_videos: bool = False,
         cookie_str: str | None = None,
+        no_playlist: bool = False,
         run_command: Callable[[list[str]], None] | None = None,
     ) -> None:
         self.data_dir = Path(data_dir).expanduser()
         self.keep_videos = keep_videos
         self.cookie_str = cookie_str
+        self.no_playlist = no_playlist
         # run_command is kept for tests that inject a stub — when set the
         # download method will call it with the equivalent CLI-style args
         # so existing test assertions still pass.
@@ -50,7 +52,7 @@ class AudioDownloader:
         return self.data_dir / "videos" / "temp"
 
     def download(self, video: dict) -> Path:
-        """Download audio of the first playlist item as WAV and return its path."""
+        """Download audio as WAV and return its path."""
         self.temp_dir.mkdir(parents=True, exist_ok=True)
         output_template = str(self.temp_dir / f"{video['id']}.%(ext)s")
         wav_path = self.temp_dir / f"{video['id']}.wav"
@@ -69,6 +71,8 @@ class AudioDownloader:
             cookie_file = self._write_cookie_file()
             if cookie_file:
                 args.extend(["--cookies", cookie_file])
+            if self.no_playlist:
+                args.append("--no-playlist")
             args.append(video["url"])
             try:
                 self._test_runner(args)
@@ -102,6 +106,8 @@ class AudioDownloader:
         cookie_file = self._write_cookie_file()
         if cookie_file:
             ydl_opts["cookiefile"] = cookie_file
+        if self.no_playlist:
+            ydl_opts["noplaylist"] = True
 
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:

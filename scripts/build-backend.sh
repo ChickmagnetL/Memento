@@ -15,6 +15,7 @@ cd "$(dirname "$0")/../backend"
   --collect-submodules qdrant_client \
   --collect-submodules pydantic_ai \
   --collect-submodules yt_dlp \
+  --collect-all yt_dlp_ejs \
   --hidden-import aiosqlite \
   --copy-metadata genai-prices \
   --copy-metadata pydantic-ai-slim \
