@@ -49,6 +49,9 @@ function configureAuthNavigationGuards(webContents, icon) {
     }
   };
 
+  webContents.on('will-frame-navigate', (event) => {
+    blockUnsafeNavigation(event, event.url);
+  });
   webContents.on('will-navigate', blockUnsafeNavigation);
   webContents.on('will-redirect', blockUnsafeNavigation);
   webContents.setWindowOpenHandler(({ url }) => {

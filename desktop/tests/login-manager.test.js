@@ -19,6 +19,19 @@ test('auth navigation blocks custom protocols without blocking HTTPS', () => {
   configureAuthNavigationGuards(webContents, '/tmp/icon.png');
 
   let prevented = false;
+  handlers['will-frame-navigate']({
+    url: 'bytedance://dispatch_message/',
+    preventDefault: () => { prevented = true; },
+  });
+  assert.equal(prevented, true);
+
+  prevented = false;
+  handlers['will-frame-navigate']({
+    url: 'https://www.douyin.com/passport/login',
+    preventDefault: () => { prevented = true; },
+  });
+  assert.equal(prevented, false);
+
   handlers['will-navigate'](
     { preventDefault: () => { prevented = true; } },
     'bitbrowser://cc/',
