@@ -73,7 +73,7 @@ export function ChatPanel() {
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden">
-      <header className="grid h-14 shrink-0 grid-cols-[1fr_minmax(0,auto)_1fr] items-center border-b border-border px-6">
+      <header className="desktop-titlebar grid h-14 shrink-0 grid-cols-[1fr_minmax(0,auto)_1fr] items-center border-b border-border px-6">
         <div />
         <div className="flex min-w-0 items-center justify-center gap-1">
           <ChatSessionDropdown

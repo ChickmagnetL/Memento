@@ -53,7 +53,7 @@ export function Sidebar() {
     >
       {/* Header: only visible when collapsed, toggle centered below traffic lights */}
       {collapsed && (
-        <div className="flex items-center justify-center border-b border-border px-2 pt-9 pb-2">
+        <div className="desktop-sidebar-titlebar flex items-center justify-center border-b border-border px-2 pt-9 pb-2">
           <button
             onClick={toggle}
             className="rounded-md p-1.5 text-muted-foreground hover:bg-[var(--color-bg-hover)] hover:text-[var(--color-text)] transition-colors"
@@ -66,7 +66,7 @@ export function Sidebar() {
 
       {/* Toggle button when expanded: top-right corner */}
       {!collapsed && (
-        <div className="flex justify-end px-2 pt-2">
+        <div className="desktop-sidebar-titlebar flex justify-end px-2 pt-2">
           <button
             onClick={toggle}
             className="rounded-md p-1.5 text-muted-foreground hover:bg-[var(--color-bg-hover)] hover:text-[var(--color-text)] transition-colors"

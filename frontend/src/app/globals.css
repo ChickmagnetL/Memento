@@ -25,6 +25,22 @@ html[data-platform="win32"] .desktop-drag-region {
   margin-right: var(--window-controls-width);
 }
 
+.desktop-titlebar {
+  -webkit-app-region: drag;
+}
+
+.desktop-titlebar :is(button, a, input, textarea, select, [role="button"], [role="dialog"]) {
+  -webkit-app-region: no-drag;
+}
+
+.desktop-sidebar-titlebar {
+  -webkit-app-region: drag;
+}
+
+.desktop-sidebar-titlebar :is(button, a) {
+  -webkit-app-region: no-drag;
+}
+
 /* ===== Sidebar, input, radius, z-index tokens (theme-independent) ===== */
 :root {
   --sidebar-width:            220px;
