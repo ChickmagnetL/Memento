@@ -16,8 +16,26 @@ const VIDEO_URL_BUILDERS = {
   },
   douyin: ({ videoId }) => {
     return `https://www.douyin.com/video/${videoId}`;
+  },
+  youtube: ({ videoId, timestamp }) => {
+    const url = `https://www.youtube.com/watch?v=${videoId}`;
+    return (timestamp && Number.isInteger(Number(timestamp)))
+      ? `${url}&t=${timestamp}s`
+      : url;
   }
 };
+
+function handlePlayerLoadFailure(playerWindow, url, err) {
+  if (err && (err.code === 'ERR_ABORTED' || err.errno === -3)) {
+    console.warn(`[video-player] Navigation replaced while loading ${url}`);
+    return;
+  }
+
+  console.error(`[video-player] Failed to load ${url}:`, err);
+  if (!playerWindow.isDestroyed()) {
+    playerWindow.close();
+  }
+}
 
 class VideoPlayerManager {
   constructor(icon) {
@@ -34,9 +52,11 @@ class VideoPlayerManager {
     const existingWindow = this.players.get(videoId);
     if (existingWindow && !existingWindow.isDestroyed()) {
       // If timestamp provided, navigate to it
-      if (timestamp && platform === 'bilibili') {
+      if (timestamp && (platform === 'bilibili' || platform === 'youtube')) {
         const url = VIDEO_URL_BUILDERS[platform]({ videoId, timestamp });
-        existingWindow.webContents.loadURL(url);
+        Promise.resolve(existingWindow.webContents.loadURL(url)).catch(err => {
+          handlePlayerLoadFailure(existingWindow, url, err);
+        });
       }
       existingWindow.focus();
       console.log(`[video-player] Focused existing window for ${videoId}`);
@@ -219,9 +239,8 @@ class VideoPlayerManager {
       `);
     });
 
-    playerWindow.loadURL(url).catch(err => {
-      console.error(`[video-player] Failed to load ${url}:`, err);
-      playerWindow.close();
+    Promise.resolve(playerWindow.loadURL(url)).catch(err => {
+      handlePlayerLoadFailure(playerWindow, url, err);
     });
 
     this.players.set(videoId, playerWindow);
@@ -249,4 +268,8 @@ class VideoPlayerManager {
   }
 }
 
-module.exports = { VideoPlayerManager };
+module.exports = {
+  VIDEO_URL_BUILDERS,
+  VideoPlayerManager,
+  handlePlayerLoadFailure
+};

@@ -29,6 +29,7 @@ def _qdrant_result(index: int, score: float) -> dict:
         "score": score,
         "payload": {
             "video_id": "v1",
+            "platform": "youtube",
             "document_id": "d1",
             "chunk_index": index,
             "title_path": "标题 > Transcript",
@@ -50,16 +51,52 @@ async def test_search_embeds_query_and_maps_results():
     assert qdrant.calls == [{"vector": [0.1, 0.2, 0.3, 0.4], "top_k": 2}]
     assert results == [
         SearchResult(
-            video_id="v1", document_id="d1", chunk_index=0,
+            video_id="v1", platform="youtube", document_id="d1", chunk_index=0,
             title_path="标题 > Transcript", text="chunk 0",
             start_timestamp="00:01", score=0.9,
         ),
         SearchResult(
-            video_id="v1", document_id="d1", chunk_index=1,
+            video_id="v1", platform="youtube", document_id="d1", chunk_index=1,
             title_path="标题 > Transcript", text="chunk 1",
             start_timestamp="00:01", score=0.5,
         ),
     ]
+
+
+@pytest.mark.asyncio
+async def test_search_keeps_legacy_payload_without_platform_compatible():
+    hit = _qdrant_result(0, 0.9)
+    hit["payload"].pop("platform")
+    retriever = VectorRetriever(
+        embedding_client=FakeEmbeddingClient(), qdrant=FakeQdrant([hit])
+    )
+
+    results = await retriever.search("查询内容", top_k=1)
+
+    assert results[0].platform is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("video_id", "expected_platform"),
+    [
+        ("BV1234567890", "bilibili"),
+        ("7123456789012345678", "douyin"),
+    ],
+)
+async def test_search_recovers_platform_for_legacy_video_payloads(
+    video_id: str, expected_platform: str
+):
+    hit = _qdrant_result(0, 0.9)
+    hit["payload"].pop("platform")
+    hit["payload"]["video_id"] = video_id
+    retriever = VectorRetriever(
+        embedding_client=FakeEmbeddingClient(), qdrant=FakeQdrant([hit])
+    )
+
+    results = await retriever.search("查询内容", top_k=1)
+
+    assert results[0].platform == expected_platform
 
 
 @pytest.mark.asyncio
@@ -74,6 +111,7 @@ async def test_search_blank_query_raises_value_error():
 def _chunk_payload(index: int, text: str) -> dict:
     return {
         "video_id": "v1",
+        "platform": "bilibili",
         "document_id": "d1",
         "chunk_index": index,
         "title_path": "标题 > Transcript",

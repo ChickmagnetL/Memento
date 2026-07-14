@@ -4,7 +4,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-VideoPlatform = Literal["bilibili", "douyin"]
+VideoPlatform = Literal["bilibili", "douyin", "youtube"]
 VideoStatus = Literal["pending", "processing", "completed", "failed"]
 
 

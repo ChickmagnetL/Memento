@@ -17,6 +17,21 @@ class SearchResult(BaseModel):
     text: str
     start_timestamp: str | None
     score: float
+    platform: str | None = None
+
+
+def _platform_from_payload(payload: dict) -> str | None:
+    platform = payload.get("platform")
+    if isinstance(platform, str) and platform:
+        return platform
+    video_id = payload.get("video_id")
+    if not isinstance(video_id, str):
+        return None
+    if video_id.startswith("BV"):
+        return "bilibili"
+    if video_id.isdigit():
+        return "douyin"
+    return None
 
 
 class VectorRetriever:
@@ -36,6 +51,7 @@ class VectorRetriever:
         return [
             SearchResult(
                 video_id=hit["payload"]["video_id"],
+                platform=_platform_from_payload(hit["payload"]),
                 document_id=hit["payload"]["document_id"],
                 chunk_index=hit["payload"]["chunk_index"],
                 title_path=hit["payload"]["title_path"],
@@ -106,6 +122,7 @@ class HybridRetriever:
             results.append(
                 SearchResult(
                     video_id=payload["video_id"],
+                    platform=_platform_from_payload(payload),
                     document_id=payload["document_id"],
                     chunk_index=payload["chunk_index"],
                     title_path=payload["title_path"],

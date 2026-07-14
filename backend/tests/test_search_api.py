@@ -26,7 +26,8 @@ async def client(tmp_path: Path, monkeypatch):
         ids=["11111111-1111-1111-1111-111111111111"],
         vectors=[[1.0, 0.0, 0.0, 0.0]],
         payloads=[{
-            "video_id": "v1", "document_id": "d1", "chunk_index": 0,
+            "video_id": "v1", "platform": "youtube",
+            "document_id": "d1", "chunk_index": 0,
             "title_path": "标题 > Transcript", "text": "chunk 0",
             "start_timestamp": "00:01",
         }],
@@ -51,6 +52,7 @@ def test_search_returns_results_with_metadata(client: TestClient):
     assert len(results) == 1
     assert results[0]["text"] == "chunk 0"
     assert results[0]["video_id"] == "v1"
+    assert results[0]["platform"] == "youtube"
     assert results[0]["start_timestamp"] == "00:01"
     assert "score" in results[0]
 

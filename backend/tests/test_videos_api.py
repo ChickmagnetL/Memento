@@ -16,6 +16,11 @@ from core.video.bilibili import (
 )
 from core.video.douyin import DouyinMetadata
 from core.video.pipeline import VideoPipeline, VideoProcessingResult
+from core.video.youtube import (
+    YouTubeError,
+    YouTubeSubtitleClient,
+    youtube_outcome,
+)
 from main import app
 from storage.sqlite_client import SQLiteClient
 
@@ -139,6 +144,75 @@ def test_create_video_from_douyin_url(client: TestClient):
     assert data["status"] == "pending"
 
 
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        "https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=PL123",
+        "https://youtu.be/dQw4w9WgXcQ?t=10",
+        "https://www.youtube.com/shorts/dQw4w9WgXcQ",
+    ],
+)
+def test_create_youtube_video_uses_probed_metadata(
+    client: TestClient, monkeypatch, url: str
+):
+    seen_urls = []
+
+    def fetch_metadata(self, source_url: str):
+        seen_urls.append(source_url)
+        return {
+            "id": "dQw4w9WgXcQ",
+            "title": "YouTube title",
+            "author": "Channel name",
+            "author_id": "UC-stable-id",
+            "duration": 213,
+        }
+
+    monkeypatch.setattr(YouTubeSubtitleClient, "fetch_metadata", fetch_metadata)
+
+    resp = client.post("/api/videos", json={"url": url})
+
+    assert resp.status_code == 201
+    data = resp.json()
+    assert data["id"] == "dQw4w9WgXcQ"
+    assert data["platform"] == "youtube"
+    assert data["title"] == "YouTube title"
+    assert data["author"] == "Channel name"
+    assert data["author_id"] == "UC-stable-id"
+    assert data["duration"] == 213
+    assert data["url"] == url
+    assert seen_urls == [url]
+
+
+def test_create_youtube_video_rejects_metadata_failure_before_persistence(
+    client: TestClient, monkeypatch
+):
+    def fetch_metadata(self, source_url: str):
+        raise YouTubeError("Could not fetch YouTube video metadata")
+
+    monkeypatch.setattr(YouTubeSubtitleClient, "fetch_metadata", fetch_metadata)
+
+    resp = client.post(
+        "/api/videos",
+        json={"url": "https://youtu.be/dQw4w9WgXcQ"},
+    )
+
+    assert resp.status_code == 422
+    assert "Could not import this YouTube video" in resp.json()["detail"]
+    assert client.get("/api/videos").json() == []
+
+
+def test_create_youtube_video_rejects_playlist_only_url(client: TestClient):
+    resp = client.post(
+        "/api/videos",
+        json={"url": "https://www.youtube.com/playlist?list=PL123"},
+    )
+
+    assert resp.status_code == 422
+    assert "single YouTube" in resp.json()["detail"]
+    assert client.get("/api/videos").json() == []
+
+
 def test_create_douyin_video_uses_fetched_metadata(client: TestClient, monkeypatch):
     def get_settings_spy():
         return SimpleNamespace(
@@ -187,7 +261,7 @@ def test_create_video_rejects_unknown_platform(client: TestClient):
     resp = client.post("/api/videos", json={"url": "https://example.com/video/1"})
 
     assert resp.status_code == 422
-    assert resp.json()["detail"] == "Only Bilibili and Douyin URLs are supported"
+    assert resp.json()["detail"] == "Only Bilibili, Douyin, and YouTube URLs are supported"
 
 
 def test_list_and_get_videos(client: TestClient):
@@ -306,6 +380,55 @@ def test_process_video_passes_configured_cookie_and_asr_model_to_pipeline(
     assert resp.status_code == 200
     assert seen_cookies == ["SESSDATA=explicit"]
     assert seen_asr_models == [expected_model]
+
+
+def test_process_video_builds_separate_cookie_free_youtube_downloader(
+    client: TestClient,
+    monkeypatch,
+    tmp_path: Path,
+):
+    created = _create_video(client)
+    seen_downloader_options = []
+
+    def get_settings_spy():
+        return SimpleNamespace(
+            storage=SimpleNamespace(data_dir=tmp_path, keep_videos=False),
+            video_processing=SimpleNamespace(
+                bilibili_cookie="SESSDATA=explicit",
+                douyin_cookie="",
+                douyin_fetcher_endpoint="",
+            ),
+            models=SimpleNamespace(
+                asr=SimpleNamespace(endpoint=None, model="iic/SenseVoiceSmall")
+            ),
+        )
+
+    class RecordingAudioDownloader:
+        def __init__(self, **kwargs):
+            seen_downloader_options.append(
+                (kwargs.get("cookie_str"), kwargs.get("no_playlist"))
+            )
+
+    def pipeline_init_spy(self, **kwargs):
+        assert kwargs["audio_downloader"] is not kwargs["youtube_audio_downloader"]
+
+    async def process_spy(
+        self, video: dict, *, allow_non_chinese: bool = False
+    ) -> VideoProcessingResult:
+        return VideoProcessingResult(video_id=video["id"], status="completed")
+
+    monkeypatch.setattr(videos, "get_settings", get_settings_spy)
+    monkeypatch.setattr(videos, "AudioDownloader", RecordingAudioDownloader)
+    monkeypatch.setattr(VideoPipeline, "__init__", pipeline_init_spy)
+    monkeypatch.setattr(VideoPipeline, "process", process_spy)
+
+    resp = client.post(f"/api/videos/{created['id']}/process")
+
+    assert resp.status_code == 200
+    assert seen_downloader_options == [
+        ("SESSDATA=explicit", None),
+        (None, True),
+    ]
 
 
 def test_process_video_passes_asr_protocol_and_api_key_to_client(
@@ -677,6 +800,46 @@ def test_check_subtitles_true_for_non_bilibili(client: TestClient):
     assert data["reason"] == "ok"
     assert "available" in data["message"].lower()
     assert "login_path" not in data
+
+
+def test_check_subtitles_maps_youtube_outcome(
+    client: TestClient, monkeypatch
+):
+    monkeypatch.setattr(
+        YouTubeSubtitleClient,
+        "fetch_metadata",
+        lambda self, url: {
+            "id": "dQw4w9WgXcQ",
+            "title": "YouTube title",
+            "author": "Channel name",
+            "author_id": "UC-stable-id",
+            "duration": 213,
+        },
+    )
+    outcome = youtube_outcome(
+        REASON_NON_CHINESE_SUBTITLES,
+        available_languages=("en", "ja"),
+    )
+    monkeypatch.setattr(
+        YouTubeSubtitleClient,
+        "fetch_outcome",
+        lambda self, video: outcome,
+    )
+    created = client.post(
+        "/api/videos",
+        json={"url": "https://youtu.be/dQw4w9WgXcQ"},
+    ).json()
+
+    resp = client.get(f"/api/videos/{created['id']}/check-subtitles")
+
+    assert resp.status_code == 200
+    assert resp.json() == {
+        "has_subtitles": False,
+        "platform": "youtube",
+        "reason": REASON_NON_CHINESE_SUBTITLES,
+        "message": outcome.message,
+        "available_languages": ["en", "ja"],
+    }
 
 
 def test_check_subtitles_maps_fetch_outcome(

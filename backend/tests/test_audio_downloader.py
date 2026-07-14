@@ -41,6 +41,67 @@ def test_download_invokes_ytdlp_and_returns_wav_path(tmp_path: Path):
     assert "-x" in args
     assert args[args.index("--audio-format") + 1] == "wav"
     assert args[args.index("--playlist-items") + 1] == "1"
+    assert "--no-playlist" not in args
+
+
+def test_download_can_explicitly_ignore_playlist_for_youtube_watch_url(
+    tmp_path: Path,
+):
+    commands: list[list[str]] = []
+
+    def fake_run(args: list[str]) -> None:
+        commands.append(args)
+        output_template = args[args.index("-o") + 1]
+        Path(output_template.replace("%(ext)s", "wav")).write_bytes(b"RIFF")
+
+    downloader = AudioDownloader(
+        data_dir=tmp_path,
+        no_playlist=True,
+        run_command=fake_run,
+    )
+    video = {
+        "id": "dQw4w9WgXcQ",
+        "url": (
+            "https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=PL123"
+        ),
+    }
+
+    downloader.download(video)
+
+    assert "--no-playlist" in commands[0]
+    assert commands[0][-1] == video["url"]
+
+
+def test_download_sets_ytdlp_noplaylist_option(monkeypatch, tmp_path: Path):
+    seen_options = []
+
+    class FakeYoutubeDL:
+        def __init__(self, options):
+            seen_options.append(options)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, traceback):
+            return None
+
+        def download(self, urls):
+            output_template = seen_options[-1]["outtmpl"]
+            Path(output_template.replace("%(ext)s", "wav")).write_bytes(b"RIFF")
+
+    monkeypatch.setattr("core.video.audio.yt_dlp.YoutubeDL", FakeYoutubeDL)
+    downloader = AudioDownloader(data_dir=tmp_path, no_playlist=True)
+
+    downloader.download(
+        {
+            "id": "dQw4w9WgXcQ",
+            "url": (
+                "https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=PL123"
+            ),
+        }
+    )
+
+    assert seen_options[0]["noplaylist"] is True
 
 
 def test_download_raises_when_command_fails(tmp_path: Path):

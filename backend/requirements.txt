@@ -23,7 +23,7 @@ python-dotenv==1.0.1
 certifi==2026.5.20
 
 # Video processing
-yt-dlp==2026.6.9
+yt-dlp[default]==2026.6.9
 
 # Agent
 pydantic-ai-slim[openai]==1.107.0

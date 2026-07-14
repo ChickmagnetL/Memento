@@ -7,6 +7,7 @@ import pytest
 
 from core.video.bilibili import SubtitleEntry
 from core.video.pipeline import VideoPipeline
+from core.video.youtube import YOUTUBE_REASON_MESSAGES, youtube_outcome
 from storage.sqlite_client import SQLiteClient
 
 
@@ -484,3 +485,85 @@ async def test_douyin_without_downloader_fails_with_clear_error(
 
     assert result.status == "failed"
     assert "douyin" in result.error.lower()
+
+
+@pytest.mark.asyncio
+async def test_youtube_creator_subtitles_write_document(
+    sqlite: SQLiteClient, tmp_path: Path
+):
+    video = make_video("youtube-1", "youtube")
+    await sqlite.create_video(
+        video_id=video["id"], platform=video["platform"],
+        title=video["title"], url=video["url"],
+    )
+    subtitle_client = FakeSubtitleClient(
+        [SubtitleEntry(start_seconds=3.0, text="YouTube 字幕")]
+    )
+    pipeline = VideoPipeline(
+        sqlite=sqlite,
+        data_dir=tmp_path,
+        youtube_subtitle_client=subtitle_client,
+    )
+
+    result = await pipeline.process(video)
+
+    assert result.status == "completed"
+    assert subtitle_client.calls == 1
+    assert "YouTube 字幕" in Path(result.document_path).read_text(encoding="utf-8")
+
+
+@pytest.mark.asyncio
+async def test_youtube_without_subtitles_requires_asr_choice(
+    sqlite: SQLiteClient, tmp_path: Path
+):
+    class EmptyYouTubeSubtitleClient:
+        def fetch_outcome(self, video: dict, *, allow_non_chinese: bool = False):
+            return youtube_outcome("no_subtitles")
+
+    pipeline = VideoPipeline(
+        sqlite=sqlite,
+        data_dir=tmp_path,
+        youtube_subtitle_client=EmptyYouTubeSubtitleClient(),
+    )
+    video = make_video("youtube-1", "youtube")
+
+    result = await pipeline.process(video)
+
+    assert result.status == "failed"
+    assert result.error == YOUTUBE_REASON_MESSAGES["no_subtitles"]
+
+
+@pytest.mark.asyncio
+async def test_youtube_asr_uses_separate_downloader(
+    sqlite: SQLiteClient, tmp_path: Path
+):
+    video = make_video("youtube-1", "youtube")
+    await sqlite.create_video(
+        video_id=video["id"], platform=video["platform"],
+        title=video["title"], url=video["url"],
+    )
+    youtube_downloader = FakeAudioDownloader(tmp_path)
+    asr = FakeAsrClient([SubtitleEntry(start_seconds=0.0, text="YouTube ASR")])
+
+    class UnexpectedBilibiliDownloader:
+        def download(self, video: dict):
+            raise AssertionError("Bilibili downloader must not be used for YouTube")
+
+    class EmptyYouTubeSubtitleClient:
+        def fetch_outcome(self, video: dict, *, allow_non_chinese: bool = False):
+            return youtube_outcome("no_subtitles")
+
+    pipeline = VideoPipeline(
+        sqlite=sqlite,
+        data_dir=tmp_path,
+        youtube_subtitle_client=EmptyYouTubeSubtitleClient(),
+        audio_downloader=UnexpectedBilibiliDownloader(),
+        youtube_audio_downloader=youtube_downloader,
+        asr_client=asr,
+    )
+
+    result = await pipeline.process_with_asr(video)
+
+    assert result.status == "completed"
+    assert asr.calls == [(str(youtube_downloader.wav_path), "iic/SenseVoiceSmall")]
+    assert youtube_downloader.cleaned_up == [youtube_downloader.wav_path]

@@ -58,7 +58,13 @@ function mapSoftSubtitleError(
   if (errorMessage.includes("No Chinese soft subtitles")) {
     return { reason: "non_chinese_subtitles", message: errorMessage };
   }
+  if (errorMessage.includes("No Chinese subtitles were found")) {
+    return { reason: "non_chinese_subtitles", message: errorMessage };
+  }
   if (errorMessage.includes("no usable soft subtitles")) {
+    return { reason: "no_subtitles", message: errorMessage };
+  }
+  if (errorMessage.includes("no usable creator or automatic subtitles")) {
     return { reason: "no_subtitles", message: errorMessage };
   }
   if (errorMessage.includes("temporarily unavailable")) {
@@ -85,6 +91,7 @@ export function VideoIntake({ initialVideos }: VideoIntakeProps) {
     videoId: string;
     title: string;
     reason: string;
+    platform?: VideoRecord["platform"];
     message?: string;
     availableLanguages?: string[];
   } | null>(null);
@@ -140,11 +147,11 @@ export function VideoIntake({ initialVideos }: VideoIntakeProps) {
       if (processed.status === "failed" && processed.error_message) {
         const mapped = mapSoftSubtitleError(processed.error_message);
         if (mapped) {
-          const title =
-            videos.find((item) => item.id === videoId)?.title ?? "Video";
+          const video = videos.find((item) => item.id === videoId);
           setPendingSubtitleDecision({
             videoId,
-            title,
+            title: video?.title ?? "Video",
+            platform: video?.platform,
             reason: mapped.reason,
             message: mapped.message,
           });
@@ -171,8 +178,8 @@ export function VideoIntake({ initialVideos }: VideoIntakeProps) {
 
   async function handleProcess(video: VideoRecord) {
     setError("");
-    // Only non-bilibili completed can bypass pre-check; bilibili always checks
-    if (video.status === "completed" && video.platform !== "bilibili") {
+    // Douyin has no subtitle path; Bilibili and YouTube always pre-check.
+    if (video.status === "completed" && video.platform === "douyin") {
       await runProcess(video.id);
       return;
     }
@@ -212,6 +219,7 @@ export function VideoIntake({ initialVideos }: VideoIntakeProps) {
       setPendingSubtitleDecision({
         videoId: video.id,
         title: video.title,
+        platform: video.platform,
         reason,
         message,
         availableLanguages,
@@ -313,7 +321,7 @@ export function VideoIntake({ initialVideos }: VideoIntakeProps) {
         <input
           className="h-10 rounded-md border border-border bg-[hsl(240_10%_4%)] px-3 text-sm text-foreground placeholder:text-muted-foreground"
           onChange={(e) => setUrl(e.target.value)}
-          placeholder="Paste a Bilibili or Douyin URL"
+          placeholder="Paste a Bilibili, Douyin, or YouTube URL"
           value={url}
         />
         <button
@@ -345,10 +353,14 @@ export function VideoIntake({ initialVideos }: VideoIntakeProps) {
             setPendingSubtitleDecision(null);
             void runProcess(videoId, undefined, { allowNonChinese: true });
           }}
-          onGoToLogin={() => {
-            setPendingSubtitleDecision(null);
-            router.push("/login");
-          }}
+          onGoToLogin={
+            pendingSubtitleDecision.platform === "bilibili"
+              ? () => {
+                  setPendingSubtitleDecision(null);
+                  router.push("/login");
+                }
+              : undefined
+          }
           onRetry={() => {
             const { videoId } = pendingSubtitleDecision;
             setPendingSubtitleDecision(null);
@@ -418,7 +430,11 @@ export function VideoIntake({ initialVideos }: VideoIntakeProps) {
                     <div>
                       <span className="video-info-label">Platform</span>
                       <span className="video-info-value">
-                        {video.platform === "bilibili" ? "Bilibili" : "Douyin"}
+                        {video.platform === "bilibili"
+                          ? "Bilibili"
+                          : video.platform === "youtube"
+                            ? "YouTube"
+                            : "Douyin"}
                       </span>
                     </div>
                     <div>

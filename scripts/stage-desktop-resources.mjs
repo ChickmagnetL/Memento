@@ -126,11 +126,16 @@ for (const service of ["asr", "embedding", "node"]) {
 const ffmpegSource = require("ffmpeg-static");
 const ffprobeSource = require("@ffprobe-installer/ffprobe").path;
 const executableSuffix = process.platform === "win32" ? ".exe" : "";
+const denoSource = path.join(
+  path.dirname(require.resolve("deno/package.json")),
+  `deno${executableSuffix}`,
+);
 const binDir = path.join(resourcesDir, "bin");
 fs.mkdirSync(binDir, { recursive: true });
 for (const [source, name] of [
   [ffmpegSource, `ffmpeg${executableSuffix}`],
   [ffprobeSource, `ffprobe${executableSuffix}`],
+  [denoSource, `deno${executableSuffix}`],
 ]) {
   if (!source || !fs.existsSync(source)) {
     throw new Error(`Missing ${name} dependency for ${process.platform}`);

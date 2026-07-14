@@ -10,29 +10,29 @@ if (handleProcessStart === -1) {
 
 const handleProcessBody = videoIntake.slice(handleProcessStart);
 
-// Non-bilibili completed may still bypass pre-check
-const nonBiliCompletedBypass =
-  /if\s*\(\s*video\.status\s*===\s*"completed"\s*&&\s*video\.platform\s*!==\s*"bilibili"\s*\)\s*\{\s*await\s+runProcess\(video\.id\);\s*return;\s*\}/s;
+// Douyin completed may bypass pre-check because it has no subtitle path.
+const douyinCompletedBypass =
+  /if\s*\(\s*video\.status\s*===\s*"completed"\s*&&\s*video\.platform\s*===\s*"douyin"\s*\)\s*\{\s*await\s+runProcess\(video\.id\);\s*return;\s*\}/s;
 
-if (!nonBiliCompletedBypass.test(handleProcessBody)) {
+if (!douyinCompletedBypass.test(handleProcessBody)) {
   console.error(
-    "FAIL: non-bilibili completed videos should still bypass subtitle pre-check"
+    "FAIL: completed Douyin videos should bypass subtitle pre-check"
   );
   process.exit(1);
 }
 
-// Bilibili completed must NOT unconditionally bypass (old behavior)
+// Bilibili and YouTube completed videos must NOT unconditionally bypass.
 const unconditionalCompletedBypass =
   /if\s*\(\s*video\.status\s*===\s*"completed"\s*\)\s*\{\s*await\s+runProcess\(video\.id\);\s*return;\s*\}/s;
 
 if (unconditionalCompletedBypass.test(handleProcessBody)) {
   console.error(
-    "FAIL: bilibili completed videos must run subtitle pre-check (no unconditional completed bypass)"
+    "FAIL: Bilibili and YouTube completed videos must run subtitle pre-check"
   );
   process.exit(1);
 }
 
-// First-time / bilibili processing should keep the subtitle pre-check flow
+// First-time, Bilibili, and YouTube processing should keep the subtitle pre-check flow.
 const hasSubtitleCheck =
   handleProcessBody.includes("const result = await checkSubtitles(video.id);") ||
   handleProcessBody.includes("let result = await checkSubtitles(video.id);");
@@ -60,5 +60,5 @@ if (!videoIntake.includes("setPendingSubtitleDecision")) {
 }
 
 console.log(
-  "Non-bilibili completed re-process bypasses pre-check; bilibili always prechecks; soft failures map to dialog."
+  "Douyin completed re-process bypasses pre-check; Bilibili and YouTube always precheck; soft failures map to dialog."
 );

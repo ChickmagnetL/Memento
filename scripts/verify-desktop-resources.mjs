@@ -13,6 +13,7 @@ const required = [
   path.join("douyin-fetcher", `memento-douyin-fetcher${executableSuffix}`),
   path.join("bin", `ffmpeg${executableSuffix}`),
   path.join("bin", `ffprobe${executableSuffix}`),
+  path.join("bin", `deno${executableSuffix}`),
   path.join("services", "asr", "deploy.py"),
   path.join("services", "asr", "server.py"),
   path.join("services", "embedding", "deploy.py"),
@@ -41,7 +42,11 @@ if (
   throw new Error(`Desktop app icon must be a 1024x1024 PNG: ${iconPath}`);
 }
 
-for (const tool of [`ffmpeg${executableSuffix}`, `ffprobe${executableSuffix}`]) {
+for (const tool of [
+  `ffmpeg${executableSuffix}`,
+  `ffprobe${executableSuffix}`,
+  `deno${executableSuffix}`,
+]) {
   const target = path.join(resourcesDir, "bin", tool);
   const result = spawnSync(target, ["-version"], { encoding: "utf8" });
   if (result.status !== 0) {

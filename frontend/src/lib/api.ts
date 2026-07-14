@@ -33,7 +33,7 @@ async function assertOk(res: Response, label: string): Promise<void> {
 }
 
 export type VideoStatus = "pending" | "processing" | "completed" | "failed";
-export type VideoPlatform = "bilibili" | "douyin";
+export type VideoPlatform = "bilibili" | "douyin" | "youtube";
 
 export interface VideoRecord {
   id: string;

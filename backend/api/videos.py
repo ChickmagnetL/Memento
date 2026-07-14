@@ -27,6 +27,11 @@ from core.video.douyin import (
 )
 from core.video.markdown import MarkdownDraftWriter
 from core.video.pipeline import VideoPipeline
+from core.video.youtube import (
+    YouTubeError,
+    YouTubeSubtitleClient,
+    extract_video_id as extract_youtube_video_id,
+)
 from schemas.video import VideoCreateRequest, VideoRecord, VideoStatusUpdateRequest
 from storage.sqlite_client import SQLiteClient
 
@@ -41,9 +46,21 @@ def detect_platform(url: str) -> str:
         return "bilibili"
     if "douyin.com" in host or "iesdouyin.com" in host:
         return "douyin"
+    if extract_youtube_video_id(url) is not None:
+        return "youtube"
+    hostname = (urlparse(url).hostname or "").lower()
+    if hostname in ("youtu.be", "www.youtu.be") or (
+        hostname == "youtube.com" or hostname.endswith(".youtube.com")
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                "Only single YouTube watch, youtu.be, and Shorts URLs are supported"
+            ),
+        )
     raise HTTPException(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        detail="Only Bilibili and Douyin URLs are supported",
+        detail="Only Bilibili, Douyin, and YouTube URLs are supported",
     )
 
 
@@ -111,6 +128,21 @@ async def create_video(payload: VideoCreateRequest, request: Request) -> dict:
                 author = metadata.author
                 author_id = metadata.author_id
                 duration = metadata.duration
+    elif platform == "youtube":
+        client = YouTubeSubtitleClient()
+        try:
+            metadata = await asyncio.to_thread(client.fetch_metadata, payload.url)
+        except (YouTubeError, OSError, RuntimeError, ValueError) as exc:
+            logger.info("YouTube metadata fetch failed for %s: %s", payload.url, exc)
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Could not import this YouTube video: {exc}",
+            ) from exc
+        video_id = metadata["id"]
+        title = metadata["title"]
+        author = metadata["author"]
+        author_id = metadata["author_id"]
+        duration = metadata["duration"]
 
     if video_id is None:
         video_id = uuid4().hex
@@ -211,6 +243,11 @@ async def process_video(
             data_dir=data_dir, keep_videos=settings.storage.keep_videos,
             cookie_str=settings.video_processing.bilibili_cookie,
         ),
+        youtube_audio_downloader=AudioDownloader(
+            data_dir=data_dir,
+            keep_videos=settings.storage.keep_videos,
+            no_playlist=True,
+        ),
         douyin_downloader=DouyinAudioDownloader(
             data_dir=data_dir,
             keep_videos=settings.storage.keep_videos,
@@ -271,19 +308,24 @@ async def check_subtitles(video_id: str, request: Request) -> dict:
     if video is None:
         raise HTTPException(status_code=404, detail="Video not found")
     platform = video.get("platform")
-    if platform != "bilibili":
+    if platform not in ("bilibili", "youtube"):
         return {
             "has_subtitles": True,
             "platform": platform,
             "reason": REASON_OK,
             "message": REASON_MESSAGES[REASON_OK],
         }
-    settings = get_settings()
-    client = BilibiliSubtitleClient(cookie=settings.video_processing.bilibili_cookie)
+    if platform == "youtube":
+        client = YouTubeSubtitleClient()
+    else:
+        settings = get_settings()
+        client = BilibiliSubtitleClient(
+            cookie=settings.video_processing.bilibili_cookie
+        )
     outcome = await asyncio.to_thread(client.fetch_outcome, video)
     payload = {
         "has_subtitles": outcome.has_subtitles,
-        "platform": "bilibili",
+        "platform": platform,
         "reason": outcome.reason,
         "message": outcome.message,
     }

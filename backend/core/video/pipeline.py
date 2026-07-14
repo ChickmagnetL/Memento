@@ -11,6 +11,7 @@ from core.video.audio import AudioDownloadError
 from core.video.bilibili import BilibiliSubtitleClient, BilibiliSubtitleError
 from core.video.douyin import DouyinError
 from core.video.markdown import MarkdownDraftWriter
+from core.video.youtube import YouTubeSubtitleClient, YouTubeSubtitleError
 from schemas.video import VideoStatus
 
 logger = logging.getLogger(__name__)
@@ -34,6 +35,8 @@ class VideoPipeline:
         draft_writer=None,
         cookie: str = "",
         audio_downloader=None,
+        youtube_subtitle_client=None,
+        youtube_audio_downloader=None,
         douyin_downloader=None,
         asr_client=None,
         asr_model: str = "iic/SenseVoiceSmall",
@@ -44,6 +47,10 @@ class VideoPipeline:
         )
         self.draft_writer = draft_writer or MarkdownDraftWriter(data_dir)
         self.audio_downloader = audio_downloader
+        self.youtube_subtitle_client = (
+            youtube_subtitle_client or YouTubeSubtitleClient()
+        )
+        self.youtube_audio_downloader = youtube_audio_downloader
         self.douyin_downloader = douyin_downloader
         self.asr_client = asr_client
         self.asr_model = asr_model
@@ -100,6 +107,22 @@ class VideoPipeline:
                         "Douyin processing requires the ASR service and "
                         "douyin downloader to be configured"
                     )
+            elif video["platform"] == "youtube":
+                outcome = await asyncio.to_thread(
+                    self.youtube_subtitle_client.fetch_outcome,
+                    video,
+                    allow_non_chinese=allow_non_chinese,
+                )
+                entries = outcome.entries
+                empty_error = YouTubeSubtitleError(
+                    outcome.message, reason=outcome.reason
+                )
+                if not entries and allow_asr_fallback:
+                    entries = await self._transcribe_fallback(
+                        video, self.youtube_audio_downloader
+                    )
+                if not entries:
+                    raise empty_error
             else:
                 raise ValueError(f"unsupported platform: {video['platform']}")
 
@@ -127,7 +150,7 @@ class VideoPipeline:
                 document_id=document_id,
                 document_path=str(document_path),
             )
-        except (AsrError, AudioDownloadError, BilibiliSubtitleError, DouyinError, OSError, RuntimeError, ValueError) as exc:
+        except (AsrError, AudioDownloadError, BilibiliSubtitleError, DouyinError, YouTubeSubtitleError, OSError, RuntimeError, ValueError) as exc:
             return VideoProcessingResult(
                 video_id=video["id"],
                 status="failed",

@@ -31,7 +31,10 @@ export function VideoTimestampLink({ href, children }: VideoTimestampLinkProps) 
       const videoId = url.searchParams.get("video_id");
       const timestamp = url.searchParams.get("t");
 
-      if (!platform || (platform !== "bilibili" && platform !== "douyin")) {
+      if (
+        !platform ||
+        (platform !== "bilibili" && platform !== "douyin" && platform !== "youtube")
+      ) {
         console.error(`VideoTimestampLink: invalid platform: ${platform}`);
         return;
       }
