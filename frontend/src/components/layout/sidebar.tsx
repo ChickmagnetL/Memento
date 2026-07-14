@@ -48,7 +48,7 @@ export function Sidebar() {
 
   return (
     <aside
-      className="flex flex-col border-r border-border bg-[var(--color-bg-sidebar)] transition-[width]"
+      className="shrink-0 flex flex-col border-r border-border bg-[var(--color-bg-sidebar)] transition-[width]"
       style={{ width }}
     >
       {/* Header: only visible when collapsed, toggle centered below traffic lights */}

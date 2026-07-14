@@ -6,13 +6,14 @@
  * (npm run dev) and the backend can be overridden via env vars.
  */
 
-const { app, BrowserWindow, dialog, ipcMain } = require("electron");
+const { app, BrowserWindow, dialog, ipcMain, nativeTheme } = require("electron");
 const { spawn } = require("child_process");
 const fs = require("fs");
 const path = require("path");
 const { LoginWindowManager } = require("./login-manager");
 const { VideoPlayerManager } = require("./video-player");
 const { CookieRefreshScheduler } = require("./cookie-refresh");
+const { createMainWindowOptions } = require("./window-options");
 
 const FRONTEND_PORT = 3123;
 const FRONTEND_URL =
@@ -322,6 +323,7 @@ async function loadBilibiliRefreshToken() {
 }
 
 app.whenReady().then(async () => {
+  nativeTheme.themeSource = "dark";
   preparePackagedRuntime();
   await startDouyinFetcher();
   await startBackend();
@@ -337,16 +339,15 @@ app.whenReady().then(async () => {
     app.quit();
     return;
   }
-  const window = new BrowserWindow({
-    width: 1280,
-    height: 860,
-    titleBarStyle: "hiddenInset",
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-      contextIsolation: true,
-      nodeIntegration: false,
-    }
-  });
+  const window = new BrowserWindow(
+    createMainWindowOptions(
+      process.platform,
+      path.join(__dirname, "preload.js")
+    )
+  );
+  if (process.platform === "win32") {
+    window.setMenu(null);
+  }
   mainWindow = window;
   window.loadURL(FRONTEND_URL);
 

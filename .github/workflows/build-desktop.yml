@@ -75,6 +75,9 @@ jobs:
       - name: Install desktop dependencies
         run: cd desktop && npm ci
 
+      - name: Test desktop shell
+        run: cd desktop && npm test
+
       - name: Build backend (PyInstaller)
         run: |
           cd backend
@@ -195,6 +198,9 @@ jobs:
 
       - name: Install desktop dependencies
         run: cd desktop && npm ci
+
+      - name: Test desktop shell
+        run: cd desktop && npm test
 
       - name: Build backend (PyInstaller)
         run: |

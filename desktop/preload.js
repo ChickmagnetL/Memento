@@ -8,6 +8,10 @@
 
 const { contextBridge, ipcRenderer } = require('electron');
 
+window.addEventListener('DOMContentLoaded', () => {
+  document.documentElement.dataset.platform = process.platform;
+});
+
 contextBridge.exposeInMainWorld('electron', {
   // Login management
   openLogin: (platform) => ipcRenderer.send('open-login', platform),

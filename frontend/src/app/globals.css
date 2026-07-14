@@ -1,6 +1,26 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+html,
+body {
+  font-family: var(--font-geist-sans), "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+.desktop-drag-region {
+  display: none;
+}
+
+html[data-platform="win32"] .desktop-drag-region {
+  display: block;
+  position: sticky;
+  top: 0;
+  height: 48px;
+  margin-bottom: -48px;
+  margin-right: 140px;
+  z-index: var(--z-modal);
+  -webkit-app-region: drag;
+}
+
 /* ===== Sidebar, input, radius, z-index tokens (theme-independent) ===== */
 :root {
   --sidebar-width:            220px;
@@ -434,10 +454,10 @@
   position: relative;
   display: inline-block;
   color: #f5eedf;
-  font-family: "Bradley Hand", "Marker Felt", "Comic Sans MS", "Chalkboard SE", cursive;
+  font-family: var(--font-brand), cursive;
   font-size: clamp(72px, 9vw, 116px);
   line-height: .92;
-  font-weight: 900;
+  font-weight: 700;
   letter-spacing: -.08em;
   transform: rotate(-1.4deg);
   filter: url(#handwriting-rough);

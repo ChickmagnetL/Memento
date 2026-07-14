@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Kalam } from "next/font/google";
 import { Sidebar } from "@/components/layout/sidebar";
 import { ChatStoreProvider } from "@/lib/chat-store";
 import "./globals.css";
@@ -12,6 +12,12 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+});
+
+const brandFont = Kalam({
+  variable: "--font-brand",
+  subsets: ["latin"],
+  weight: "700",
 });
 
 export const metadata: Metadata = {
@@ -27,11 +33,12 @@ export default async function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${brandFont.variable} h-full antialiased`}
     >
       <body className="h-full flex bg-background text-foreground">
         <Sidebar />
-        <main className="flex-1 overflow-y-auto">
+        <main className="relative min-w-0 flex-1 overflow-y-auto">
+          <div className="desktop-drag-region" aria-hidden="true" />
           <ChatStoreProvider>{children}</ChatStoreProvider>
         </main>
       </body>
