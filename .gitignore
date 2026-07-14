@@ -63,6 +63,11 @@ services/*/models/
 # Isolated toolchain (downloaded binaries, machine-specific)
 services/.bin/
 services/.python/
+services/*/.packaging-venv/
+services/*/build/
+
+# PyInstaller working directories
+backend/build/
 
 # Desktop packaging artifacts
 desktop/resources/

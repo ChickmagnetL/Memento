@@ -99,6 +99,17 @@ def run_command(
     )
 
 
+def _ensure_managed_toolchain() -> None:
+    node_service_dir = SERVICE_DIR.parent / "node"
+    node_service_path = str(node_service_dir)
+    if node_service_path not in sys.path:
+        sys.path.insert(0, node_service_path)
+
+    from node_app.toolchain import ensure_toolchain
+
+    ensure_toolchain()
+
+
 def _with_pip_index(command: list[str]) -> list[str]:
     """Append `-i PIP_INDEX_URL` to a pip command when a mirror is configured.
 
@@ -258,7 +269,10 @@ def ensure_environment(
     try:
         if not VENV_DIR.exists():
             _progress(on_progress, "venv", "Creating ASR virtual environment", 10)
-            run_command([sys.executable, "-m", "venv", str(VENV_DIR)])
+            if getattr(sys, "frozen", False):
+                _ensure_managed_toolchain()
+            else:
+                run_command([sys.executable, "-m", "venv", str(VENV_DIR)])
             created_venv = True
 
         python = python_bin()

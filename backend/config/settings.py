@@ -167,8 +167,12 @@ class Settings(BaseSettings):
     api_reload: bool = True
 
     # CORS
-    # localhost:3000 = dev frontend; localhost:3123 = packaged frontend (Electron)
-    cors_origins: list[str] = ["http://localhost:3000", "http://localhost:3123"]
+    # localhost:3000 = dev; 127.0.0.1:3123 = packaged Electron frontend
+    cors_origins: list[str] = [
+        "http://localhost:3000",
+        "http://localhost:3123",
+        "http://127.0.0.1:3123",
+    ]
 
     # Logging
     log_level: str = "INFO"

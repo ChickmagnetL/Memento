@@ -302,6 +302,35 @@ def test_ensure_environment_does_not_download_models(monkeypatch, tmp_path: Path
     assert "models" not in stages
 
 
+def test_frozen_environment_uses_managed_toolchain(monkeypatch, tmp_path: Path):
+    deploy_module = load_deploy_module()
+    venv_dir = tmp_path / ".venv"
+    managed_calls = []
+    commands = []
+
+    def fake_ensure_managed_toolchain():
+        managed_calls.append(True)
+        venv_dir.mkdir()
+
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    monkeypatch.setattr(deploy_module, "VENV_DIR", venv_dir)
+    monkeypatch.setattr(
+        deploy_module,
+        "_ensure_managed_toolchain",
+        fake_ensure_managed_toolchain,
+    )
+    monkeypatch.setattr(
+        deploy_module,
+        "run_command",
+        lambda args, cwd=None, env=None: commands.append(args),
+    )
+
+    deploy_module.ensure_environment(device="cpu")
+
+    assert managed_calls == [True]
+    assert [sys.executable, "-m", "venv", str(venv_dir)] not in commands
+
+
 def test_ensure_environment_cleans_partial_venv_on_failure(monkeypatch, tmp_path: Path):
     deploy_module = load_deploy_module()
     venv_dir = tmp_path / ".venv"
