@@ -3,6 +3,7 @@
 import asyncio
 import json
 import os
+import ssl
 import sqlite3
 from pathlib import Path
 from typing import Any, Literal
@@ -10,6 +11,7 @@ from urllib.error import HTTPError
 from urllib.parse import urlparse
 from urllib.request import Request as UrlRequest, urlopen
 
+import certifi
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -125,12 +127,26 @@ def _check_asr_health(endpoint: str) -> str:
 
 
 MODEL_LIST_TIMEOUT_SECONDS = 10
+MODEL_LIST_USER_AGENT = (
+    "Mozilla/5.0 (compatible; Memento/0.1; "
+    "+https://github.com/ChickmagnetL/Memento)"
+)
 
 
 def _read_json_url(url: str, headers: dict[str, str] | None = None) -> Any:
-    request = UrlRequest(url, headers=headers or {})
+    request = UrlRequest(
+        url,
+        headers={
+            "Accept": "application/json",
+            "User-Agent": MODEL_LIST_USER_AGENT,
+            **(headers or {}),
+        },
+    )
+    open_options: dict[str, Any] = {"timeout": MODEL_LIST_TIMEOUT_SECONDS}
+    if urlparse(url).scheme == "https":
+        open_options["context"] = ssl.create_default_context(cafile=certifi.where())
     try:
-        with urlopen(request, timeout=MODEL_LIST_TIMEOUT_SECONDS) as response:
+        with urlopen(request, **open_options) as response:
             return json.loads(response.read().decode("utf-8"))
     except HTTPError as exc:
         body = exc.read().decode("utf-8", errors="replace")[:200]

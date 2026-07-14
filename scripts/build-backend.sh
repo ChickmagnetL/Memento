@@ -10,6 +10,7 @@ cd "$(dirname "$0")/../backend"
   --paths . \
   --add-data "storage/schema.sql:storage" \
   --add-data "config/default.yaml:config" \
+  --collect-data certifi \
   --collect-data jieba \
   --collect-submodules qdrant_client \
   --collect-submodules pydantic_ai \

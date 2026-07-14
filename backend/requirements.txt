@@ -20,6 +20,7 @@ rank-bm25==0.2.2
 
 # Utilities
 python-dotenv==1.0.1
+certifi==2026.5.20
 
 # Video processing
 yt-dlp==2026.6.9

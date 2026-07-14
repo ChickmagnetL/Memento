@@ -94,7 +94,7 @@ export function ChatPanel() {
             <Plus className="h-4 w-4" />
           </Button>
         </div>
-        <div className="flex justify-end">
+        <div className="desktop-window-controls-safe flex justify-end">
           <MemoryPopover refreshKey={state.memoryRefreshKey} />
         </div>
       </header>

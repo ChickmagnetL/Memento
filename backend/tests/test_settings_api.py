@@ -567,7 +567,7 @@ def test_list_models_openai_compatible_uses_draft_config_and_saved_masked_key(
     )
     calls = []
 
-    def fake_urlopen(request, timeout):
+    def fake_urlopen(request, timeout, context=None):
         calls.append((request.full_url, dict(request.header_items()), timeout))
         return FakeUrlResponse(
             {"data": [{"id": "gpt-4.1"}, {"id": "gpt-4.1-mini"}]}
@@ -593,6 +593,8 @@ def test_list_models_openai_compatible_uses_draft_config_and_saved_masked_key(
     assert url == "https://new.example/v1/models"
     assert timeout == 10
     assert headers.get("Authorization") == "Bearer sk-saved"
+    assert headers.get("Accept") == "application/json"
+    assert headers.get("User-agent") == settings_api.MODEL_LIST_USER_AGENT
     assert _preset_config(db_path, "chat_default") == {
         "endpoint": "https://old.example/v1",
         "api_key": "sk-saved",
@@ -606,7 +608,7 @@ def test_list_models_local_openai_compatible_allows_missing_api_key(
     test_client, _db_path = client
     calls = []
 
-    def fake_urlopen(request, timeout):
+    def fake_urlopen(request, timeout, context=None):
         calls.append((request.full_url, dict(request.header_items()), timeout))
         return FakeUrlResponse({"data": [{"id": "local-asr-model"}]})
 
@@ -639,7 +641,7 @@ def test_list_models_runs_probe_in_thread(client, monkeypatch):
         calls.append((func.__name__, args, kwargs))
         return func(*args, **kwargs)
 
-    def fake_urlopen(request, timeout):
+    def fake_urlopen(request, timeout, context=None):
         return FakeUrlResponse({"data": [{"id": "threaded-model"}]})
 
     monkeypatch.setattr(settings_api.asyncio, "to_thread", fake_to_thread)
@@ -665,7 +667,7 @@ def test_list_models_local_ollama_uses_openai_protocol(client, monkeypatch):
     test_client, _db_path = client
     calls = []
 
-    def fake_urlopen(request, timeout):
+    def fake_urlopen(request, timeout, context=None):
         calls.append((request.full_url, dict(request.header_items()), timeout))
         return FakeUrlResponse(
             {"data": [{"id": "llama3.2"}, {"id": "nomic-embed-text"}]}
@@ -774,7 +776,7 @@ def test_list_models_requires_api_key_for_openai_compatible(client):
 def test_list_models_upstream_error_returns_502(client, monkeypatch):
     test_client, _db_path = client
 
-    def fake_urlopen(request, timeout):
+    def fake_urlopen(request, timeout, context=None):
         raise OSError("connection refused")
 
     monkeypatch.setattr(settings_api, "urlopen", fake_urlopen)
@@ -796,7 +798,7 @@ def test_list_models_upstream_error_returns_502(client, monkeypatch):
 def test_list_models_http_error_returns_502(client, monkeypatch):
     test_client, _db_path = client
 
-    def fake_urlopen(request, timeout):
+    def fake_urlopen(request, timeout, context=None):
         raise HTTPError(
             request.full_url,
             401,
@@ -826,7 +828,7 @@ def test_list_models_http_error_returns_502(client, monkeypatch):
 def test_list_models_malformed_response_returns_502(client, monkeypatch):
     test_client, _db_path = client
 
-    def fake_urlopen(request, timeout):
+    def fake_urlopen(request, timeout, context=None):
         return FakeUrlResponse({"unexpected": []})
 
     monkeypatch.setattr(settings_api, "urlopen", fake_urlopen)
@@ -843,6 +845,36 @@ def test_list_models_malformed_response_returns_502(client, monkeypatch):
 
     assert response.status_code == 502
     assert response.json()["detail"] == "Malformed models response"
+
+
+def test_model_list_https_uses_packaged_ca_bundle(monkeypatch):
+    calls = []
+    ssl_context = object()
+
+    monkeypatch.setattr(settings_api.certifi, "where", lambda: "/bundle/cacert.pem")
+
+    def fake_create_default_context(*, cafile):
+        calls.append(("create_context", cafile))
+        return ssl_context
+
+    def fake_urlopen(request, timeout, context=None):
+        calls.append(("urlopen", request.full_url, timeout, context))
+        return FakeUrlResponse({"data": []})
+
+    monkeypatch.setattr(
+        settings_api.ssl,
+        "create_default_context",
+        fake_create_default_context,
+    )
+    monkeypatch.setattr(settings_api, "urlopen", fake_urlopen)
+
+    assert settings_api._read_json_url("https://api.example/v1/models") == {
+        "data": []
+    }
+    assert calls == [
+        ("create_context", "/bundle/cacert.pem"),
+        ("urlopen", "https://api.example/v1/models", 10, ssl_context),
+    ]
 
 
 def test_embedding_switch_preview_same_dimension_success(client, monkeypatch):
