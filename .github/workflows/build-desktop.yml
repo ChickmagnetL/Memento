@@ -7,7 +7,14 @@ on:
       - 'backend/**'
       - 'frontend/**'
       - 'desktop/**'
+      - 'services/asr/**'
+      - 'services/embedding/**'
+      - 'services/node/**'
+      - 'services/douyin_fetcher/**'
       - 'scripts/build-backend.sh'
+      - 'scripts/build-douyin-fetcher.sh'
+      - 'scripts/stage-desktop-resources.mjs'
+      - 'scripts/verify-desktop-resources.mjs'
       - '.github/workflows/build-desktop.yml'
   pull_request:
     branches: [main]
@@ -15,14 +22,21 @@ on:
       - 'backend/**'
       - 'frontend/**'
       - 'desktop/**'
+      - 'services/asr/**'
+      - 'services/embedding/**'
+      - 'services/node/**'
+      - 'services/douyin_fetcher/**'
       - 'scripts/build-backend.sh'
+      - 'scripts/build-douyin-fetcher.sh'
+      - 'scripts/stage-desktop-resources.mjs'
+      - 'scripts/verify-desktop-resources.mjs'
       - '.github/workflows/build-desktop.yml'
   workflow_dispatch:
 
 jobs:
   build-macos:
     runs-on: macos-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
@@ -39,14 +53,19 @@ jobs:
             frontend/package-lock.json
             desktop/package-lock.json
 
-      - name: Install ffmpeg
-        run: brew install ffmpeg
-
       - name: Setup backend venv
         run: |
           cd backend
           python -m venv venv
           source venv/bin/activate
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Setup Douyin fetcher venv
+        run: |
+          cd services/douyin_fetcher
+          python -m venv .packaging-venv
+          source .packaging-venv/bin/activate
           pip install -r requirements.txt
           pip install pyinstaller
 
@@ -79,6 +98,15 @@ jobs:
             --copy-metadata starlette \
             desktop_entry.py
 
+      - name: Build Douyin fetcher (PyInstaller)
+        run: |
+          cd services/douyin_fetcher
+          source .packaging-venv/bin/activate
+          pyinstaller --noconfirm --onedir --name memento-douyin-fetcher \
+            --paths . \
+            --collect-all f2 \
+            desktop_entry.py
+
       - name: Build frontend (Next.js standalone)
         run: |
           cd frontend
@@ -87,15 +115,31 @@ jobs:
           cp -r public .next/standalone/public
 
       - name: Stage resources
+        run: node scripts/stage-desktop-resources.mjs
+
+      - name: Verify runtime resources
+        run: node scripts/verify-desktop-resources.mjs
+
+      - name: Smoke test packaged sidecars
         run: |
-          cd desktop
-          rm -rf resources
-          mkdir -p resources
-          cp -r ../backend/dist/memento-backend resources/backend
-          cp -r ../frontend/.next/standalone resources/frontend
-          # electron-builder strips node_modules from extraResources; ship deps as node_deps
-          # and resolve them at runtime via NODE_PATH (see desktop/main.js startFrontend).
-          mv resources/frontend/node_modules resources/frontend/node_deps
+          set -euo pipefail
+          STORAGE__DATA_DIR="$RUNNER_TEMP/memento-smoke-data" \
+            MEMENTO_PROJECT_ROOT="$RUNNER_TEMP/memento-smoke-runtime" \
+            desktop/resources/backend/memento-backend &
+          BACKEND_PID=$!
+          desktop/resources/douyin-fetcher/memento-douyin-fetcher &
+          DOUYIN_PID=$!
+          trap 'kill "$BACKEND_PID" "$DOUYIN_PID" 2>/dev/null || true' EXIT
+          for i in {1..120}; do
+            curl -fsS http://127.0.0.1:8000/api/health >/dev/null && break
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:8000/api/health
+          for i in {1..120}; do
+            curl -fsS http://127.0.0.1:8002/health >/dev/null && break
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:8002/health
 
       - name: Build macOS installer (electron-builder)
         run: cd desktop && npx electron-builder --mac
@@ -111,7 +155,7 @@ jobs:
 
   build-windows:
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
@@ -128,14 +172,19 @@ jobs:
             frontend/package-lock.json
             desktop/package-lock.json
 
-      - name: Install ffmpeg
-        run: choco install ffmpeg --no-progress
-
       - name: Setup backend venv
         run: |
           cd backend
           python -m venv venv
           .\venv\Scripts\Activate.ps1
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Setup Douyin fetcher venv
+        run: |
+          cd services/douyin_fetcher
+          python -m venv .packaging-venv
+          .\.packaging-venv\Scripts\Activate.ps1
           pip install -r requirements.txt
           pip install pyinstaller
 
@@ -168,6 +217,15 @@ jobs:
             --copy-metadata starlette `
             desktop_entry.py
 
+      - name: Build Douyin fetcher (PyInstaller)
+        run: |
+          cd services/douyin_fetcher
+          .\.packaging-venv\Scripts\Activate.ps1
+          pyinstaller --noconfirm --onedir --name memento-douyin-fetcher `
+            --paths . `
+            --collect-all f2 `
+            desktop_entry.py
+
       - name: Build frontend (Next.js standalone)
         run: |
           cd frontend
@@ -176,15 +234,44 @@ jobs:
           cp -r public .next/standalone/public
 
       - name: Stage resources
+        run: node scripts/stage-desktop-resources.mjs
+
+      - name: Verify runtime resources
+        run: node scripts/verify-desktop-resources.mjs
+
+      - name: Smoke test packaged sidecars
+        shell: pwsh
         run: |
-          cd desktop
-          rm -r -Force resources -ErrorAction SilentlyContinue
-          mkdir -Force resources
-          cp -r ../backend/dist/memento-backend resources/backend
-          cp -r ../frontend/.next/standalone resources/frontend
-          # electron-builder strips node_modules from extraResources; ship deps as node_deps
-          # and resolve them at runtime via NODE_PATH (see desktop/main.js startFrontend).
-          mv resources/frontend/node_modules resources/frontend/node_deps
+          $env:STORAGE__DATA_DIR = Join-Path $env:RUNNER_TEMP 'memento-smoke-data'
+          $env:MEMENTO_PROJECT_ROOT = Join-Path $env:RUNNER_TEMP 'memento-smoke-runtime'
+          $backend = Start-Process -FilePath 'desktop/resources/backend/memento-backend.exe' -PassThru -NoNewWindow
+          $douyin = Start-Process -FilePath 'desktop/resources/douyin-fetcher/memento-douyin-fetcher.exe' -PassThru -NoNewWindow
+          try {
+            $backendReady = $false
+            $douyinReady = $false
+            foreach ($attempt in 1..120) {
+              try {
+                Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8000/api/health | Out-Null
+                $backendReady = $true
+                break
+              } catch {
+                Start-Sleep -Seconds 1
+              }
+            }
+            foreach ($attempt in 1..120) {
+              try {
+                Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8002/health | Out-Null
+                $douyinReady = $true
+                break
+              } catch {
+                Start-Sleep -Seconds 1
+              }
+            }
+            if (-not $backendReady) { throw 'Packaged backend failed its health check.' }
+            if (-not $douyinReady) { throw 'Packaged Douyin fetcher failed its health check.' }
+          } finally {
+            Stop-Process -Id $backend.Id,$douyin.Id -Force -ErrorAction SilentlyContinue
+          }
 
       - name: Build Windows installer (electron-builder)
         run: cd desktop && npx electron-builder --win

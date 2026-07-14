@@ -15,6 +15,7 @@ import logging
 import os
 import signal
 import subprocess
+import sys
 import threading
 import time
 from pathlib import Path
@@ -37,7 +38,10 @@ _cleanup_registered = False
 
 
 def _default_venv_path() -> Path:
-    return resolve_project_root() / "services" / "asr" / ".venv" / "bin" / "uvicorn"
+    venv_dir = resolve_project_root() / "services" / "asr" / ".venv"
+    if sys.platform == "win32":
+        return venv_dir / "Scripts" / "uvicorn.exe"
+    return venv_dir / "bin" / "uvicorn"
 
 
 def _is_healthy(endpoint: str, timeout: float = 1.0) -> bool:
@@ -61,16 +65,24 @@ def _is_local_endpoint(endpoint: str) -> bool:
 
 def _spawn(venv: Path, port: int) -> subprocess.Popen:
     project_root = resolve_project_root()
+    platform_options = (
+        {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP}
+        if sys.platform == "win32"
+        else {"start_new_session": True}
+    )
     return subprocess.Popen(
         [str(venv), "server:app", "--host", "127.0.0.1", "--port", str(port)],
         cwd=str(project_root / "services" / "asr"),
         stdout=subprocess.DEVNULL,
         stderr=subprocess.PIPE,
-        start_new_session=True,
+        **platform_options,
     )
 
 
 def _terminate(proc: subprocess.Popen) -> None:
+    if sys.platform == "win32":
+        proc.terminate()
+        return
     try:
         os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
     except OSError:

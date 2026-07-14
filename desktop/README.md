@@ -40,15 +40,17 @@ Installers are written to `desktop/dist/`.
 
 - Python 3.10+
 - Node 18+
-- ffmpeg (available on PATH)
 - Run `npm install` in both `desktop/` and `frontend/` before building
+
+`ffmpeg` and `ffprobe` are bundled into the installer. Local ASR models and
+their managed Python environment are installed under the application's user
+data directory, not inside the read-only application bundle.
 
 ### Platform Notes
 
 **No cross-compilation.** PyInstaller and electron-builder produce binaries only for the build platform:
 - macOS → `Memento-*.dmg`
 - Windows → `Memento-*.exe` (NSIS installer)
-- Linux → `Memento-*.AppImage`
 
 Build on each target platform to produce its installer.
 
@@ -58,6 +60,5 @@ Code signing is **not configured** by default. For production distribution:
 
 - **macOS:** Set `build.mac.identity` in `desktop/package.json` to your Apple Developer ID certificate, then notarize the DMG with `xcrun notarytool`.
 - **Windows:** Set `build.win.certificateFile` and `build.win.certificatePassword` (or use `CSC_LINK` / `CSC_KEY_PASSWORD` environment variables).
-- **Linux:** AppImage does not require signing for distribution.
 
 Without signing, users must bypass platform security warnings (right-click → Open on macOS, "More info" → "Run anyway" on Windows).

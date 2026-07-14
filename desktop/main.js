@@ -17,8 +17,8 @@ const { CookieRefreshScheduler } = require("./cookie-refresh");
 const FRONTEND_PORT = 3123;
 const FRONTEND_URL =
   process.env.MEMENTO_FRONTEND_URL ||
-  (isPackaged() ? `http://localhost:${FRONTEND_PORT}` : "http://localhost:3000");
-const BACKEND_HEALTH_URL = "http://localhost:8000/api/health";
+  (isPackaged() ? `http://127.0.0.1:${FRONTEND_PORT}` : "http://localhost:3000");
+const BACKEND_HEALTH_URL = "http://127.0.0.1:8000/api/health";
 const DOUYIN_FETCHER_HEALTH_URL = "http://127.0.0.1:8002/health";
 
 function isPackaged() {
@@ -32,6 +32,30 @@ function dataDirEnv() {
   return { STORAGE__DATA_DIR: path.join(app.getPath("userData"), "data") };
 }
 
+function packagedRuntimeRoot() {
+  return path.join(app.getPath("userData"), "runtime");
+}
+
+function preparePackagedRuntime() {
+  if (!isPackaged()) {
+    return;
+  }
+  const bundledServices = path.join(process.resourcesPath, "services");
+  const runtimeServices = path.join(packagedRuntimeRoot(), "services");
+  fs.mkdirSync(runtimeServices, { recursive: true });
+  fs.cpSync(bundledServices, runtimeServices, { recursive: true, force: true });
+}
+
+function packagedToolEnv() {
+  if (!isPackaged()) {
+    return {};
+  }
+  const bundledBin = path.join(process.resourcesPath, "bin");
+  return {
+    PATH: [bundledBin, process.env.PATH || ""].filter(Boolean).join(path.delimiter),
+  };
+}
+
 let backendProcess = null;
 let douyinFetcherProcess = null;
 let videoPlayerManager = null;
@@ -40,9 +64,11 @@ let mainWindow = null;
 let isQuitting = false;
 
 function resolveBackendEnv() {
-  const projectRoot = process.env.MEMENTO_PROJECT_ROOT || path.join(__dirname, "..");
+  const projectRoot = process.env.MEMENTO_PROJECT_ROOT ||
+    (isPackaged() ? packagedRuntimeRoot() : path.join(__dirname, ".."));
   return {
     ...process.env,
+    ...packagedToolEnv(),
     MEMENTO_PROJECT_ROOT: projectRoot,
     ...dataDirEnv(),
   };
@@ -68,12 +94,27 @@ function resolveBackendCommand() {
 }
 
 function resolveDouyinFetcherCommand() {
+  if (isPackaged()) {
+    const binary = path.join(
+      process.resourcesPath,
+      "douyin-fetcher",
+      process.platform === "win32"
+        ? "memento-douyin-fetcher.exe"
+        : "memento-douyin-fetcher"
+    );
+    return { command: binary, args: [], cwd: path.dirname(binary) };
+  }
   const serviceDir = path.join(__dirname, "..", "services", "douyin_fetcher");
   if (process.env.MEMENTO_DOUYIN_FETCHER_CMD) {
     const [command, ...args] = process.env.MEMENTO_DOUYIN_FETCHER_CMD.split(" ");
     return { command, args, cwd: serviceDir };
   }
-  const uvicorn = path.join(serviceDir, ".venv", "bin", "uvicorn");
+  const uvicorn = path.join(
+    serviceDir,
+    ".venv",
+    process.platform === "win32" ? "Scripts" : "bin",
+    process.platform === "win32" ? "uvicorn.exe" : "uvicorn"
+  );
   if (!fs.existsSync(uvicorn)) {
     console.warn(
       `[douyin-fetcher] Not started: ${uvicorn} is missing. Run services/douyin_fetcher/setup.sh to enable Douyin desktop processing.`
@@ -112,6 +153,10 @@ async function startBackend() {
   });
   backendProcess.stdout.on("data", (d) => process.stdout.write(`[backend] ${d}`));
   backendProcess.stderr.on("data", (d) => process.stderr.write(`[backend] ${d}`));
+  backendProcess.on("error", (error) => {
+    console.error(`[backend] Failed to start: ${error.message}`);
+    backendProcess = null;
+  });
   backendProcess.on("exit", (code) => {
     backendProcess = null;
     if (code !== 0 && code !== null) {
@@ -147,7 +192,7 @@ async function startDouyinFetcher() {
   const { command, args, cwd } = commandConfig;
   douyinFetcherProcess = spawn(command, args, {
     cwd,
-    env: process.env,
+    env: { ...process.env, ...packagedToolEnv() },
     stdio: ["ignore", "pipe", "pipe"],
   });
   douyinFetcherProcess.stdout.on("data", (d) => process.stdout.write(`[douyin-fetcher] ${d}`));
@@ -164,7 +209,7 @@ async function startDouyinFetcher() {
   });
 }
 
-async function waitForHealth(timeoutMs = 30000) {
+async function waitForHealth(timeoutMs = 120000) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     try {
@@ -184,7 +229,7 @@ async function waitForFrontendHealth(timeoutMs = 30000) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     try {
-      const response = await fetch(`http://localhost:${FRONTEND_PORT}`);
+      const response = await fetch(`http://127.0.0.1:${FRONTEND_PORT}`);
       if (response.ok) {
         return;
       }
@@ -277,6 +322,7 @@ async function loadBilibiliRefreshToken() {
 }
 
 app.whenReady().then(async () => {
+  preparePackagedRuntime();
   await startDouyinFetcher();
   await startBackend();
   await startFrontend();

@@ -2,6 +2,7 @@
 
 import os
 import signal
+import sys
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -261,4 +262,24 @@ def test_shutdown_terminates_spawned_process_group(monkeypatch):
 def test_shutdown_noop_when_nothing_spawned():
     asr_supervisor._spawned_proc = None
     shutdown()  # must not raise
+    assert asr_supervisor._spawned_proc is None
+
+
+def test_default_venv_path_uses_windows_scripts_directory(monkeypatch, tmp_path):
+    monkeypatch.setattr(sys, "platform", "win32")
+    monkeypatch.setattr(asr_supervisor, "resolve_project_root", lambda: tmp_path)
+
+    assert asr_supervisor._default_venv_path() == (
+        tmp_path / "services" / "asr" / ".venv" / "Scripts" / "uvicorn.exe"
+    )
+
+
+def test_windows_shutdown_terminates_process_directly(monkeypatch):
+    proc = _fake_proc()
+    asr_supervisor._spawned_proc = proc
+    monkeypatch.setattr(sys, "platform", "win32")
+
+    shutdown()
+
+    proc.terminate.assert_called_once_with()
     assert asr_supervisor._spawned_proc is None

@@ -4,11 +4,20 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
+case "$(uname -s)" in
+  Darwin) TARGET="--mac" ;;
+  MINGW*|MSYS*|CYGWIN*) TARGET="--win" ;;
+  *) echo "ERROR: Desktop installers are supported only on macOS and Windows"; exit 1 ;;
+esac
+
 [ -d "$ROOT/desktop/node_modules" ] || { echo "ERROR: Run 'npm install' in desktop/ first"; exit 1; }
 [ -d "$ROOT/frontend/node_modules" ] || { echo "ERROR: Run 'npm install' in frontend/ first"; exit 1; }
 
 echo "==> Backend (PyInstaller)"
 "$ROOT/scripts/build-backend.sh"
+
+echo "==> Douyin fetcher (PyInstaller)"
+"$ROOT/scripts/build-douyin-fetcher.sh"
 
 echo "==> Frontend (Next standalone)"
 cd "$ROOT/frontend"
@@ -18,16 +27,12 @@ cp -r .next/static .next/standalone/.next/static
 cp -r public .next/standalone/public
 
 echo "==> Staging resources"
-cd "$ROOT/desktop"
-rm -rf resources
-mkdir -p resources
-cp -r "$ROOT/backend/dist/memento-backend" resources/backend
-cp -r "$ROOT/frontend/.next/standalone" resources/frontend
-# electron-builder strips node_modules from extraResources; ship deps as node_deps
-# and resolve them at runtime via NODE_PATH (see desktop/main.js startFrontend).
-mv resources/frontend/node_modules resources/frontend/node_deps
+cd "$ROOT"
+node scripts/stage-desktop-resources.mjs
+node scripts/verify-desktop-resources.mjs
 
 echo "==> electron-builder"
-npm run dist
+cd "$ROOT/desktop"
+npm run dist -- "$TARGET"
 
 echo "Installers in desktop/dist/"

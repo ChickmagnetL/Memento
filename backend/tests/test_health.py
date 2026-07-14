@@ -24,3 +24,16 @@ def test_api_docs_are_available():
     resp = client.get("/docs")
     assert resp.status_code == 200
     assert "swagger-ui" in resp.text
+
+
+def test_packaged_frontend_origin_is_allowed():
+    resp = client.options(
+        "/api/health",
+        headers={
+            "Origin": "http://127.0.0.1:3123",
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+
+    assert resp.status_code == 200
+    assert resp.headers["access-control-allow-origin"] == "http://127.0.0.1:3123"

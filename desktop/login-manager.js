@@ -26,6 +26,36 @@ const COOKIE_CHECKS = {
   }
 };
 
+function sanitizeUserAgent(userAgent) {
+  return userAgent
+    .replace(/\sElectron\/\S+/g, '')
+    .replace(/\sMemento\/\S+/g, '');
+}
+
+function isWebUrl(url) {
+  try {
+    const protocol = new URL(url).protocol;
+    return protocol === 'http:' || protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+function configureAuthNavigationGuards(webContents) {
+  const blockUnsafeNavigation = (event, url) => {
+    if (!isWebUrl(url)) {
+      event.preventDefault();
+      console.log(`[login-manager] Blocked external protocol: ${url}`);
+    }
+  };
+
+  webContents.on('will-navigate', blockUnsafeNavigation);
+  webContents.on('will-redirect', blockUnsafeNavigation);
+  webContents.setWindowOpenHandler(({ url }) => ({
+    action: isWebUrl(url) ? 'allow' : 'deny',
+  }));
+}
+
 // Platform-specific CSS to hide non-login content
 // Selectors derived from live DOM analysis
 const PLATFORM_CSS = {
@@ -108,16 +138,31 @@ const PLATFORM_CSS = {
 // JS to auto-trigger Douyin login dialog
 const DOUYIN_AUTO_LOGIN_JS = `
   (() => {
-    const candidates = Array.from(document.querySelectorAll("button, div, span, a"));
+    const dialog = document.querySelector(
+      '#douyin-login-new-id, [role="dialog"] [class*="login"], [role="dialog"]'
+    );
+    if (dialog) {
+      return 'ready';
+    }
+
+    const candidates = Array.from(
+      document.querySelectorAll('button, [role="button"], a, [tabindex="0"], div, span')
+    );
     const loginTrigger = candidates.find((node) => {
       const text = (node.textContent || "").trim();
-      return text === "登录" || text.includes("登录");
+      if (text !== '登录' && text !== '登录抖音') return false;
+      const style = window.getComputedStyle(node);
+      const rect = node.getBoundingClientRect();
+      const nativeControl = node.matches?.('button, [role="button"], a, [tabindex="0"]');
+      return style.display !== 'none' && style.visibility !== 'hidden' &&
+        rect.width > 0 && rect.height > 0 &&
+        (nativeControl || style.cursor === 'pointer');
     });
     if (loginTrigger instanceof HTMLElement) {
       loginTrigger.click();
-      return true;
+      return 'clicked';
     }
-    return false;
+    return 'missing';
   })();
 `;
 
@@ -191,6 +236,10 @@ class LoginWindowManager {
         sandbox: true
       }
     });
+    this.authView.webContents.setUserAgent(
+      sanitizeUserAgent(this.authView.webContents.getUserAgent())
+    );
+    configureAuthNavigationGuards(this.authView.webContents);
 
     // Attach BrowserView over the auth-surface region
     this.loginWindow.setBrowserView(this.authView);
@@ -214,13 +263,15 @@ class LoginWindowManager {
     // Register did-finish-load listeners BEFORE loadURL so we catch the
     // initial page load (loadURL resolves after this event fires).
     this.authView.webContents.on('did-finish-load', () => {
-      this.injectPlatformCSS(platform);
+      if (platform !== 'douyin') {
+        this.injectPlatformCSS(platform);
+      }
     });
 
     // For Douyin: auto-trigger the login dialog
     if (platform === 'douyin') {
       this.authView.webContents.on('did-finish-load', () => {
-        setTimeout(() => this.triggerDouyinLogin(), 1500);
+        setTimeout(() => this.triggerDouyinLogin(), 500);
       });
     }
 
@@ -248,17 +299,28 @@ class LoginWindowManager {
     });
   }
 
-  async triggerDouyinLogin() {
-    if (!this.authView || this.authView.webContents.isDestroyed()) return;
+  async triggerDouyinLogin({ maxAttempts = 12, retryDelayMs = 750 } = {}) {
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      if (!this.authView || this.authView.webContents.isDestroyed()) return false;
 
-    try {
-      const result = await this.authView.webContents.executeJavaScript(DOUYIN_AUTO_LOGIN_JS);
-      if (!result) {
-        console.log('[login-manager] Douyin login trigger not found, user must click manually');
+      try {
+        const result = await this.authView.webContents.executeJavaScript(DOUYIN_AUTO_LOGIN_JS);
+        if (result === 'ready') {
+          this.injectPlatformCSS('douyin');
+          return true;
+        }
+      } catch (err) {
+        console.error('[login-manager] Douyin auto-login trigger failed:', err.message);
+        return false;
       }
-    } catch (err) {
-      console.error('[login-manager] Douyin auto-login trigger failed:', err.message);
+
+      if (attempt < maxAttempts - 1 && retryDelayMs > 0) {
+        await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+      }
     }
+
+    console.log('[login-manager] Douyin login trigger not found; leaving homepage visible');
+    return false;
   }
 
   startCookiePolling(session, platform) {
@@ -374,4 +436,9 @@ class LoginWindowManager {
   }
 }
 
-module.exports = { LoginWindowManager };
+module.exports = {
+  DOUYIN_AUTO_LOGIN_JS,
+  LoginWindowManager,
+  configureAuthNavigationGuards,
+  sanitizeUserAgent,
+};
