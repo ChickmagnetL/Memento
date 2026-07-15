@@ -50,28 +50,28 @@ async function refreshBilibiliCookieIfPossible() {
 
 function mapSoftSubtitleError(
   errorMessage: string
-): { reason: string; message?: string } | null {
+): { reason: string } | null {
   const lower = errorMessage.toLowerCase();
   if (errorMessage.includes("No Chinese soft subtitles")) {
-    return { reason: "non_chinese_subtitles", message: errorMessage };
+    return { reason: "non_chinese_subtitles" };
   }
   if (errorMessage.includes("No Chinese subtitles were found")) {
-    return { reason: "non_chinese_subtitles", message: errorMessage };
+    return { reason: "non_chinese_subtitles" };
   }
   if (errorMessage.includes("no usable soft subtitles")) {
-    return { reason: "no_subtitles", message: errorMessage };
+    return { reason: "no_subtitles" };
   }
   if (errorMessage.includes("no usable creator or automatic subtitles")) {
-    return { reason: "no_subtitles", message: errorMessage };
+    return { reason: "no_subtitles" };
   }
   if (errorMessage.includes("temporarily unavailable")) {
-    return { reason: "subtitle_unstable", message: errorMessage };
+    return { reason: "subtitle_unstable" };
   }
   if (lower.includes("login expired")) {
-    return { reason: "auth_expired", message: errorMessage };
+    return { reason: "auth_expired" };
   }
   if (lower.includes("login is required")) {
-    return { reason: "not_logged_in", message: errorMessage };
+    return { reason: "not_logged_in" };
   }
   return null;
 }
@@ -90,7 +90,6 @@ export function VideoIntake({ initialVideos }: VideoIntakeProps) {
     title: string;
     reason: string;
     platform?: VideoRecord["platform"];
-    message?: string;
     availableLanguages?: string[];
   } | null>(null);
 
@@ -105,6 +104,44 @@ export function VideoIntake({ initialVideos }: VideoIntakeProps) {
     processingVideoId !== null ||
     checkingVideoId !== null ||
     pendingSubtitleDecision !== null;
+
+  function localizedVideoError(message: string, fallback: string): string {
+    const lower = message.toLowerCase();
+    if (
+      lower.includes("unsupported platform") ||
+      lower.includes("unsupported video") ||
+      lower.includes("cannot resolve aweme_id")
+    ) {
+      return t("This video link is not supported. Check the link and try again.");
+    }
+    if (
+      lower.includes("already processing") ||
+      lower.includes("could not be claimed for processing")
+    ) {
+      return t("This video is already being processed.");
+    }
+    if (lower.includes("subtitle")) {
+      return t("Couldn't fetch subtitles. Check your network or login status and try again.");
+    }
+    if (lower.includes("asr")) {
+      return t("ASR service is unavailable. Check the ASR settings and try again.");
+    }
+    if (
+      lower.includes("audio") ||
+      lower.includes("yt-dlp") ||
+      lower.includes("ffmpeg") ||
+      lower.includes("douyin fetcher")
+    ) {
+      return t("Couldn't download or prepare the video audio. Check your network and try again.");
+    }
+    return fallback;
+  }
+
+  function showLocalizedError(error: unknown, fallback: string) {
+    const message = error instanceof Error ? error.message : String(error ?? "");
+    console.error("[video-intake]", message);
+    setError(localizedVideoError(message, fallback));
+  }
 
   async function refreshVideos() {
     const items = await listVideos();
@@ -127,7 +164,10 @@ export function VideoIntake({ initialVideos }: VideoIntakeProps) {
       // Focus the newly added video (newest is at index 0)
       setActiveCardIndex(0);
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("Operation failed"));
+      showLocalizedError(
+        e,
+        t("Couldn't import the video. Check the link and network, then try again.")
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -151,14 +191,19 @@ export function VideoIntake({ initialVideos }: VideoIntakeProps) {
             title: video?.title ?? t("Video"),
             platform: video?.platform,
             reason: mapped.reason,
-            message: mapped.message,
           });
         } else {
-          setError(processed.error_message);
+          showLocalizedError(
+            processed.error_message,
+            t("Video processing failed. Check your network and model settings, then try again.")
+          );
         }
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("Operation failed"));
+      showLocalizedError(
+        e,
+        t("Video processing failed. Check your network and model settings, then try again.")
+      );
     } finally {
       setProcessingVideoId(null);
     }
@@ -184,7 +229,6 @@ export function VideoIntake({ initialVideos }: VideoIntakeProps) {
     setCheckingVideoId(video.id);
     let hasSubtitles = true;
     let reason = "no_subtitles";
-    let message: string | undefined;
     let availableLanguages: string[] | undefined;
     try {
       if (video.platform === "bilibili") {
@@ -193,7 +237,6 @@ export function VideoIntake({ initialVideos }: VideoIntakeProps) {
       let result = await checkSubtitles(video.id);
       hasSubtitles = result.has_subtitles;
       reason = result.reason ?? "no_subtitles";
-      message = result.message;
       availableLanguages = result.available_languages;
 
       // One recheck after auth_expired for bilibili
@@ -202,11 +245,13 @@ export function VideoIntake({ initialVideos }: VideoIntakeProps) {
         result = await checkSubtitles(video.id);
         hasSubtitles = result.has_subtitles;
         reason = result.reason ?? "no_subtitles";
-        message = result.message;
         availableLanguages = result.available_languages;
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("Operation failed"));
+      showLocalizedError(
+        e,
+        t("Couldn't fetch subtitles. Check your network or login status and try again.")
+      );
       setCheckingVideoId(null);
       return;
     }
@@ -219,7 +264,6 @@ export function VideoIntake({ initialVideos }: VideoIntakeProps) {
         title: video.title,
         platform: video.platform,
         reason,
-        message,
         availableLanguages,
       });
     }
@@ -344,7 +388,6 @@ export function VideoIntake({ initialVideos }: VideoIntakeProps) {
         <SubtitleDecisionDialog
           videoTitle={pendingSubtitleDecision.title}
           reason={pendingSubtitleDecision.reason}
-          message={pendingSubtitleDecision.message}
           availableLanguages={pendingSubtitleDecision.availableLanguages}
           onCancel={() => setPendingSubtitleDecision(null)}
           onUseAsr={() => {
@@ -506,7 +549,12 @@ export function VideoIntake({ initialVideos }: VideoIntakeProps) {
 
                   {/* Error message for failed videos */}
                   {video.status === "failed" && video.error_message ? (
-                    <p className="mt-2 text-xs text-[hsl(0_40%_72%)]">{video.error_message}</p>
+                    <p className="mt-2 text-xs text-[hsl(0_40%_72%)]">
+                      {localizedVideoError(
+                        video.error_message,
+                        t("Video processing failed. Check your network and model settings, then try again.")
+                      )}
+                    </p>
                   ) : null}
                 </article>
               );

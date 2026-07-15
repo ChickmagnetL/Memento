@@ -15,6 +15,14 @@ const sidebarSource = readFileSync(
   join(__dirname, "../src/components/layout/sidebar.tsx"),
   "utf8",
 );
+const videoIntakeSource = readFileSync(
+  join(__dirname, "../src/app/video-intake.tsx"),
+  "utf8",
+);
+const subtitleDialogSource = readFileSync(
+  join(__dirname, "../src/components/ui/subtitle-decision-dialog.tsx"),
+  "utf8",
+);
 
 function sourceFiles(directory) {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -53,6 +61,20 @@ test("settings exposes both languages and shared UI uses translations", () => {
 test("translation interpolation preserves dynamic values", () => {
   assert.match(i18nSource, /text\.replace\(\/\\\{\(\\w\+\)\\\}\/g/);
   assert.match(i18nSource, /"Calling tool: \{tool\}…": "正在调用工具：\{tool\}…"/);
+});
+
+test("home video errors use localized messages instead of backend English", () => {
+  assert.match(videoIntakeSource, /function localizedVideoError/);
+  assert.match(videoIntakeSource, /showLocalizedError\(/);
+  assert.doesNotMatch(
+    videoIntakeSource,
+    /<ErrorBanner message=\{processed\.error_message\}/,
+  );
+  assert.match(
+    subtitleDialogSource,
+    /const bodyMessage = t\(defaultMessageKey\(reason\)\);/,
+  );
+  assert.doesNotMatch(subtitleDialogSource, /message\?\.trim\(\)/);
 });
 
 test("every literal translation key has a Chinese catalog entry", () => {

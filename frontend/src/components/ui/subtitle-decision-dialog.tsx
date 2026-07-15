@@ -6,7 +6,6 @@ import { useLanguage } from "@/lib/i18n";
 interface SubtitleDecisionDialogProps {
   videoTitle: string;
   reason: string;
-  message?: string;
   availableLanguages?: string[];
   onCancel: () => void;
   onUseAsr: () => void;
@@ -61,7 +60,6 @@ function defaultMessageKey(reason: string): string {
 export function SubtitleDecisionDialog({
   videoTitle,
   reason,
-  message,
   availableLanguages,
   onCancel,
   onUseAsr,
@@ -76,7 +74,7 @@ export function SubtitleDecisionDialog({
   const needsRetry =
     (reason === "subtitle_unstable" || reason === "upstream_error") &&
     !!onRetry;
-  const bodyMessage = message?.trim() || t(defaultMessageKey(reason));
+  const bodyMessage = t(defaultMessageKey(reason));
   const languageNames =
     availableLanguages?.length
       ? availableLanguages.map((lan) => languageLabel(lan, language)).join(", ")
