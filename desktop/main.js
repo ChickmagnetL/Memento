@@ -6,7 +6,7 @@
  * (npm run dev) and the backend can be overridden via env vars.
  */
 
-const { app, BrowserWindow, dialog, ipcMain, nativeTheme } = require("electron");
+const { app, BrowserWindow, dialog, ipcMain, nativeTheme, shell } = require("electron");
 const { spawn } = require("child_process");
 const fs = require("fs");
 const path = require("path");
@@ -411,6 +411,10 @@ app.whenReady().then(async () => {
       return { ok: false, refreshed: false, reason: 'unavailable' };
     }
     return cookieRefreshScheduler.refreshIfNeeded();
+  });
+
+  ipcMain.handle('open-github', () => {
+    return shell.openExternal('https://github.com/ChickmagnetL/Memento');
   });
 
   ipcMain.on('open-video-player', (event, params) => {

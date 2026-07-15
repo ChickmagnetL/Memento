@@ -13,6 +13,8 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 contextBridge.exposeInMainWorld('electron', {
+  openGitHub: () => ipcRenderer.invoke('open-github'),
+
   // Login management
   openLogin: (platform) => ipcRenderer.send('open-login', platform),
   clearLoginSession: (platform) => ipcRenderer.invoke('clear-login-session', platform),

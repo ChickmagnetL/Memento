@@ -65,6 +65,27 @@ test("expanded and collapsed sidebar headers provide drag surfaces", () => {
   );
 });
 
+test("sidebar exposes an icon-only GitHub link at its bottom", () => {
+  const navEnd = sidebarSource.indexOf("</nav>");
+  const githubLink = sidebarSource.indexOf(
+    'href="https://github.com/ChickmagnetL/Memento"'
+  );
+
+  assert.ok(githubLink > navEnd);
+  assert.match(sidebarSource, /aria-label="Open Memento on GitHub"/);
+  assert.match(
+    sidebarSource,
+    /<svg[\s\S]*?className="h-5 w-5 fill-current"[\s\S]*?viewBox="0 0 16 16"/
+  );
+  assert.match(
+    sidebarSource,
+    /"flex h-8 w-8 items-center justify-center rounded-md/
+  );
+  assert.match(sidebarSource, /!collapsed && "ml-1\.5"/);
+  assert.doesNotMatch(sidebarSource, /justify-start px-3/);
+  assert.doesNotMatch(sidebarSource, /<div className="border-t border-border p-2">/);
+});
+
 test("chat memory control sits directly after the new-chat control", () => {
   const newChatControl = chatPanelSource.indexOf('title="New Chat"');
   const memoryControl = chatPanelSource.indexOf("<MemoryPopover", newChatControl);

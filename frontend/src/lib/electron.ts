@@ -12,6 +12,7 @@ export type CookieEventPayload = {
 };
 
 export interface ElectronAPI {
+  openGitHub: () => Promise<void>;
   openLogin: (platform: "bilibili" | "douyin") => void;
   clearLoginSession: (platform: "bilibili" | "douyin") => Promise<void>;
   onCookieReady: (callback: (data: CookieEventPayload) => void) => () => void;
