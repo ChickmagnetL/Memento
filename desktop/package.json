@@ -67,6 +67,11 @@
       ],
       "artifactName": "Memento-Windows.${ext}",
       "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "uninstallDisplayName": "${productName}"
     }
   }
 }
