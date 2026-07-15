@@ -37,6 +37,27 @@ def test_embed_posts_batch_and_returns_vectors_in_order():
     assert headers["Authorization"] == "Bearer sk-test"
 
 
+def test_embed_ensures_local_service_before_request():
+    order = []
+
+    client = CloudEmbeddingClient(
+        endpoint="http://localhost:8003/v1",
+        api_key="local",
+        model="BAAI/bge-m3",
+        ensure_running=lambda endpoint: order.append(("ensure", endpoint)),
+        post_json=lambda url, payload, headers: (
+            order.append(("post", url))
+            or {"data": [{"index": 0, "embedding": [0.1]}]}
+        ),
+    )
+
+    assert client.embed(["text"]) == [[0.1]]
+    assert order == [
+        ("ensure", "http://localhost:8003/v1"),
+        ("post", "http://localhost:8003/v1/embeddings"),
+    ]
+
+
 def test_embed_empty_input_returns_empty_without_request():
     def fail_post_json(url, payload, headers):
         raise AssertionError("should not be called")

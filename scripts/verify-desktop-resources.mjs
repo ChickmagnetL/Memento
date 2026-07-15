@@ -16,7 +16,10 @@ const required = [
   path.join("bin", `deno${executableSuffix}`),
   path.join("services", "asr", "deploy.py"),
   path.join("services", "asr", "server.py"),
+  path.join("services", "asr", "requirements.txt"),
   path.join("services", "embedding", "deploy.py"),
+  path.join("services", "embedding", "server.py"),
+  path.join("services", "embedding", "requirements.txt"),
   path.join("services", "node", "node_app", "toolchain.py"),
 ];
 
