@@ -1,6 +1,7 @@
 """Tests for the ASR service deployer."""
 
 import importlib.util
+import subprocess
 import sys
 from pathlib import Path
 
@@ -15,6 +16,65 @@ def load_deploy_module():
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     return module
+
+
+def test_pip_index_candidates_default_custom_and_empty(monkeypatch):
+    deploy_module = load_deploy_module()
+
+    monkeypatch.setattr(deploy_module, "_USER_PIP_INDEX_URL", None)
+    assert deploy_module._pip_index_candidates() == [
+        "https://pypi.tuna.tsinghua.edu.cn/simple",
+        "https://mirrors.aliyun.com/pypi/simple/",
+        "https://pypi.org/simple",
+    ]
+
+    monkeypatch.setattr(deploy_module, "_USER_PIP_INDEX_URL", "https://pip.example/simple")
+    assert deploy_module._pip_index_candidates() == ["https://pip.example/simple"]
+
+    monkeypatch.setattr(deploy_module, "_USER_PIP_INDEX_URL", "   ")
+    assert deploy_module._pip_index_candidates() == [None]
+
+
+def test_run_pip_falls_back_in_order(monkeypatch):
+    deploy_module = load_deploy_module()
+    monkeypatch.setattr(deploy_module, "_USER_PIP_INDEX_URL", None)
+    commands = []
+
+    def fake_run_command(args, cwd=None, env=None):
+        commands.append(list(args))
+        if len(commands) < 3:
+            raise RuntimeError("index unavailable")
+
+    monkeypatch.setattr(deploy_module, "run_command", fake_run_command)
+    deploy_module._run_pip_with_fallback(["python", "-m", "pip", "install", "demo"])
+
+    assert [command[-1] for command in commands] == [
+        "https://pypi.tuna.tsinghua.edu.cn/simple",
+        "https://mirrors.aliyun.com/pypi/simple/",
+        "https://pypi.org/simple",
+    ]
+
+
+def test_run_command_includes_bounded_process_output(monkeypatch):
+    deploy_module = load_deploy_module()
+
+    def fake_subprocess_run(*args, **kwargs):
+        return subprocess.CompletedProcess(
+            args[0], 1, stdout="install context", stderr="x" * 5_000 + "root cause"
+        )
+
+    monkeypatch.setattr(deploy_module.subprocess, "run", fake_subprocess_run)
+
+    try:
+        deploy_module.run_command(["python", "-m", "pip", "install", "demo"])
+    except RuntimeError as exc:
+        message = str(exc)
+        assert "exit code 1" in message
+        assert "root cause" in message
+        assert "output truncated" in message
+        assert len(message) < 5_500
+    else:
+        raise AssertionError("expected a command failure")
 
 
 # ---------------------------------------------------------------------------
@@ -160,8 +220,6 @@ def test_deploy_downloads_only_missing_models(monkeypatch, tmp_path: Path):
 def test_torch_command_selects_platform_specific_wheel(monkeypatch, tmp_path: Path):
     deploy_module = load_deploy_module()
     monkeypatch.setattr(deploy_module, "VENV_DIR", tmp_path / ".venv")
-    # Disable the China pip mirror so the non-CUDA command is the bare base command.
-    monkeypatch.setattr(deploy_module, "PIP_INDEX_URL", "")
 
     # use_cuda=False -> base command, no CUDA index-url
     assert deploy_module.torch_install_command(use_cuda=False) == [

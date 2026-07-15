@@ -14,6 +14,13 @@ from typing import Callable
 # can tell "user/parent forced a value" from "we filled the China default".
 _USER_HF_ENDPOINT = os.environ.get("HF_ENDPOINT")
 _DEFAULT_HF_ENDPOINTS = ("https://huggingface.co", "https://hf-mirror.com")
+_USER_PIP_INDEX_URL = os.environ.get("PIP_INDEX_URL")
+_DEFAULT_PIP_INDEX_URLS = (
+    "https://pypi.tuna.tsinghua.edu.cn/simple",
+    "https://mirrors.aliyun.com/pypi/simple/",
+    "https://pypi.org/simple",
+)
+_COMMAND_OUTPUT_LIMIT = 4_000
 # Default to the official HuggingFace hub (moonshine models ship via HF).
 # Harmless elsewhere; set HF_ENDPOINT to override. Download path may fall back.
 os.environ.setdefault("HF_ENDPOINT", _DEFAULT_HF_ENDPOINTS[0])
@@ -27,10 +34,15 @@ MOONSHINE_CACHE_DIR = MODELS_DIR / "moonshine"
 CUDA_TORCH_INDEX_URL = os.environ.get(
     "CUDA_TORCH_INDEX_URL", "https://download.pytorch.org/whl/cu124"
 )
-# Tsinghua PyPI mirror by default; set PIP_INDEX_URL="" to use the default PyPI.
-PIP_INDEX_URL = os.environ.get("PIP_INDEX_URL", "https://pypi.tuna.tsinghua.edu.cn/simple")
 
 ProgressCallback = Callable[[str, str, int | None], None]
+
+
+class CommandError(RuntimeError):
+    def __init__(self, message: str, returncode: int):
+        super().__init__(message)
+        self.returncode = returncode
+
 
 # ---------------------------------------------------------------------------
 # Moonshine spec → ModelArch mapping
@@ -91,12 +103,44 @@ def run_command(
     cwd: Path | None = None,
     env: dict[str, str] | None = None,
 ) -> None:
-    subprocess.run(
-        [str(arg) for arg in args],
+    """Run a command and include bounded process output in failures."""
+    command = [str(arg) for arg in args]
+    result = subprocess.run(
+        command,
         cwd=str(cwd or SERVICE_DIR),
-        check=True,
         env=env,
+        capture_output=True,
+        text=True,
+        errors="replace",
     )
+    if result.stdout:
+        print(result.stdout, end="")
+    if result.stderr:
+        print(result.stderr, end="", file=sys.stderr)
+    if result.returncode:
+        output = _bounded_command_output(result.stdout, result.stderr)
+        display_command = _bounded_text(subprocess.list2cmdline(command), 1_000)
+        detail = f"\n{output}" if output else ""
+        raise CommandError(
+            f"Command failed with exit code {result.returncode}: {display_command}{detail}",
+            result.returncode,
+        )
+
+
+def _bounded_text(value: str, limit: int = _COMMAND_OUTPUT_LIMIT) -> str:
+    value = value.strip()
+    if len(value) <= limit:
+        return value
+    return "... [output truncated]\n" + value[-limit:]
+
+
+def _bounded_command_output(stdout: str | None, stderr: str | None) -> str:
+    parts = []
+    if stdout and stdout.strip():
+        parts.append(f"stdout:\n{stdout.strip()}")
+    if stderr and stderr.strip():
+        parts.append(f"stderr:\n{stderr.strip()}")
+    return _bounded_text("\n".join(parts))
 
 
 def _ensure_managed_toolchain() -> None:
@@ -110,14 +154,33 @@ def _ensure_managed_toolchain() -> None:
     ensure_toolchain()
 
 
-def _with_pip_index(command: list[str]) -> list[str]:
-    """Append `-i PIP_INDEX_URL` to a pip command when a mirror is configured.
+def _pip_index_candidates() -> list[str | None]:
+    """Return exclusive user configuration or the built-in fallback order."""
+    if _USER_PIP_INDEX_URL is None:
+        return list(_DEFAULT_PIP_INDEX_URLS)
+    configured = _USER_PIP_INDEX_URL.strip()
+    return [configured or None]
 
-    No-op when PIP_INDEX_URL is empty (set PIP_INDEX_URL="" for the default PyPI).
-    """
-    if PIP_INDEX_URL:
-        command.extend(["-i", PIP_INDEX_URL])
-    return command
+
+def _run_pip_with_fallback(command: list[str]) -> None:
+    errors: list[str] = []
+    for index_url in _pip_index_candidates():
+        attempt = list(command)
+        label = index_url or "pip default"
+        if index_url:
+            attempt.extend(["-i", index_url])
+        print(f"Running pip via {label}")
+        try:
+            run_command(attempt)
+            return
+        except Exception as exc:
+            detail = _bounded_text(str(exc), 2_000)
+            print(f"Pip failed via {label}: {detail}", file=sys.stderr)
+            errors.append(f"{label}: {detail}")
+    raise RuntimeError(
+        "Pip command failed for all configured indexes.\n"
+        + _bounded_text("\n\n".join(errors), 6_000)
+    )
 
 
 def _hf_endpoint_candidates() -> list[str]:
@@ -245,8 +308,6 @@ def torch_install_command(use_cuda: bool = False) -> list[str]:
         # CUDA torch wheels only ship on the pytorch index (no China mirror),
         # so use the official CDN index there; overridable via CUDA_TORCH_INDEX_URL.
         command.extend(["--index-url", CUDA_TORCH_INDEX_URL])
-    else:
-        _with_pip_index(command)
     return command
 
 
@@ -283,36 +344,37 @@ def ensure_environment(
 
         python = python_bin()
         _progress(on_progress, "dependencies", "Installing ASR dependencies", 30)
-        run_command(
-            _with_pip_index(
-                [
-                    str(python),
-                    "-m",
-                    "pip",
-                    "install",
-                    "--upgrade",
-                    "pip",
-                    "setuptools",
-                    "wheel",
-                ]
-            )
+        _run_pip_with_fallback(
+            [
+                str(python),
+                "-m",
+                "pip",
+                "install",
+                "--upgrade",
+                "pip",
+                "setuptools",
+                "wheel",
+            ]
         )
-        run_command(
-            _with_pip_index(
-                [
-                    str(python),
-                    "-m",
-                    "pip",
-                    "install",
-                    "-r",
-                    str(SERVICE_DIR / "requirements.txt"),
-                ]
-            )
+        _run_pip_with_fallback(
+            [
+                str(python),
+                "-m",
+                "pip",
+                "install",
+                "-r",
+                str(SERVICE_DIR / "requirements.txt"),
+            ]
         )
 
         _progress(on_progress, "torch", "Installing platform torch wheel", 45)
         use_cuda = bool(device == "cuda")
-        run_command(torch_install_command(use_cuda=use_cuda))
+        if use_cuda:
+            run_command(torch_install_command(use_cuda=True))
+        else:
+            _run_pip_with_fallback(
+                [str(python), "-m", "pip", "install", "torch", "torchaudio"]
+            )
         if use_cuda:
             _ensure_cuda_torch()
 

@@ -13,6 +13,13 @@ from typing import Callable
 # can tell "user/parent forced a value" from "we filled the China default".
 _USER_HF_ENDPOINT = os.environ.get("HF_ENDPOINT")
 _DEFAULT_HF_ENDPOINTS = ("https://huggingface.co", "https://hf-mirror.com")
+_USER_PIP_INDEX_URL = os.environ.get("PIP_INDEX_URL")
+_DEFAULT_PIP_INDEX_URLS = (
+    "https://pypi.tuna.tsinghua.edu.cn/simple",
+    "https://mirrors.aliyun.com/pypi/simple/",
+    "https://pypi.org/simple",
+)
+_COMMAND_OUTPUT_LIMIT = 4_000
 # Default to the official HuggingFace hub for runtime / non-download paths.
 # Harmless elsewhere; set HF_ENDPOINT to override. Download path may fall back.
 os.environ.setdefault("HF_ENDPOINT", _DEFAULT_HF_ENDPOINTS[0])
@@ -23,12 +30,16 @@ MODELS_DIR = SERVICE_DIR / "models"
 CUDA_TORCH_INDEX_URL = os.environ.get(
     "CUDA_TORCH_INDEX_URL", "https://download.pytorch.org/whl/cu124"
 )
-# Tsinghua PyPI mirror by default; set PIP_INDEX_URL="" to use the default PyPI.
-PIP_INDEX_URL = os.environ.get("PIP_INDEX_URL", "https://pypi.tuna.tsinghua.edu.cn/simple")
 DEFAULT_MODEL = "BAAI/bge-m3"
 _CONFIG_NAMES = ("config.json", "modules.json", "config_sentence_transformers.json")
 
 ProgressCallback = Callable[[str, str, int | None], None]
+
+
+class CommandError(RuntimeError):
+    def __init__(self, message: str, returncode: int):
+        super().__init__(message)
+        self.returncode = returncode
 
 
 def python_bin() -> Path:
@@ -43,8 +54,44 @@ def run_command(
     cwd: Path | None = None,
     env: dict[str, str] | None = None,
 ) -> None:
-    """Run a command via subprocess, raising on non-zero exit."""
-    subprocess.run([str(a) for a in args], cwd=cwd, check=True, env=env)
+    """Run a command and include bounded process output in failures."""
+    command = [str(a) for a in args]
+    result = subprocess.run(
+        command,
+        cwd=cwd,
+        env=env,
+        capture_output=True,
+        text=True,
+        errors="replace",
+    )
+    if result.stdout:
+        print(result.stdout, end="")
+    if result.stderr:
+        print(result.stderr, end="", file=sys.stderr)
+    if result.returncode:
+        output = _bounded_command_output(result.stdout, result.stderr)
+        display_command = _bounded_text(subprocess.list2cmdline(command), 1_000)
+        detail = f"\n{output}" if output else ""
+        raise CommandError(
+            f"Command failed with exit code {result.returncode}: {display_command}{detail}",
+            result.returncode,
+        )
+
+
+def _bounded_text(value: str, limit: int = _COMMAND_OUTPUT_LIMIT) -> str:
+    value = value.strip()
+    if len(value) <= limit:
+        return value
+    return "... [output truncated]\n" + value[-limit:]
+
+
+def _bounded_command_output(stdout: str | None, stderr: str | None) -> str:
+    parts = []
+    if stdout and stdout.strip():
+        parts.append(f"stdout:\n{stdout.strip()}")
+    if stderr and stderr.strip():
+        parts.append(f"stderr:\n{stderr.strip()}")
+    return _bounded_text("\n".join(parts))
 
 
 def _ensure_managed_toolchain() -> None:
@@ -58,14 +105,33 @@ def _ensure_managed_toolchain() -> None:
     ensure_toolchain()
 
 
-def _with_pip_index(command: list[str]) -> list[str]:
-    """Append `-i PIP_INDEX_URL` to a pip command when a mirror is configured.
+def _pip_index_candidates() -> list[str | None]:
+    """Return exclusive user configuration or the built-in fallback order."""
+    if _USER_PIP_INDEX_URL is None:
+        return list(_DEFAULT_PIP_INDEX_URLS)
+    configured = _USER_PIP_INDEX_URL.strip()
+    return [configured or None]
 
-    No-op when PIP_INDEX_URL is empty (set PIP_INDEX_URL="" for the default PyPI).
-    """
-    if PIP_INDEX_URL:
-        command.extend(["-i", PIP_INDEX_URL])
-    return command
+
+def _run_pip_with_fallback(command: list[str]) -> None:
+    errors: list[str] = []
+    for index_url in _pip_index_candidates():
+        attempt = list(command)
+        label = index_url or "pip default"
+        if index_url:
+            attempt.extend(["-i", index_url])
+        print(f"Running pip via {label}")
+        try:
+            run_command(attempt)
+            return
+        except Exception as exc:
+            detail = _bounded_text(str(exc), 2_000)
+            print(f"Pip failed via {label}: {detail}", file=sys.stderr)
+            errors.append(f"{label}: {detail}")
+    raise RuntimeError(
+        "Pip command failed for all configured indexes.\n"
+        + _bounded_text("\n\n".join(errors), 6_000)
+    )
 
 
 def _hf_endpoint_candidates() -> list[str]:
@@ -183,16 +249,16 @@ def ensure_environment(
             created_venv = True
 
         _progress(on_progress, "venv", "Upgrading pip/setuptools/wheel", 10)
-        run_command(_with_pip_index([
+        _run_pip_with_fallback([
             str(python_bin()), "-m", "pip", "install",
             "--upgrade", "pip", "setuptools", "wheel",
-        ]))
+        ])
 
         _progress(on_progress, "deps", "Installing Python dependencies", 20)
-        run_command(_with_pip_index([
+        _run_pip_with_fallback([
             str(python_bin()), "-m", "pip", "install",
             "-r", str(SERVICE_DIR / "requirements.txt"),
-        ]))
+        ])
 
         _progress(on_progress, "torch", f"Installing torch (device={device})", 35)
         torch_cmd = [
@@ -200,9 +266,9 @@ def ensure_environment(
         ]
         if device == "cuda":
             torch_cmd.extend(["--index-url", CUDA_TORCH_INDEX_URL])
+            run_command(torch_cmd)
         else:
-            _with_pip_index(torch_cmd)
-        run_command(torch_cmd)
+            _run_pip_with_fallback(torch_cmd)
         if device == "cuda":
             _ensure_cuda_torch()
     except Exception:
@@ -275,7 +341,7 @@ except KeyboardInterrupt:
             msg = f"{endpoint}: download finished but weights still missing"
             print(f"Embedding model download incomplete via {endpoint}: weights still missing")
             errors.append(msg)
-        except subprocess.CalledProcessError as exc:
+        except (subprocess.CalledProcessError, CommandError) as exc:
             if exc.returncode == 130:
                 print(
                     "Download interrupted / 下载已中断: partial cache kept for resume; "

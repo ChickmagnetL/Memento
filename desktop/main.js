@@ -31,14 +31,41 @@ function isPackaged() {
   return app.isPackaged;
 }
 
+function isPackagedWindows() {
+  return isPackaged() && process.platform === "win32";
+}
+
+function packagedInstallRoot() {
+  return path.dirname(path.dirname(app.getPath("exe")));
+}
+
+function configurePackagedWindowsPaths() {
+  if (!isPackagedWindows()) {
+    return;
+  }
+  const installRoot = packagedInstallRoot();
+  const electronDataDir = path.join(installRoot, "data", "electron");
+  fs.mkdirSync(electronDataDir, { recursive: true });
+  fs.mkdirSync(path.join(installRoot, "data", "storage"), { recursive: true });
+  fs.mkdirSync(path.join(installRoot, "cache", "temp"), { recursive: true });
+  app.setPath("userData", electronDataDir);
+  app.setPath("sessionData", electronDataDir);
+}
+
 function dataDirEnv() {
   if (!isPackaged()) {
     return {};
   }
-  return { STORAGE__DATA_DIR: path.join(app.getPath("userData"), "data") };
+  const dataDir = isPackagedWindows()
+    ? path.join(packagedInstallRoot(), "data", "storage")
+    : path.join(app.getPath("userData"), "data");
+  return { STORAGE__DATA_DIR: dataDir };
 }
 
 function packagedRuntimeRoot() {
+  if (isPackagedWindows()) {
+    return packagedInstallRoot();
+  }
   return path.join(app.getPath("userData"), "runtime");
 }
 
@@ -57,9 +84,25 @@ function packagedToolEnv() {
     return {};
   }
   const bundledBin = path.join(process.resourcesPath, "bin");
-  return {
+  const toolEnv = {
     PATH: [bundledBin, process.env.PATH || ""].filter(Boolean).join(path.delimiter),
   };
+  if (isPackagedWindows()) {
+    const installRoot = packagedInstallRoot();
+    const cacheRoot = path.join(installRoot, "cache");
+    toolEnv.PIP_CACHE_DIR = path.join(cacheRoot, "pip");
+    toolEnv.UV_CACHE_DIR = path.join(cacheRoot, "uv");
+    toolEnv.DENO_DIR = path.join(cacheRoot, "deno");
+    toolEnv.TEMP = path.join(cacheRoot, "temp");
+    toolEnv.TMP = path.join(cacheRoot, "temp");
+    toolEnv.MODELSCOPE_CACHE = path.join(
+      installRoot, "services", "asr", "models", "sensevoice"
+    );
+    toolEnv.MOONSHINE_VOICE_CACHE = path.join(
+      installRoot, "services", "asr", "models", "moonshine"
+    );
+  }
+  return toolEnv;
 }
 
 let backendProcess = null;
@@ -70,8 +113,10 @@ let mainWindow = null;
 let isQuitting = false;
 
 function resolveBackendEnv() {
-  const projectRoot = process.env.MEMENTO_PROJECT_ROOT ||
-    (isPackaged() ? packagedRuntimeRoot() : path.join(__dirname, ".."));
+  const projectRoot = isPackagedWindows()
+    ? packagedInstallRoot()
+    : process.env.MEMENTO_PROJECT_ROOT ||
+      (isPackaged() ? packagedRuntimeRoot() : path.join(__dirname, ".."));
   return {
     ...process.env,
     ...packagedToolEnv(),
@@ -326,6 +371,8 @@ async function loadBilibiliRefreshToken() {
     );
   }
 }
+
+configurePackagedWindowsPaths();
 
 if (process.platform === "win32") {
   app.setAppUserModelId(APP_ID);
