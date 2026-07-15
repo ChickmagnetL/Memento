@@ -4,18 +4,14 @@ import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
-  deployAsr,
-  getAsrDeployProgress,
-  getAsrDeployStatus,
   getServiceStatus,
-  type AsrDeployProgress,
-  type AsrDeployStatus,
+  type LocalModelService,
   type ModelConfig,
   type PresetModelName,
   type ServiceStatus,
 } from "@/lib/api";
 
-import { LocalAsrModal } from "./local-asr-modal";
+import { LocalModelModal } from "./local-model-modal";
 import { ModelPanel } from "./model-panel";
 
 const TABS: { name: PresetModelName; label: string }[] = [
@@ -70,12 +66,9 @@ export function SettingsForm() {
   const [activeTab, setActiveTab] = useState<PresetModelName>("chat");
   const [status, setStatus] = useState<Record<string, ServiceStatus>>({});
   const [message, setMessage] = useState("");
-  const [asrDeployStatus, setAsrDeployStatus] =
-    useState<AsrDeployStatus | null>(null);
-  const [asrDeployProgress, setAsrDeployProgress] =
-    useState<AsrDeployProgress | null>(null);
-  const [isDeployingAsr, setIsDeployingAsr] = useState(false);
-  const [showLocalAsrModal, setShowLocalAsrModal] = useState(false);
+  const [localModelService, setLocalModelService] =
+    useState<LocalModelService | null>(null);
+  const [panelRevision, setPanelRevision] = useState(0);
 
   const refreshStatus = useCallback(async () => {
     try {
@@ -89,99 +82,49 @@ export function SettingsForm() {
     // The refresh waits for the status request before updating state.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void refreshStatus();
-    getAsrDeployStatus().then(setAsrDeployStatus).catch(() => {});
   }, [refreshStatus]);
 
-  useEffect(() => {
-    if (!isDeployingAsr) {
-      return;
-    }
-    const interval = window.setInterval(async () => {
-      try {
-        const progress = await getAsrDeployProgress();
-        setAsrDeployProgress(progress);
-        if (progress.done) {
-          window.clearInterval(interval);
-          setIsDeployingAsr(false);
-          setAsrDeployStatus(await getAsrDeployStatus());
-        }
-      } catch (e) {
-        window.clearInterval(interval);
-        setIsDeployingAsr(false);
-        setMessage(e instanceof Error ? e.message : "Operation failed");
-      }
-    }, 1000);
-    return () => window.clearInterval(interval);
-  }, [isDeployingAsr]);
-
-  async function handleDeployAsr() {
-    setMessage("");
-    setIsDeployingAsr(true);
-    try {
-      const progress = await deployAsr();
-      setAsrDeployProgress(progress);
-    } catch (e) {
-      setIsDeployingAsr(false);
-      setMessage(e instanceof Error ? e.message : "Operation failed");
-    }
-  }
+  const localModelsCard = (
+    service: LocalModelService,
+    disabled: boolean,
+  ) => (
+    <div className="flex items-center justify-between gap-3 rounded-md border border-input bg-muted/30 p-3">
+      <div>
+        <p className="text-sm text-muted-foreground">
+          Install and manage local {service === "asr" ? "ASR" : "Embedding"} models
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          CUDA, MPS, or CPU is selected automatically.
+        </p>
+      </div>
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        disabled={disabled}
+        onClick={() => setLocalModelService(service)}
+      >
+        Local {service === "asr" ? "ASR" : "Embedding"} Models
+      </Button>
+    </div>
+  );
 
   const renderAsrExtras = (ctx: AsrExtrasCtx) => (
-    <div className="space-y-3">
-      <label className="block text-sm">
-        <span className="mb-1 block text-muted-foreground">Protocol</span>
-        <select
-          className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-          value={ctx.protocol ?? "transcriptions"}
-          onChange={(e) => ctx.onProtocolChange(e.target.value)}
-          disabled={ctx.disabled}
-        >
-          <option value="transcriptions">transcriptions</option>
-          <option value="chat_audio">chat_audio</option>
-        </select>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Requests {asrRequestUrl(ctx.endpoint, ctx.protocol)}
-        </p>
-      </label>
-      {asrDeployStatus && asrDeployStatus.venv_exists ? (
-        <div className="flex items-center justify-between gap-3 rounded-md border border-input bg-muted/30 p-3">
-          <span className="text-sm text-muted-foreground">Local ASR installed</span>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={() => setShowLocalAsrModal(true)}
-            disabled={ctx.disabled}
-          >
-            Local ASR Model Settings
-          </Button>
-        </div>
-      ) : null}
-      {asrDeployStatus && !asrDeployStatus.venv_exists ? (
-        <div className="flex items-center justify-between gap-3 rounded-md border border-input bg-muted/30 p-3">
-          <span className="text-sm text-muted-foreground">
-            Local ASR not installed
-          </span>
-          <Button
-            type="button"
-            size="sm"
-            onClick={handleDeployAsr}
-            disabled={ctx.disabled || isDeployingAsr}
-          >
-            Deploy
-          </Button>
-        </div>
-      ) : null}
-      {asrDeployProgress ? (
-        <p className="text-xs text-muted-foreground">
-          {asrDeployProgress.detail}
-          {asrDeployProgress.percent !== null
-            ? ` ${asrDeployProgress.percent}%`
-            : ""}
-          {asrDeployProgress.error ? `: ${asrDeployProgress.error}` : ""}
-        </p>
-      ) : null}
-    </div>
+    <label className="block text-sm">
+      <span className="mb-1 block text-muted-foreground">Protocol</span>
+      <select
+        className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+        value={ctx.protocol ?? "transcriptions"}
+        onChange={(e) => ctx.onProtocolChange(e.target.value)}
+        disabled={ctx.disabled}
+      >
+        <option value="transcriptions">transcriptions</option>
+        <option value="chat_audio">chat_audio</option>
+      </select>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Requests {asrRequestUrl(ctx.endpoint, ctx.protocol)}
+      </p>
+    </label>
   );
 
   return (
@@ -210,7 +153,7 @@ export function SettingsForm() {
       </nav>
 
       <ModelPanel
-        key={activeTab}
+        key={`${activeTab}-${panelRevision}`}
         modelName={activeTab}
         fields={FIELDS}
         status={status[activeTab]}
@@ -218,12 +161,21 @@ export function SettingsForm() {
         onStatusRefresh={refreshStatus}
       />
 
-      <LocalAsrModal
-        open={showLocalAsrModal}
-        onClose={() => setShowLocalAsrModal(false)}
-        onDeploy={handleDeployAsr}
-        isDeploying={isDeployingAsr}
-      />
+      {activeTab === "asr" || activeTab === "embedding"
+        ? localModelsCard(activeTab, false)
+        : null}
+
+      {localModelService ? (
+        <LocalModelModal
+          service={localModelService}
+          open
+          onClose={() => setLocalModelService(null)}
+          onConfigured={() => {
+            setPanelRevision((current) => current + 1);
+            void refreshStatus();
+          }}
+        />
+      ) : null}
     </div>
   );
 }

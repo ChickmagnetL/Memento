@@ -26,6 +26,7 @@ CUDA_TORCH_INDEX_URL = os.environ.get(
 # Tsinghua PyPI mirror by default; set PIP_INDEX_URL="" to use the default PyPI.
 PIP_INDEX_URL = os.environ.get("PIP_INDEX_URL", "https://pypi.tuna.tsinghua.edu.cn/simple")
 DEFAULT_MODEL = "BAAI/bge-m3"
+_CONFIG_NAMES = ("config.json", "modules.json", "config_sentence_transformers.json")
 
 ProgressCallback = Callable[[str, str, int | None], None]
 
@@ -44,6 +45,17 @@ def run_command(
 ) -> None:
     """Run a command via subprocess, raising on non-zero exit."""
     subprocess.run([str(a) for a in args], cwd=cwd, check=True, env=env)
+
+
+def _ensure_managed_toolchain() -> None:
+    node_service_dir = SERVICE_DIR.parent / "node"
+    node_service_path = str(node_service_dir)
+    if node_service_path not in sys.path:
+        sys.path.insert(0, node_service_path)
+
+    from node_app.toolchain import ensure_toolchain
+
+    ensure_toolchain()
 
 
 def _with_pip_index(command: list[str]) -> list[str]:
@@ -81,9 +93,14 @@ def _hf_endpoint_candidates() -> list[str]:
 def detect_best_device() -> str:
     """Detect the best available torch device: cuda > mps > cpu.
 
-    Probes via the service venv python (which has torch), not the running
-    python, since deploy.py may run under system python without torch.
+    Check host hardware before the service venv so a clean Settings deploy
+    installs the correct platform torch build.
     """
+    if shutil.which("nvidia-smi") is not None:
+        return "cuda"
+    if sys.platform == "darwin":
+        return "mps"
+
     script = (
         "import torch;"
         " print('cuda' if torch.cuda.is_available()"
@@ -159,7 +176,10 @@ def ensure_environment(
     try:
         if not VENV_DIR.is_dir():
             _progress(on_progress, "venv", "Creating virtual environment", 0)
-            run_command([sys.executable, "-m", "venv", str(VENV_DIR)])
+            if getattr(sys, "frozen", False):
+                _ensure_managed_toolchain()
+            else:
+                run_command([sys.executable, "-m", "venv", str(VENV_DIR)])
             created_venv = True
 
         _progress(on_progress, "venv", "Upgrading pip/setuptools/wheel", 10)
@@ -304,6 +324,13 @@ def _cache_has_model_weights(cache_dir: Path) -> bool:
     return False
 
 
+def _dir_is_complete_model(path: Path) -> bool:
+    return (
+        any((path / name).is_file() for name in _CONFIG_NAMES)
+        and _cache_has_model_weights(path)
+    )
+
+
 def _model_cache_dirs(model_id: str) -> list[Path]:
     """Return candidate HF cache dirs for *model_id* under MODELS_DIR."""
     slug = model_id.replace("/", "--")
@@ -345,7 +372,7 @@ def _model_present(model_id: str = DEFAULT_MODEL) -> bool:
     Checks both direct HF hub layout (models--org--name) and the legacy
     sentence-transformers prefix (models--sentence-transformers--...).
     """
-    return any(_cache_has_model_weights(p) for p in _model_cache_dirs(model_id))
+    return _find_local_model_path(model_id) is not None
 
 
 def _find_local_model_path(model_id: str) -> Path | None:
@@ -361,11 +388,26 @@ def _find_local_model_path(model_id: str) -> Path | None:
                 snap_dirs = []
             snap_dirs.sort(key=lambda p: p.stat().st_mtime if p.exists() else 0, reverse=True)
             for snap in snap_dirs:
-                if _cache_has_model_weights(snap):
+                if _dir_is_complete_model(snap):
                     return snap
-        if _cache_has_model_weights(root):
+        if _dir_is_complete_model(root):
             return root
     return None
+
+
+def uninstall_model(model_id: str) -> None:
+    """Remove only the managed cache roots for one model."""
+    for path in _model_cache_dirs(model_id):
+        if path.exists():
+            shutil.rmtree(path, ignore_errors=True)
+
+
+def uninstall_all() -> None:
+    """Remove the local Embedding environment and managed model cache."""
+    if MODELS_DIR.exists():
+        shutil.rmtree(MODELS_DIR, ignore_errors=True)
+    if VENV_DIR.exists():
+        shutil.rmtree(VENV_DIR, ignore_errors=True)
 
 
 def deploy(

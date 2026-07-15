@@ -8,6 +8,8 @@ from typing import Callable
 
 import httpx
 
+from core.rag.embedding_supervisor import ensure_embedding_running
+
 
 class EmbeddingError(Exception):
     pass
@@ -40,6 +42,7 @@ class CloudEmbeddingClient:
         api_key: str | None,
         model: str | None,
         post_json: Callable[[str, dict, dict], dict] = post_json,
+        ensure_running: Callable[[str], None] = ensure_embedding_running,
     ) -> None:
         if not endpoint or not api_key or not model:
             raise EmbeddingError(
@@ -50,12 +53,14 @@ class CloudEmbeddingClient:
         self.api_key = api_key
         self.model = model
         self.post_json = post_json
+        self.ensure_running = ensure_running
 
     def embed(self, texts: list[str]) -> list[list[float]]:
         """Embed a batch of texts, preserving input order."""
         if not texts:
             return []
 
+        self.ensure_running(self.endpoint)
         response = self.post_json(
             f"{self.endpoint}/embeddings",
             {"model": self.model, "input": texts},

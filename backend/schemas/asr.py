@@ -26,6 +26,8 @@ class AsrEnvironmentStatus(BaseModel):
     service_python_exists: bool
     service_dir_exists: bool
     platform: str
+    target_device: str = "cpu"
+    runtime_device: str | None = None
 
 
 class AsrModelStatus(BaseModel):
@@ -59,6 +61,7 @@ class AsrManagerProgress(BaseModel):
     percent: int | None = None
     detail: str = ""
     error: str | None = None
+    done: bool = False
 
 
 class AsrManagerStatus(BaseModel):

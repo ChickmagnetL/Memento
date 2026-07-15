@@ -15,6 +15,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from config.settings import get_settings
+from core.rag import embedding_supervisor
 from core.rag.embedding_reindex import EmbeddingReindexJobManager
 from core.video import asr_supervisor
 from storage.sqlite_client import SQLiteClient
@@ -28,6 +29,7 @@ from api.chat import router as chat_router
 from api.sessions import router as sessions_router
 from api.settings import router as settings_router
 from api.asr import router as asr_router
+from api.embedding import router as embedding_router
 from api.video_processing import router as video_processing_router
 from api.memories import router as memories_router
 
@@ -69,6 +71,7 @@ async def lifespan(app: FastAPI):
     await sqlite.close()
     qdrant.close()
     asr_supervisor.shutdown()
+    embedding_supervisor.shutdown()
     logger.info("Databases closed")
 
 
@@ -90,5 +93,6 @@ app.include_router(chat_router)
 app.include_router(sessions_router)
 app.include_router(settings_router)
 app.include_router(asr_router)
+app.include_router(embedding_router)
 app.include_router(video_processing_router)
 app.include_router(memories_router)

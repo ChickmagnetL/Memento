@@ -45,6 +45,20 @@ _SENSEVOICE_MODELS = frozenset({
 })
 
 
+def detect_best_device() -> str:
+    """Detect the best device supported by this service's installed torch."""
+    try:
+        import torch
+    except ImportError:
+        return "cpu"
+    if torch.cuda.is_available():
+        return "cuda"
+    mps = getattr(torch.backends, "mps", None)
+    if mps is not None and mps.is_available():
+        return "mps"
+    return "cpu"
+
+
 def _sensevoice_installed() -> bool:
     root = _MODELS_DIR / "sensevoice"
     if not root.is_dir():
@@ -103,7 +117,7 @@ def get_transcriber(model: str):
     model = _normalize_model(model)
     if model not in _transcribers:
         transcriber_class = _get_transcriber_class(model)
-        device = os.environ.get("ASR_DEVICE", "cpu")
+        device = os.environ.get("ASR_DEVICE") or detect_best_device()
         _transcribers[model] = transcriber_class(model=model, device=device)
     return _transcribers[model]
 

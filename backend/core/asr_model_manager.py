@@ -6,6 +6,7 @@ import datetime
 import importlib.util
 import json
 import shutil
+import subprocess
 import sys
 import threading
 from concurrent.futures import Future, ThreadPoolExecutor
@@ -32,8 +33,18 @@ from schemas.asr import (
 
 
 def _sensevoice_cache_dir(service_dir: Path) -> Path:
-    """Relocated SenseVoiceSmall cache directory under services/asr/models/."""
+    """Legacy SenseVoiceSmall cache directory under services/asr/models/."""
     return service_dir / "models" / "sensevoice" / "iic" / "SenseVoiceSmall"
+
+
+def _sensevoice_cache_candidates(service_dir: Path) -> list[Path]:
+    """Return supported ModelScope cache layouts for SenseVoiceSmall."""
+    root = service_dir / "models" / "sensevoice"
+    candidates = [_sensevoice_cache_dir(service_dir)]
+    snapshots = root / "models" / "iic--SenseVoiceSmall" / "snapshots"
+    if snapshots.is_dir():
+        candidates.extend(sorted(path for path in snapshots.iterdir() if path.is_dir()))
+    return candidates
 
 
 def _moonshine_cache_dir(service_dir: Path, spec: str) -> Path:
@@ -148,7 +159,41 @@ class AsrModelManager:
             service_python_exists=python_exists,
             service_dir_exists=self.service_dir.is_dir(),
             platform=sys.platform,
+            target_device=self._target_device(),
+            runtime_device=self._runtime_device(),
         )
+
+    def _runtime_device(self) -> str | None:
+        venv_dir = self.service_dir / ".venv"
+        if sys.platform == "win32":
+            python = venv_dir / "Scripts" / "python.exe"
+        else:
+            python = venv_dir / "bin" / "python"
+        if not python.is_file():
+            return None
+        script = (
+            "import torch;"
+            " print('cuda' if torch.cuda.is_available()"
+            " else 'mps' if torch.backends.mps.is_available() else 'cpu')"
+        )
+        try:
+            result = subprocess.run(
+                [str(python), "-c", script],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+        except Exception:
+            return None
+        device = result.stdout.strip()
+        return device if device in {"cuda", "mps", "cpu"} else None
+
+    def _target_device(self) -> str:
+        if shutil.which("nvidia-smi") is not None:
+            return "cuda"
+        if sys.platform == "darwin":
+            return "mps"
+        return self._runtime_device() or "cpu"
 
     # ------------------------------------------------------------------
     # Per-model cache detection
@@ -166,7 +211,7 @@ class AsrModelManager:
             recorded_path = Path(recorded)
             checked.append(recorded_path)
             exists, err = _dir_exists_and_accessible(recorded_path)
-            if exists and err is None and _model_dir_contains_files(recorded_path):
+            if exists and err is None and (recorded_path / "model.pt").is_file():
                 result["installed"] = True
                 result["cache_path"] = recorded
                 return result
@@ -175,19 +220,19 @@ class AsrModelManager:
                 result["error"] = err
                 result["checked"] = checked
                 return result
-        default = _sensevoice_cache_dir(self.service_dir)
-        checked.append(default)
-        exists, err = _dir_exists_and_accessible(default)
-        if exists and err is None:
-            if _model_dir_contains_files(default):
+        for candidate in _sensevoice_cache_candidates(self.service_dir):
+            if candidate in checked:
+                continue
+            checked.append(candidate)
+            exists, err = _dir_exists_and_accessible(candidate)
+            if exists and err is None and (candidate / "model.pt").is_file():
                 result["installed"] = True
-                result["cache_path"] = str(default)
-            else:
-                # Directory exists but empty/malformed — treat as not installed
-                result["installed"] = False
-        elif err:
-            result["installed"] = None
-            result["error"] = err
+                result["cache_path"] = str(candidate)
+                break
+            if err:
+                result["installed"] = None
+                result["error"] = err
+                break
 
         result["checked"] = checked
         return result
@@ -337,6 +382,7 @@ class AsrModelManager:
                 percent=percent,
                 detail=detail,
                 error=error,
+                done=stage in {"done", "failed"},
             )
 
     def _progress(self) -> AsrManagerProgress:
@@ -430,7 +476,13 @@ class AsrModelManager:
                 if percent is not None:
                     # Map deploy progress (0-100) to overall progress (5-95)
                     mapped_percent = 5 + int(percent * 0.9)
-                self._set_progress(stage, detail, model_slug=slug, percent=mapped_percent)
+                reported_stage = "verifying" if stage == "done" else stage
+                self._set_progress(
+                    reported_stage,
+                    detail,
+                    model_slug=slug,
+                    percent=mapped_percent,
+                )
 
             deploy_module.install_model(
                 slug=slug,
@@ -445,6 +497,10 @@ class AsrModelManager:
             self._set_progress("detecting", "Detecting installed model cache", model_slug=slug, percent=95)
             state = self._read_state()
             cache_path = self._detect_cache(model, state)
+            if cache_path is None:
+                raise RuntimeError(
+                    f"Model {slug} download finished but no usable model cache was found"
+                )
 
             # Write state: model installed, but do NOT change current_model_slug
             state.setdefault("models", {})[slug] = {
