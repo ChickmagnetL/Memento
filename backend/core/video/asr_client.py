@@ -9,6 +9,7 @@ import tempfile
 import uuid
 from pathlib import Path
 from typing import Callable
+from urllib.error import HTTPError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
@@ -221,11 +222,8 @@ class AsrServiceClient:
             else TRANSCRIPTIONS_MAX_BYTES
         )
         if (
-            _is_localhost(self.endpoint)
-            or (
-                audio_path.stat().st_size <= max_bytes
-                and not self._needs_duration_chunking(audio_path, protocol)
-            )
+            audio_path.stat().st_size <= max_bytes
+            and not self._needs_duration_chunking(audio_path, protocol)
         ):
             return self._transcribe_single(audio_path, model, api_key, protocol)
 
@@ -306,6 +304,16 @@ class AsrServiceClient:
                 return self._parse_chat_audio_response(response)
             response = self._post_transcriptions(audio_path, model, api_key)
             return self._parse_transcriptions_response(response)
+        except HTTPError as exc:
+            detail = str(exc)
+            try:
+                body = exc.read().decode("utf-8", errors="replace")[:500]
+                detail = f"{exc} - body: {body}"
+            except Exception:
+                pass
+            raise AsrError(
+                f"ASR service failed at {self.endpoint}: {detail}"
+            ) from exc
         except OSError as exc:
             detail = str(exc)
             try:

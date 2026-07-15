@@ -13,6 +13,8 @@ from typing import Callable
 
 import yt_dlp
 
+from core.video.bilibili import extract_bvid, extract_page_number
+
 
 class AudioDownloadError(Exception):
     pass
@@ -56,13 +58,18 @@ class AudioDownloader:
         self.temp_dir.mkdir(parents=True, exist_ok=True)
         output_template = str(self.temp_dir / f"{video['id']}.%(ext)s")
         wav_path = self.temp_dir / f"{video['id']}.wav"
+        playlist_item = (
+            str(extract_page_number(video["url"]))
+            if extract_bvid(video["url"]) is not None
+            else "1"
+        )
 
         # Allow tests to inject a stub command runner that receives the
         # equivalent CLI args, preserving existing test assertions.
         if self._test_runner is not None:
             args = [
                 sys.executable, "-m", "yt_dlp",
-                "--playlist-items", "1",
+                "--playlist-items", playlist_item,
                 "-x",
                 "--audio-format", "wav",
                 "--audio-quality", "0",
@@ -90,7 +97,7 @@ class AudioDownloader:
         # binary, not a Python interpreter.
         ydl_opts = {
             "format": "bestaudio/best",
-            "playlist_items": "1",
+            "playlist_items": playlist_item,
             "postprocessors": [
                 {
                     "key": "FFmpegExtractAudio",
@@ -101,6 +108,12 @@ class AudioDownloader:
             "outtmpl": output_template,
             "quiet": True,
             "no_warnings": True,
+            "retries": 10,
+            "fragment_retries": 10,
+            "socket_timeout": 30,
+            "postprocessor_args": {
+                "ExtractAudio+ffmpeg_o": ["-ar", "16000", "-ac", "1"]
+            },
         }
 
         cookie_file = self._write_cookie_file()

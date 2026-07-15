@@ -8,7 +8,12 @@ from pydantic import BaseModel
 
 from core.video.asr_client import AsrError
 from core.video.audio import AudioDownloadError
-from core.video.bilibili import BilibiliSubtitleClient, BilibiliSubtitleError
+from core.video.bilibili import (
+    BilibiliSubtitleClient,
+    BilibiliSubtitleError,
+    REASON_MESSAGES,
+    REASON_NO_SUBTITLES,
+)
 from core.video.douyin import DouyinError
 from core.video.markdown import MarkdownDraftWriter
 from core.video.youtube import YouTubeSubtitleClient, YouTubeSubtitleError
@@ -59,25 +64,38 @@ class VideoPipeline:
         self, video: dict, *, allow_non_chinese: bool = False
     ) -> VideoProcessingResult:
         return await self._process(
-            video, allow_asr_fallback=False, allow_non_chinese=allow_non_chinese
+            video, force_asr=False, allow_non_chinese=allow_non_chinese
         )
 
     async def process_with_asr(
         self, video: dict, *, allow_non_chinese: bool = False
     ) -> VideoProcessingResult:
         return await self._process(
-            video, allow_asr_fallback=True, allow_non_chinese=allow_non_chinese
+            video, force_asr=True, allow_non_chinese=allow_non_chinese
         )
 
     async def _process(
         self,
         video: dict,
         *,
-        allow_asr_fallback: bool,
+        force_asr: bool,
         allow_non_chinese: bool = False,
     ) -> VideoProcessingResult:
         try:
-            if video["platform"] == "bilibili":
+            platform = video["platform"]
+            if force_asr and platform in ("bilibili", "youtube"):
+                downloader = (
+                    self.audio_downloader
+                    if platform == "bilibili"
+                    else self.youtube_audio_downloader
+                )
+                entries = await self._transcribe_fallback(video, downloader)
+                if not entries:
+                    raise ValueError(
+                        "ASR processing requires the ASR service and "
+                        f"{platform} downloader to be configured"
+                    )
+            elif platform == "bilibili":
                 if hasattr(self.subtitle_client, "fetch_outcome"):
                     outcome = await asyncio.to_thread(
                         self.subtitle_client.fetch_outcome,
@@ -85,7 +103,16 @@ class VideoPipeline:
                         allow_non_chinese=allow_non_chinese,
                     )
                     entries = outcome.entries
-                    empty_error = BilibiliSubtitleError(outcome.message, reason=outcome.reason)
+                    if getattr(outcome, "source", None) == "automatic":
+                        entries = []
+                        empty_error = BilibiliSubtitleError(
+                            REASON_MESSAGES[REASON_NO_SUBTITLES],
+                            reason=REASON_NO_SUBTITLES,
+                        )
+                    else:
+                        empty_error = BilibiliSubtitleError(
+                            outcome.message, reason=outcome.reason
+                        )
                 else:
                     entries = await asyncio.to_thread(
                         self.subtitle_client.fetch,
@@ -96,18 +123,16 @@ class VideoPipeline:
                         "This Bilibili video has no usable soft subtitles. You can transcribe it with ASR instead.",
                         reason="no_subtitles",
                     )
-                if not entries and allow_asr_fallback:
-                    entries = await self._transcribe_fallback(video, self.audio_downloader)
                 if not entries:
                     raise empty_error
-            elif video["platform"] == "douyin":
+            elif platform == "douyin":
                 entries = await self._transcribe_fallback(video, self.douyin_downloader)
                 if not entries:
                     raise ValueError(
                         "Douyin processing requires the ASR service and "
                         "douyin downloader to be configured"
                     )
-            elif video["platform"] == "youtube":
+            elif platform == "youtube":
                 outcome = await asyncio.to_thread(
                     self.youtube_subtitle_client.fetch_outcome,
                     video,
@@ -117,10 +142,6 @@ class VideoPipeline:
                 empty_error = YouTubeSubtitleError(
                     outcome.message, reason=outcome.reason
                 )
-                if not entries and allow_asr_fallback:
-                    entries = await self._transcribe_fallback(
-                        video, self.youtube_audio_downloader
-                    )
                 if not entries:
                     raise empty_error
             else:
