@@ -1314,7 +1314,72 @@ def test_fetch_subtitles_raises_for_malformed_subtitle_body_items(body_item):
         client.fetch({"url": "https://www.bilibili.com/video/BV1abcDEF234"})
 
 
-def test_fetch_subtitles_returns_empty_when_subtitle_body_missing():
+def test_fetch_outcome_retries_rotated_url_after_empty_subtitle_body(monkeypatch):
+    first_url = (
+        "https://aisubtitle.hdslb.com/bfs/ai_subtitle/prod/"
+        "123456789456first/subtitle.json"
+    )
+    second_url = (
+        "https://aisubtitle.hdslb.com/bfs/ai_subtitle/prod/"
+        "123456789456second/subtitle.json"
+    )
+    player_calls = 0
+    monkeypatch.setattr(
+        "core.video.bilibili.PLAYER_SUBTITLE_RETRY_INTERVAL_SECONDS", 0.0
+    )
+
+    def fake_fetch_json(
+        url: str, referer: str | None = None, cookie: str | None = None
+    ) -> dict:
+        nonlocal player_calls
+        if "/x/player/pagelist" in url:
+            return {"code": 0, "data": [{"cid": 456}]}
+        if "/x/player/wbi/v2" in url:
+            player_calls += 1
+            subtitle_url = first_url if player_calls == 1 else second_url
+            return {
+                "code": 0,
+                "data": {
+                    "aid": 123456789,
+                    "subtitle": {
+                        "subtitles": [
+                            {
+                                "lan": "ai-zh",
+                                "type": 1,
+                                "subtitle_url": subtitle_url,
+                            }
+                        ]
+                    },
+                },
+            }
+        if url == first_url:
+            return {"body": []}
+        if url == second_url:
+            return {"body": [{"from": 1.0, "content": "rotated subtitle"}]}
+        raise AssertionError(f"unexpected URL: {url}")
+
+    outcome = BilibiliSubtitleClient(
+        fetch_json=fake_fetch_json, cookie="SESSDATA=alive"
+    ).fetch_outcome({"url": "https://www.bilibili.com/video/BV1abcDEF234"})
+
+    assert player_calls == 2
+    assert outcome.reason == "ok"
+    assert outcome.entries == [
+        SubtitleEntry(start_seconds=1.0, text="rotated subtitle")
+    ]
+
+
+def test_fetch_subtitles_returns_empty_when_subtitle_body_missing(monkeypatch):
+    monotonic_values = iter([0.0, 0.0, 1.0])
+    monkeypatch.setattr("core.video.bilibili.PLAYER_SUBTITLE_RETRY_SECONDS", 0.5)
+    monkeypatch.setattr(
+        "core.video.bilibili.PLAYER_SUBTITLE_RETRY_INTERVAL_SECONDS", 0.0
+    )
+    monkeypatch.setattr(
+        "core.video.bilibili.time.monotonic", lambda: next(monotonic_values)
+    )
+    monkeypatch.setattr("core.video.bilibili.time.sleep", lambda _seconds: None)
+
     def fake_fetch_json(url: str, referer: str | None = None, cookie: str | None = None) -> dict:
         if url.startswith("https://api.bilibili.com/x/player/pagelist"):
             return {"data": [{"cid": 456}]}

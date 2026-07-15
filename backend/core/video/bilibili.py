@@ -604,7 +604,8 @@ class BilibiliSubtitleClient:
                     else "official"
                 )
                 return outcome_for(REASON_OK, entries, source=source)
-            return outcome_for(REASON_NO_SUBTITLES)
+            saw_unstable_subtitle = True
+            time.sleep(PLAYER_SUBTITLE_RETRY_INTERVAL_SECONDS)
 
         logger.warning(
             "Bilibili player/wbi/v2 did not return a usable subtitle for %s "
