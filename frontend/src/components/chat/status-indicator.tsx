@@ -1,5 +1,7 @@
 "use client";
 
+import { useLanguage } from "@/lib/i18n";
+
 type Status = "thinking" | "tool_call" | "streaming";
 
 interface StatusIndicatorProps {
@@ -8,15 +10,17 @@ interface StatusIndicatorProps {
 }
 
 export function StatusIndicator({ status, tool }: StatusIndicatorProps) {
+  const { t } = useLanguage();
+
   // streaming: no indicator (the growing assistant bubble is the feedback).
   if (status === "streaming") return null;
 
   const label =
     status === "thinking"
-      ? "Thinking…"
+      ? t("Thinking…")
       : tool
-        ? `Calling tool: ${tool}…`
-        : "Calling tool…";
+        ? t("Calling tool: {tool}…", { tool })
+        : t("Calling tool…");
 
   return (
     <div className="mr-auto flex items-center gap-1.5 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">

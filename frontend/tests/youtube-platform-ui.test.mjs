@@ -35,5 +35,5 @@ test("YouTube uses subtitle precheck and timestamp player links", () => {
 
 test("subtitle choices display human-readable language names", () => {
   assert.match(subtitleDialogSource, /Intl\.DisplayNames/);
-  assert.match(subtitleDialogSource, /Available: \$\{languageNames\}/);
+  assert.match(subtitleDialogSource, /t\("Available: \{languages\}\."/);
 });

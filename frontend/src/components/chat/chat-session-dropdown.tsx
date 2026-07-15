@@ -5,6 +5,7 @@ import { ChevronDown, Plus, Search, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import type { ChatSession } from "@/lib/api";
+import { useLanguage } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 interface ChatSessionDropdownProps {
@@ -15,8 +16,8 @@ interface ChatSessionDropdownProps {
   onDeleteRequest: (session: ChatSession) => void;
 }
 
-function getSessionTitle(session?: ChatSession | null) {
-  return session?.title?.trim() || "New Chat";
+function getSessionTitle(session: ChatSession | null | undefined, fallback: string) {
+  return session?.title?.trim() || fallback;
 }
 
 export function ChatSessionDropdown({
@@ -26,6 +27,7 @@ export function ChatSessionDropdown({
   onNew,
   onDeleteRequest,
 }: ChatSessionDropdownProps) {
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const rootRef = useRef<HTMLDivElement>(null);
@@ -36,16 +38,17 @@ export function ChatSessionDropdown({
     () => sessions.find((session) => session.id === activeId) ?? null,
     [activeId, sessions]
   );
-  const currentTitle = getSessionTitle(activeSession);
+  const newChatTitle = t("New Chat");
+  const currentTitle = getSessionTitle(activeSession, newChatTitle);
 
   const filteredSessions = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
     if (!normalizedQuery) return sessions;
 
     return sessions.filter((session) =>
-      getSessionTitle(session).toLowerCase().includes(normalizedQuery)
+      getSessionTitle(session, newChatTitle).toLowerCase().includes(normalizedQuery)
     );
-  }, [query, sessions]);
+  }, [newChatTitle, query, sessions]);
 
   const closeDropdown = useCallback((restoreFocus = false) => {
     setOpen(false);
@@ -126,7 +129,7 @@ export function ChatSessionDropdown({
       {open && (
         <div
           role="dialog"
-          aria-label="Select conversation"
+          aria-label={t("Select conversation")}
           className="absolute left-1/2 top-full z-50 mt-2 w-[min(24rem,calc(100vw-var(--sidebar-width)-2rem))] max-w-sm -translate-x-1/2 rounded-md border border-border bg-background p-2 shadow-lg"
         >
           <div className="relative mb-2">
@@ -135,8 +138,8 @@ export function ChatSessionDropdown({
               ref={inputRef}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              aria-label="Search conversations"
-              placeholder="Search conversations"
+              aria-label={t("Search conversations")}
+              placeholder={t("Search conversations")}
               className="h-9 w-full rounded-md border border-input bg-background py-2 pl-9 pr-3 text-sm text-[var(--color-text)] outline-none transition-colors placeholder:text-[var(--color-text-muted)] focus:border-ring focus:ring-1 focus:ring-ring"
             />
           </div>
@@ -148,17 +151,17 @@ export function ChatSessionDropdown({
             onClick={handleNew}
           >
             <Plus className="h-4 w-4" />
-            New Chat
+            {t("New Chat")}
           </Button>
 
           <div className="max-h-72 overflow-y-auto">
             {filteredSessions.length === 0 ? (
               <div className="px-3 py-6 text-center text-sm text-[var(--color-text-muted)]">
-                No conversations found
+                {t("No conversations found")}
               </div>
             ) : (
               filteredSessions.map((session) => {
-                const displayTitle = getSessionTitle(session);
+                const displayTitle = getSessionTitle(session, newChatTitle);
 
                 return (
                   <div
@@ -185,8 +188,8 @@ export function ChatSessionDropdown({
                       type="button"
                       className="rounded-md p-1 text-[var(--color-text-muted)] opacity-0 transition-colors hover:bg-background hover:text-destructive group-hover:opacity-100 focus:opacity-100"
                       onClick={() => handleDelete(session)}
-                      aria-label={`Delete ${displayTitle}`}
-                      title={`Delete ${displayTitle}`}
+                      aria-label={t("Delete {title}", { title: displayTitle })}
+                      title={t("Delete {title}", { title: displayTitle })}
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>

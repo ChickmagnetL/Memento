@@ -7,6 +7,7 @@ import {
   updateVideoProcessingSettings,
   type VideoProcessingSettings,
 } from "@/lib/api";
+import { useLanguage } from "@/lib/i18n";
 
 type PlatformStatus = "logged_in" | "not_logged_in";
 
@@ -18,6 +19,7 @@ interface PlatformCardProps {
 }
 
 function PlatformCard({ displayName, status, onLogin, onRelogin }: PlatformCardProps) {
+  const { t } = useLanguage();
   const isLoggedIn = status === "logged_in";
 
   return (
@@ -31,17 +33,17 @@ function PlatformCard({ displayName, status, onLogin, onRelogin }: PlatformCardP
             }`}
           />
           <span className="text-sm text-muted-foreground">
-            {isLoggedIn ? "已登录" : "未登录"}
+            {isLoggedIn ? t("Logged in") : t("Not logged in")}
           </span>
         </div>
       </div>
       <div className="flex gap-2">
         <Button onClick={onLogin} variant="outline" className="flex-1">
-          {isLoggedIn ? "登录" : "使用二维码登录"}
+          {isLoggedIn ? t("Login") : t("Login with QR code")}
         </Button>
         {isLoggedIn && (
           <Button onClick={onRelogin} variant="outline" className="flex-1">
-            重新登录
+            {t("Relogin")}
           </Button>
         )}
       </div>
@@ -50,6 +52,7 @@ function PlatformCard({ displayName, status, onLogin, onRelogin }: PlatformCardP
 }
 
 export default function LoginPage() {
+  const { t } = useLanguage();
   const [settings, setSettings] = useState<VideoProcessingSettings | null>(null);
   const [message, setMessage] = useState("");
   const [isElectronAvailable] = useState(() => typeof window !== "undefined" && !!window.electron);
@@ -58,8 +61,8 @@ export default function LoginPage() {
     // Load initial settings
     getVideoProcessingSettings()
       .then(setSettings)
-      .catch((e) => setMessage(e instanceof Error ? e.message : "加载设置失败"));
-  }, []);
+      .catch((e) => setMessage(e instanceof Error ? e.message : t("Failed to load settings")));
+  }, [t]);
 
   useEffect(() => {
     if (!window.electron) return;
@@ -77,9 +80,11 @@ export default function LoginPage() {
             : { douyin_cookie: data.cookies };
         const updated = await updateVideoProcessingSettings(updatePayload);
         setSettings(updated);
-        setMessage(`${data.platform === "bilibili" ? "Bilibili" : "Douyin"} 登录成功`);
+        setMessage(t("{platform} login successful", {
+          platform: data.platform === "bilibili" ? "Bilibili" : "Douyin",
+        }));
       } catch (e) {
-        setMessage(e instanceof Error ? e.message : "保存登录凭证失败");
+        setMessage(e instanceof Error ? e.message : t("Failed to save login credentials"));
       }
     });
 
@@ -96,9 +101,11 @@ export default function LoginPage() {
             : { douyin_cookie: data.cookies };
         const updated = await updateVideoProcessingSettings(updatePayload);
         setSettings(updated);
-        setMessage(`${data.platform === "bilibili" ? "Bilibili" : "Douyin"} 凭证已刷新`);
+        setMessage(t("{platform} credentials refreshed", {
+          platform: data.platform === "bilibili" ? "Bilibili" : "Douyin",
+        }));
       } catch (e) {
-        setMessage(e instanceof Error ? e.message : "保存刷新凭证失败");
+        setMessage(e instanceof Error ? e.message : t("Failed to save refreshed credentials"));
       }
     });
 
@@ -106,11 +113,11 @@ export default function LoginPage() {
       offCookieReady();
       offCookieRefreshed();
     };
-  }, []);
+  }, [t]);
 
   const handleLogin = (platform: "bilibili" | "douyin") => {
     if (!window.electron) {
-      setMessage("此功能仅在 Electron 应用中可用");
+      setMessage(t("This feature is only available in the Electron desktop app."));
       return;
     }
     setMessage("");
@@ -119,10 +126,10 @@ export default function LoginPage() {
 
   const handleRelogin = async (platform: "bilibili" | "douyin") => {
     if (!window.electron) {
-      setMessage("此功能仅在 Electron 应用中可用");
+      setMessage(t("This feature is only available in the Electron desktop app."));
       return;
     }
-    setMessage("正在清除登录状态...");
+    setMessage(t("Clearing login status..."));
 
     try {
       // Clear Electron session (await to ensure storage is wiped before reopening)
@@ -143,7 +150,7 @@ export default function LoginPage() {
       // Open login window immediately (session is already cleared)
       window.electron.openLogin(platform);
     } catch (e) {
-      setMessage(e instanceof Error ? e.message : "清除登录状态失败");
+      setMessage(e instanceof Error ? e.message : t("Failed to clear login status"));
     }
   };
 
@@ -159,10 +166,10 @@ export default function LoginPage() {
     return (
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-10">
         <header className="space-y-1">
-          <h1 className="text-xl font-semibold">登录</h1>
+          <h1 className="text-xl font-semibold">{t("Login")}</h1>
         </header>
         <p className="text-sm text-muted-foreground">
-          此功能仅在 Electron 桌面应用中可用。
+          {t("This feature is only available in the Electron desktop app.")}
         </p>
       </div>
     );
@@ -171,9 +178,9 @@ export default function LoginPage() {
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-10">
       <header className="space-y-1">
-        <h1 className="text-xl font-semibold">登录</h1>
+        <h1 className="text-xl font-semibold">{t("Login")}</h1>
         <p className="text-sm text-muted-foreground">
-          使用二维码登录视频平台以访问需要登录的内容
+          {t("Log in to video platforms with a QR code to access content that requires an account")}
         </p>
       </header>
 
@@ -197,7 +204,7 @@ export default function LoginPage() {
           />
         </div>
       ) : (
-        <p className="text-sm text-muted-foreground">加载中…</p>
+        <p className="text-sm text-muted-foreground">{t("Loading...")}</p>
       )}
     </div>
   );

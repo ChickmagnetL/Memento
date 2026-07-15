@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { ChevronDown, Eye, EyeOff, MoreHorizontal } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { useLanguage } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import type { ModelConfig, PresetResponse, ServiceStatus } from "@/lib/api";
 
@@ -86,6 +87,7 @@ export function PresetCard({
   onRenameSubmit,
   onRenameCancel,
 }: PresetCardProps) {
+  const { t } = useLanguage();
   const [menuOpen, setMenuOpen] = useState(false);
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   const isMenuOpen = menuOpen && !menuDisabled;
@@ -189,7 +191,7 @@ export function PresetCard({
               variant="outline"
               onClick={onRenameCancel}
             >
-              Cancel
+              {t("Cancel")}
             </Button>
           </div>
         ) : (
@@ -203,7 +205,7 @@ export function PresetCard({
               {preset.name}
             </span>
             {isActive ? (
-              <span className="shrink-0 text-xs text-primary">● Active</span>
+              <span className="shrink-0 text-xs text-primary">● {t("Active")}</span>
             ) : (
               <span className="shrink-0 text-xs text-muted-foreground">○</span>
             )}
@@ -226,7 +228,7 @@ export function PresetCard({
           <div className="relative shrink-0">
             <button
               type="button"
-              aria-label="Preset actions"
+              aria-label={t("Preset actions")}
               disabled={menuDisabled}
               onClick={(event) => {
                 event.stopPropagation();
@@ -253,7 +255,7 @@ export function PresetCard({
                   }}
                   className="block w-full rounded-sm px-2 py-1.5 text-left text-foreground hover:bg-accent"
                 >
-                  Rename
+                  {t("Rename")}
                 </button>
                 <button
                   type="button"
@@ -265,7 +267,7 @@ export function PresetCard({
                   }}
                   className="block w-full rounded-sm px-2 py-1.5 text-left text-destructive hover:bg-accent disabled:pointer-events-none disabled:opacity-50"
                 >
-                  Delete
+                  {t("Delete")}
                 </button>
               </div>
             ) : null}
@@ -277,15 +279,15 @@ export function PresetCard({
       <div className="mt-2 grid gap-1 text-xs text-muted-foreground sm:grid-cols-2">
         <div className="min-w-0">
           <span className="block uppercase tracking-wide text-muted-foreground/70">
-            Endpoint
+            {t("Endpoint")}
           </span>
-          <span className="block truncate">{values.endpoint || "Not set"}</span>
+          <span className="block truncate">{values.endpoint || t("Not set")}</span>
         </div>
         <div className="min-w-0">
           <span className="block uppercase tracking-wide text-muted-foreground/70">
-            Model
+            {t("Model")}
           </span>
-          <span className="block truncate">{values.model || "Not set"}</span>
+          <span className="block truncate">{values.model || t("Not set")}</span>
         </div>
       </div>
 
@@ -329,7 +331,7 @@ export function PresetCard({
                         />
                         <button
                           type="button"
-                          aria-label="Show model options"
+                          aria-label={t("Show model options")}
                           aria-haspopup="listbox"
                           aria-expanded={isModelDropdownOpen}
                           disabled={fieldsDisabled}
@@ -418,8 +420,8 @@ export function PresetCard({
                         className="h-9 w-full px-3 text-xs sm:w-auto"
                       >
                         {isFetchingModels
-                          ? "Getting Models..."
-                          : "Get Model List"}
+                          ? t("Getting Models...")
+                          : t("Get Model List")}
                       </Button>
                     ) : null}
                   </div>
@@ -452,7 +454,7 @@ export function PresetCard({
                       disabled={fieldsDisabled}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
                       aria-label={
-                        apiKeyVisible ? "Hide API key" : "Show API key"
+                        apiKeyVisible ? t("Hide API key") : t("Show API key")
                       }
                     >
                       {apiKeyVisible ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -475,7 +477,7 @@ export function PresetCard({
               }}
               disabled={actionDisabled}
             >
-              {actionLabel}
+              {t(actionLabel)}
             </Button>
           </div>
         </div>

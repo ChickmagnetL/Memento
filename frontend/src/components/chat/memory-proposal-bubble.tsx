@@ -4,6 +4,7 @@ import { Brain, Check, Pencil, X } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { useLanguage } from "@/lib/i18n";
 
 interface MemoryProposalBubbleProps {
   content: string;
@@ -16,6 +17,7 @@ export function MemoryProposalBubble({
   onAccept,
   onReject,
 }: MemoryProposalBubbleProps) {
+  const { t } = useLanguage();
   // Resettable per-mount: parent remounts via key when a new proposal arrives.
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(content);
@@ -25,7 +27,7 @@ export function MemoryProposalBubble({
       <div className="mr-auto flex w-full max-w-[85%] flex-col gap-3 rounded-md border border-primary/40 bg-muted px-3 py-2 text-sm">
         <div className="flex items-center gap-1.5 text-xs font-medium text-primary">
           <Brain className="h-3.5 w-3.5" />
-          Memory proposal
+          {t("Memory proposal")}
         </div>
         <div className="whitespace-pre-wrap">{content}</div>
         <div className="flex items-center justify-end gap-2">
@@ -36,7 +38,7 @@ export function MemoryProposalBubble({
             onClick={onReject}
           >
             <X className="h-4 w-4" />
-            Reject
+            {t("Reject")}
           </Button>
           <Button
             type="button"
@@ -45,7 +47,7 @@ export function MemoryProposalBubble({
             onClick={() => setEditing(true)}
           >
             <Pencil className="h-4 w-4" />
-            Edit
+            {t("Edit")}
           </Button>
           <Button
             type="button"
@@ -53,7 +55,7 @@ export function MemoryProposalBubble({
             onClick={() => onAccept(content)}
           >
             <Check className="h-4 w-4" />
-            Accept
+            {t("Accept")}
           </Button>
         </div>
       </div>
@@ -64,7 +66,7 @@ export function MemoryProposalBubble({
     <div className="mr-auto flex w-full max-w-[85%] flex-col gap-3 rounded-md border border-primary/40 bg-muted px-3 py-2 text-sm">
       <div className="flex items-center gap-1.5 text-xs font-medium text-primary">
         <Brain className="h-3.5 w-3.5" />
-        Memory proposal
+        {t("Memory proposal")}
       </div>
       <textarea
         className="w-full min-h-[100px] rounded-md border border-input bg-background px-3 py-2 text-sm resize-y"
@@ -81,7 +83,7 @@ export function MemoryProposalBubble({
             setEditing(false);
           }}
         >
-          Cancel
+          {t("Cancel")}
         </Button>
         <Button
           type="button"
@@ -90,7 +92,7 @@ export function MemoryProposalBubble({
           disabled={!draft.trim()}
         >
           <Check className="h-4 w-4" />
-          Confirm
+          {t("Confirm")}
         </Button>
       </div>
     </div>

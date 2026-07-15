@@ -14,11 +14,15 @@ import {
   type PresetModelName,
   type ServiceStatus,
 } from "@/lib/api";
+import { useLanguage } from "@/lib/i18n";
 
 import { LocalAsrModal } from "./local-asr-modal";
 import { ModelPanel } from "./model-panel";
 
-const TABS: { name: PresetModelName; label: string }[] = [
+type SettingsTab = "general" | PresetModelName;
+
+const TABS: { name: SettingsTab; label: string }[] = [
+  { name: "general", label: "General" },
   { name: "chat", label: "Chat" },
   { name: "embedding", label: "Embedding" },
   { name: "asr", label: "ASR" },
@@ -67,7 +71,8 @@ interface AsrExtrasCtx {
 }
 
 export function SettingsForm() {
-  const [activeTab, setActiveTab] = useState<PresetModelName>("chat");
+  const { language, setLanguage, t } = useLanguage();
+  const [activeTab, setActiveTab] = useState<SettingsTab>("general");
   const [status, setStatus] = useState<Record<string, ServiceStatus>>({});
   const [message, setMessage] = useState("");
   const [asrDeployStatus, setAsrDeployStatus] =
@@ -81,9 +86,9 @@ export function SettingsForm() {
     try {
       setStatus(await getServiceStatus());
     } catch (e) {
-      setMessage(e instanceof Error ? e.message : "Operation failed");
+      setMessage(e instanceof Error ? e.message : t("Operation failed"));
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     // The refresh waits for the status request before updating state.
@@ -108,11 +113,11 @@ export function SettingsForm() {
       } catch (e) {
         window.clearInterval(interval);
         setIsDeployingAsr(false);
-        setMessage(e instanceof Error ? e.message : "Operation failed");
+        setMessage(e instanceof Error ? e.message : t("Operation failed"));
       }
     }, 1000);
     return () => window.clearInterval(interval);
-  }, [isDeployingAsr]);
+  }, [isDeployingAsr, t]);
 
   async function handleDeployAsr() {
     setMessage("");
@@ -122,14 +127,14 @@ export function SettingsForm() {
       setAsrDeployProgress(progress);
     } catch (e) {
       setIsDeployingAsr(false);
-      setMessage(e instanceof Error ? e.message : "Operation failed");
+      setMessage(e instanceof Error ? e.message : t("Operation failed"));
     }
   }
 
   const renderAsrExtras = (ctx: AsrExtrasCtx) => (
     <div className="space-y-3">
       <label className="block text-sm">
-        <span className="mb-1 block text-muted-foreground">Protocol</span>
+        <span className="mb-1 block text-muted-foreground">{t("Protocol")}</span>
         <select
           className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
           value={ctx.protocol ?? "transcriptions"}
@@ -140,12 +145,12 @@ export function SettingsForm() {
           <option value="chat_audio">chat_audio</option>
         </select>
         <p className="mt-1 text-xs text-muted-foreground">
-          Requests {asrRequestUrl(ctx.endpoint, ctx.protocol)}
+          {t("Requests {url}", { url: asrRequestUrl(ctx.endpoint, ctx.protocol) })}
         </p>
       </label>
       {asrDeployStatus && asrDeployStatus.venv_exists ? (
         <div className="flex items-center justify-between gap-3 rounded-md border border-input bg-muted/30 p-3">
-          <span className="text-sm text-muted-foreground">Local ASR installed</span>
+          <span className="text-sm text-muted-foreground">{t("Local ASR installed")}</span>
           <Button
             type="button"
             size="sm"
@@ -153,14 +158,14 @@ export function SettingsForm() {
             onClick={() => setShowLocalAsrModal(true)}
             disabled={ctx.disabled}
           >
-            Local ASR Model Settings
+            {t("Local ASR Model Settings")}
           </Button>
         </div>
       ) : null}
       {asrDeployStatus && !asrDeployStatus.venv_exists ? (
         <div className="flex items-center justify-between gap-3 rounded-md border border-input bg-muted/30 p-3">
           <span className="text-sm text-muted-foreground">
-            Local ASR not installed
+            {t("Local ASR not installed")}
           </span>
           <Button
             type="button"
@@ -168,7 +173,7 @@ export function SettingsForm() {
             onClick={handleDeployAsr}
             disabled={ctx.disabled || isDeployingAsr}
           >
-            Deploy
+            {t("Deploy")}
           </Button>
         </div>
       ) : null}
@@ -187,7 +192,7 @@ export function SettingsForm() {
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-10">
       <header className="space-y-1">
-        <h1 className="text-xl font-semibold">Settings</h1>
+        <h1 className="text-xl font-semibold">{t("Settings")}</h1>
       </header>
 
       {message ? <p className="text-sm">{message}</p> : null}
@@ -204,19 +209,39 @@ export function SettingsForm() {
                 : "cursor-pointer px-4 py-2 text-sm text-muted-foreground hover:text-foreground"
             }
           >
-            {tab.label}
+            {t(tab.label)}
           </button>
         ))}
       </nav>
 
-      <ModelPanel
-        key={activeTab}
-        modelName={activeTab}
-        fields={FIELDS}
-        status={status[activeTab]}
-        asrExtras={activeTab === "asr" ? renderAsrExtras : undefined}
-        onStatusRefresh={refreshStatus}
-      />
+      {activeTab === "general" ? (
+        <section className="flex items-center justify-between gap-4 rounded-md border border-input p-4">
+          <div>
+            <h2 className="text-sm font-medium">{t("Language")}</h2>
+            <p className="text-xs text-muted-foreground">
+              {t("Choose the language used by the application.")}
+            </p>
+          </div>
+          <select
+            aria-label={t("Language")}
+            className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+            value={language}
+            onChange={(event) => setLanguage(event.target.value as "en" | "zh-CN")}
+          >
+            <option value="zh-CN">简体中文</option>
+            <option value="en">English</option>
+          </select>
+        </section>
+      ) : (
+        <ModelPanel
+          key={activeTab}
+          modelName={activeTab}
+          fields={FIELDS.map((field) => ({ ...field, label: t(field.label) }))}
+          status={status[activeTab]}
+          asrExtras={activeTab === "asr" ? renderAsrExtras : undefined}
+          onStatusRefresh={refreshStatus}
+        />
+      )}
 
       <LocalAsrModal
         open={showLocalAsrModal}

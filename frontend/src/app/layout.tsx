@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Sidebar } from "@/components/layout/sidebar";
 import { ChatStoreProvider } from "@/lib/chat-store";
+import { LanguageProvider } from "@/lib/i18n";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -30,11 +31,13 @@ export default async function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="h-full flex bg-background text-foreground">
-        <Sidebar />
-        <main className="relative min-w-0 flex-1 overflow-y-auto">
-          <div className="desktop-drag-region" aria-hidden="true" />
-          <ChatStoreProvider>{children}</ChatStoreProvider>
-        </main>
+        <LanguageProvider>
+          <Sidebar />
+          <main className="relative min-w-0 flex-1 overflow-y-auto">
+            <div className="desktop-drag-region" aria-hidden="true" />
+            <ChatStoreProvider>{children}</ChatStoreProvider>
+          </main>
+        </LanguageProvider>
       </body>
     </html>
   );

@@ -66,7 +66,7 @@ test("expanded and collapsed sidebar headers provide drag surfaces", () => {
 });
 
 test("chat memory control sits directly after the new-chat control", () => {
-  const newChatControl = chatPanelSource.indexOf('title="New Chat"');
+  const newChatControl = chatPanelSource.indexOf('title={t("New Chat")}');
   const memoryControl = chatPanelSource.indexOf("<MemoryPopover", newChatControl);
   const centeredControlsEnd = chatPanelSource.indexOf("</div>", memoryControl);
 

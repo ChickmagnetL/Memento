@@ -12,6 +12,7 @@ import {
   uninstallLocalAsrModel,
   type AsrManagerStatus,
 } from "@/lib/api";
+import { useLanguage } from "@/lib/i18n";
 
 function formatBytes(value: number) {
   if (value === 0) return "0 B";
@@ -50,6 +51,7 @@ export function LocalAsrModal({
   onDeploy,
   isDeploying,
 }: LocalAsrModalProps) {
+  const { t } = useLanguage();
   const [localAsrStatus, setLocalAsrStatus] =
     useState<AsrManagerStatus | null>(null);
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
@@ -183,12 +185,12 @@ export function LocalAsrModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-lg max-h-[80vh] overflow-y-auto rounded-lg border bg-background p-5 shadow-lg space-y-5">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Local ASR Model Settings</h2>
+          <h2 className="text-lg font-semibold">{t("Local ASR Model Settings")}</h2>
           <button
             type="button"
             onClick={handleClose}
             className="text-muted-foreground hover:text-foreground"
-            aria-label="Close"
+            aria-label={t("Close")}
           >
             <X size={18} />
           </button>
@@ -216,7 +218,7 @@ export function LocalAsrModal({
               {/* Section 1: ASR Environment */}
               <section className="space-y-2">
                 <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  ASR Environment
+                  {t("ASR Environment")}
                 </h3>
                 <div className="flex items-center justify-between gap-3 rounded-md border border-input bg-muted/30 p-3">
                   <div className="text-sm">
@@ -226,14 +228,14 @@ export function LocalAsrModal({
                       />
                       <span>
                         {envReady
-                          ? "Environment ready"
-                          : "Environment not installed"}
+                          ? t("Environment ready")
+                          : t("Environment not installed")}
                       </span>
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">
                       {envReady
-                        ? `Environment size: ~${formatBytes(installedSize)}`
-                        : "Environment size: —"}
+                        ? t("Environment size: ~{size}", { size: formatBytes(installedSize) })
+                        : t("Environment size: —")}
                     </p>
                   </div>
                   {envReady ? (
@@ -243,7 +245,7 @@ export function LocalAsrModal({
                       variant="destructive"
                       onClick={handleUninstallAll}
                     >
-                      Uninstall Environment
+                      {t("Uninstall Environment")}
                     </Button>
                   ) : (
                     <Button
@@ -252,7 +254,7 @@ export function LocalAsrModal({
                       onClick={onDeploy}
                       disabled={isDeploying}
                     >
-                      Install Environment
+                      {t("Install Environment")}
                     </Button>
                   )}
                 </div>
@@ -261,12 +263,12 @@ export function LocalAsrModal({
               {/* Section 2 & 3: Model family + size */}
               <section className="space-y-2">
                 <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Model
+                  {t("Model")}
                 </h3>
                 <div className="flex gap-3">
                   <label className="block flex-1 text-sm">
                     <span className="mb-1 block text-muted-foreground">
-                      Family
+                      {t("Family")}
                     </span>
                     <select
                       className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
@@ -282,14 +284,14 @@ export function LocalAsrModal({
                     >
                       {families.map((family) => (
                         <option key={family} value={family}>
-                          {FAMILY_LABELS[family] ?? family}
+                          {t(FAMILY_LABELS[family] ?? family)}
                         </option>
                       ))}
                     </select>
                   </label>
                   <label className="block flex-1 text-sm">
                     <span className="mb-1 block text-muted-foreground">
-                      Size
+                      {t("Size")}
                     </span>
                     <select
                       className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
@@ -327,7 +329,7 @@ export function LocalAsrModal({
                           handleUninstallModel(currentModel.slug)
                         }
                       >
-                        Uninstall
+                        {t("Uninstall")}
                       </Button>
                     ) : (
                       <Button
@@ -337,7 +339,7 @@ export function LocalAsrModal({
                           handleInstallModel(currentModel.slug)
                         }
                       >
-                        Install
+                        {t("Install")}
                       </Button>
                     )}
                   </div>
@@ -372,7 +374,7 @@ export function LocalAsrModal({
             </>
           );
         })() : (
-          <p className="text-sm text-muted-foreground">Loading…</p>
+          <p className="text-sm text-muted-foreground">{t("Loading…")}</p>
         )}
       </div>
     </div>

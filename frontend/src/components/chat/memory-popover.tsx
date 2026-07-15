@@ -7,16 +7,18 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorBanner } from "@/components/ui/error-banner";
 import { deleteMemory, listMemories, type Memory } from "@/lib/api";
+import { useLanguage } from "@/lib/i18n";
 
 interface MemoryPopoverProps {
   refreshKey?: number;
 }
 
-function getErrorMessage(error: unknown) {
-  return error instanceof Error ? error.message : "Operation failed";
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
 }
 
 export function MemoryPopover({ refreshKey }: MemoryPopoverProps) {
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [memories, setMemories] = useState<Memory[]>([]);
   const [error, setError] = useState("");
@@ -81,7 +83,7 @@ export function MemoryPopover({ refreshKey }: MemoryPopoverProps) {
         }
       } catch (loadError) {
         if (!cancelled) {
-          setError(getErrorMessage(loadError));
+          setError(getErrorMessage(loadError, t("Operation failed")));
         }
       } finally {
         if (!cancelled) {
@@ -95,7 +97,7 @@ export function MemoryPopover({ refreshKey }: MemoryPopoverProps) {
     return () => {
       cancelled = true;
     };
-  }, [open, refreshKey]);
+  }, [open, refreshKey, t]);
 
   async function handleDelete(id: string) {
     setDeletingIds((current) => new Set(current).add(id));
@@ -106,7 +108,7 @@ export function MemoryPopover({ refreshKey }: MemoryPopoverProps) {
       deletedIdsRef.current.add(id);
       setMemories((current) => current.filter((memory) => memory.id !== id));
     } catch (deleteError) {
-      setError(getErrorMessage(deleteError));
+      setError(getErrorMessage(deleteError, t("Operation failed")));
     } finally {
       setDeletingIds((current) => {
         const nextDeletingIds = new Set(current);
@@ -125,10 +127,10 @@ export function MemoryPopover({ refreshKey }: MemoryPopoverProps) {
         size="icon"
         className="text-[var(--color-text)]"
         onClick={() => setOpen((value) => !value)}
-        aria-label={open ? "Close memories" : "Open memories"}
+        aria-label={open ? t("Close memories") : t("Open memories")}
         aria-expanded={open}
         aria-haspopup="dialog"
-        title={open ? "Close memories" : "Open memories"}
+        title={open ? t("Close memories") : t("Open memories")}
       >
         <Brain className="h-4 w-4" />
       </Button>
@@ -136,13 +138,13 @@ export function MemoryPopover({ refreshKey }: MemoryPopoverProps) {
       {open ? (
         <div
           role="dialog"
-          aria-label="Memories"
+          aria-label={t("Memories")}
           className="absolute right-0 top-11 z-30 w-[min(24rem,calc(100vw-var(--sidebar-width)-2rem))] max-w-sm rounded-md border border-border bg-background p-2 shadow-lg"
         >
           <div className="flex items-center gap-2 border-b border-border px-2 pb-2">
             <Brain className="h-4 w-4 text-[var(--color-text-muted)]" />
             <h2 className="text-sm font-semibold text-[var(--color-text)]">
-              Memories
+              {t("Memories")}
             </h2>
           </div>
 
@@ -158,13 +160,13 @@ export function MemoryPopover({ refreshKey }: MemoryPopoverProps) {
           >
             {loading ? (
               <div className="px-3 py-6 text-center text-sm text-[var(--color-text-muted)]">
-                Loading memories...
+                {t("Loading memories...")}
               </div>
             ) : error && memories.length === 0 ? null : memories.length === 0 ? (
               <EmptyState
                 icon={Brain}
-                title="No memories yet"
-                description="Use /remember or let the agent propose memories."
+                title={t("No memories yet")}
+                description={t("Use /remember or let the agent propose memories.")}
                 className="py-8"
               />
             ) : (
@@ -183,8 +185,8 @@ export function MemoryPopover({ refreshKey }: MemoryPopoverProps) {
                     className="h-7 w-7 shrink-0 text-[var(--color-text-muted)] opacity-0 transition-colors hover:bg-background hover:text-destructive group-hover:opacity-100 focus:opacity-100"
                     onClick={() => handleDelete(memory.id)}
                     disabled={deletingIds.has(memory.id)}
-                    aria-label="Delete memory"
-                    title="Delete memory"
+                    aria-label={t("Delete memory")}
+                    title={t("Delete memory")}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>

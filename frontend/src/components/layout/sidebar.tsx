@@ -14,6 +14,7 @@ import {
   Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/lib/i18n";
 
 const NAV_ITEMS = [
   { href: "/", label: "Home", icon: Home },
@@ -25,6 +26,7 @@ const NAV_ITEMS = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { t } = useLanguage();
   const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
@@ -57,7 +59,7 @@ export function Sidebar() {
           <button
             onClick={toggle}
             className="rounded-md p-1.5 text-muted-foreground hover:bg-[var(--color-bg-hover)] hover:text-[var(--color-text)] transition-colors"
-            aria-label="Expand sidebar"
+            aria-label={t("Expand sidebar")}
           >
             <PanelLeft className="h-4 w-4" />
           </button>
@@ -70,7 +72,7 @@ export function Sidebar() {
           <button
             onClick={toggle}
             className="rounded-md p-1.5 text-muted-foreground hover:bg-[var(--color-bg-hover)] hover:text-[var(--color-text)] transition-colors"
-            aria-label="Collapse sidebar"
+            aria-label={t("Collapse sidebar")}
           >
             <PanelLeftClose className="h-4 w-4" />
           </button>
@@ -97,7 +99,7 @@ export function Sidebar() {
                 className="h-4 w-4 shrink-0"
                 strokeWidth={active ? 2 : 1.5}
               />
-              {!collapsed && <span>{label}</span>}
+              {!collapsed && <span>{t(label)}</span>}
             </Link>
           );
         })}
@@ -120,7 +122,7 @@ export function Sidebar() {
                 className="h-4 w-4 shrink-0"
                 strokeWidth={helpActive ? 2 : 1.5}
               />
-              {!collapsed && <span>Help</span>}
+              {!collapsed && <span>{t("Help")}</span>}
             </Link>
           );
         })()}

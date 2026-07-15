@@ -15,14 +15,15 @@ import {
   processVideo,
   type VideoRecord,
 } from "@/lib/api";
+import { useLanguage } from "@/lib/i18n";
 
 interface VideoIntakeProps {
   initialVideos: VideoRecord[];
 }
 
-function formatDate(iso: string): string {
+function formatDate(iso: string, language: "en" | "zh-CN"): string {
   const d = new Date(iso);
-  return d.toLocaleString("en-US", {
+  return d.toLocaleString(language === "zh-CN" ? "zh-CN" : "en-US", {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -36,11 +37,6 @@ function statusBadgeClass(status: string): string {
   if (status === "completed") return "video-badge completed";
   if (status === "failed") return "video-badge failed";
   return "video-badge pending";
-}
-
-function actionLabel(status: string): string {
-  if (status === "completed") return "Re-process";
-  return "Process";
 }
 
 async function refreshBilibiliCookieIfPossible() {
@@ -82,6 +78,7 @@ function mapSoftSubtitleError(
 
 export function VideoIntake({ initialVideos }: VideoIntakeProps) {
   const router = useRouter();
+  const { language, t } = useLanguage();
   const [url, setUrl] = useState("");
   const [videos, setVideos] = useState<VideoRecord[]>(initialVideos);
   const [error, setError] = useState("");
@@ -130,7 +127,7 @@ export function VideoIntake({ initialVideos }: VideoIntakeProps) {
       // Focus the newly added video (newest is at index 0)
       setActiveCardIndex(0);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Operation failed");
+      setError(e instanceof Error ? e.message : t("Operation failed"));
     } finally {
       setIsSubmitting(false);
     }
@@ -151,7 +148,7 @@ export function VideoIntake({ initialVideos }: VideoIntakeProps) {
           const video = videos.find((item) => item.id === videoId);
           setPendingSubtitleDecision({
             videoId,
-            title: video?.title ?? "Video",
+            title: video?.title ?? t("Video"),
             platform: video?.platform,
             reason: mapped.reason,
             message: mapped.message,
@@ -161,7 +158,7 @@ export function VideoIntake({ initialVideos }: VideoIntakeProps) {
         }
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Operation failed");
+      setError(e instanceof Error ? e.message : t("Operation failed"));
     } finally {
       setProcessingVideoId(null);
     }
@@ -173,7 +170,7 @@ export function VideoIntake({ initialVideos }: VideoIntakeProps) {
       await deleteVideo(videoId);
       await refreshVideos();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Operation failed");
+      setError(e instanceof Error ? e.message : t("Operation failed"));
     }
   }
 
@@ -209,7 +206,7 @@ export function VideoIntake({ initialVideos }: VideoIntakeProps) {
         availableLanguages = result.available_languages;
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Operation failed");
+      setError(e instanceof Error ? e.message : t("Operation failed"));
       setCheckingVideoId(null);
       return;
     }
@@ -328,7 +325,7 @@ export function VideoIntake({ initialVideos }: VideoIntakeProps) {
         <input
           className="h-10 rounded-md border border-border bg-[hsl(240_10%_4%)] px-3 text-sm text-foreground placeholder:text-muted-foreground"
           onChange={(e) => setUrl(e.target.value)}
-          placeholder="Paste a Bilibili, Douyin, or YouTube URL"
+          placeholder={t("Paste a Bilibili, Douyin, or YouTube URL")}
           value={url}
         />
         <button
@@ -337,7 +334,7 @@ export function VideoIntake({ initialVideos }: VideoIntakeProps) {
           type="submit"
         >
           <Plus className="h-4 w-4" />
-          {isSubmitting ? "Saving..." : "Add video"}
+          {isSubmitting ? t("Saving...") : t("Add video")}
         </button>
       </form>
 
@@ -385,17 +382,17 @@ export function VideoIntake({ initialVideos }: VideoIntakeProps) {
         <section className={`history-shell${isExpanded ? " is-expanded" : ""}`}>
           <div className="history-header">
             <div>
-              <h2>Imported videos</h2>
+              <h2>{t("Imported videos")}</h2>
               <p>
                 {isExpanded
-                  ? "All imported records, ordered by import time."
-                  : "Scroll or click a card to focus."}
+                  ? t("All imported records, ordered by import time.")
+                  : t("Scroll or click a card to focus.")}
               </p>
             </div>
             <button
               className="expand-toggle-btn"
               type="button"
-              aria-label="Toggle list view"
+              aria-label={t("Toggle list view")}
               onClick={toggleExpand}
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -428,14 +425,20 @@ export function VideoIntake({ initialVideos }: VideoIntakeProps) {
                   <div className="video-card-top">
                     <div className="video-card-title">{video.title}</div>
                     <span className={statusBadgeClass(video.status)}>
-                      {video.status}
+                      {video.status === "completed"
+                        ? t("Completed")
+                        : video.status === "failed"
+                          ? t("Failed")
+                          : video.status === "processing"
+                            ? t("Processing")
+                            : t("Pending")}
                     </span>
                   </div>
 
                   {/* Info grid: Platform / Author / Imported */}
                   <div className="video-info-grid">
                     <div>
-                      <span className="video-info-label">Platform</span>
+                      <span className="video-info-label">{t("Platform")}</span>
                       <span className="video-info-value">
                         {video.platform === "bilibili"
                           ? "Bilibili"
@@ -445,15 +448,15 @@ export function VideoIntake({ initialVideos }: VideoIntakeProps) {
                       </span>
                     </div>
                     <div>
-                      <span className="video-info-label">Author</span>
+                      <span className="video-info-label">{t("Author")}</span>
                       <span className="video-info-value">
-                        {video.author || "Unknown author"}
+                        {video.author || t("Unknown author")}
                       </span>
                     </div>
                     <div>
-                      <span className="video-info-label">Imported</span>
+                      <span className="video-info-label">{t("Imported")}</span>
                       <span className="video-info-value">
-                        {formatDate(video.created_at)}
+                        {formatDate(video.created_at, language)}
                       </span>
                     </div>
                   </div>
@@ -480,10 +483,12 @@ export function VideoIntake({ initialVideos }: VideoIntakeProps) {
                         }}
                       >
                         {checkingVideoId === video.id
-                          ? "Checking..."
+                          ? t("Checking...")
                           : processingVideoId === video.id || video.status === "processing"
-                            ? "Processing..."
-                            : actionLabel(video.status)}
+                            ? t("Processing...")
+                            : video.status === "completed"
+                              ? t("Re-process")
+                              : t("Process")}
                       </button>
                       <button
                         className="video-action-btn danger"
@@ -494,7 +499,7 @@ export function VideoIntake({ initialVideos }: VideoIntakeProps) {
                           handleDelete(video.id);
                         }}
                       >
-                        Delete
+                        {t("Delete")}
                       </button>
                     </div>
                   </div>
@@ -511,7 +516,7 @@ export function VideoIntake({ initialVideos }: VideoIntakeProps) {
       ) : (
         <div className="flex flex-col items-center gap-2 py-16 text-center">
           <p className="text-sm text-muted-foreground">
-            No videos yet. Paste a Bilibili or Douyin URL above to get started.
+            {t("No videos yet. Paste a Bilibili or Douyin URL above to get started.")}
           </p>
         </div>
       )}

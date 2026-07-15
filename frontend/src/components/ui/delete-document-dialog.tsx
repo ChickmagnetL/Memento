@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { useLanguage } from "@/lib/i18n";
 
 interface DeleteDocumentDialogProps {
   fileName: string;
@@ -17,19 +18,22 @@ export function DeleteDocumentDialog({
   onConfirm,
   onCancel,
 }: DeleteDocumentDialogProps) {
+  const { t } = useLanguage();
+
   return (
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Delete document"
+      aria-label={t("Delete document")}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
     >
       <div className="w-full max-w-md space-y-4 rounded-md border border-input bg-background p-6 shadow-lg">
         <div className="space-y-1">
-          <h2 className="text-base font-semibold">Delete document</h2>
+          <h2 className="text-base font-semibold">{t("Delete document")}</h2>
           <p className="break-all text-sm text-muted-foreground">
-            Delete <span className="font-medium text-foreground">{fileName}</span> from the knowledge base?
-            Indexed chunks will be removed. The source file is kept unless you choose to delete it below.
+            {t("Delete {fileName} from the knowledge base? Indexed chunks will be removed. The source file is kept unless you choose to delete it below.", {
+              fileName,
+            })}
           </p>
         </div>
         <label className="flex items-center gap-2 text-sm">
@@ -38,14 +42,14 @@ export function DeleteDocumentDialog({
             checked={deleteSource}
             onChange={(e) => onDeleteSourceChange(e.target.checked)}
           />
-          Also delete the source file
+          {t("Also delete the source file")}
         </label>
         <div className="flex justify-end gap-2">
           <Button onClick={onCancel} type="button" variant="ghost">
-            Cancel
+            {t("Cancel")}
           </Button>
           <Button onClick={onConfirm} type="button">
-            Delete
+            {t("Delete")}
           </Button>
         </div>
       </div>

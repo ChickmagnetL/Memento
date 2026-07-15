@@ -4,6 +4,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
+import { useLanguage } from "@/lib/i18n";
 
 import {
   getEmbeddingReindexJob,
@@ -120,6 +121,7 @@ export function ModelPanel({
   asrExtras,
   onStatusRefresh,
 }: ModelPanelProps) {
+  const { t } = useLanguage();
   const messageSourceRef = useRef<"poll" | "other" | null>(null);
   const [presets, setPresets] = useState<PresetResponse[]>([]);
   const [activePresetId, setActivePresetId] = useState<string | null>(null);
@@ -226,7 +228,7 @@ export function ModelPanel({
         setActivePresetId(active.preset_id);
         selectPresetFromList(active.preset_id, presetList);
       } catch (e) {
-        setInlineMessage(e instanceof Error ? e.message : "Operation failed");
+        setInlineMessage(e instanceof Error ? e.message : t("Operation failed"));
       }
     }
     load();
@@ -257,7 +259,7 @@ export function ModelPanel({
             return;
           }
           setInlineMessage(
-            e instanceof Error ? e.message : "Operation failed",
+            e instanceof Error ? e.message : t("Operation failed"),
             "poll"
           );
           timeoutId = window.setTimeout(() => {
@@ -288,7 +290,7 @@ export function ModelPanel({
         setActivePresetId(active.preset_id);
         selectPresetFromList(active.preset_id, presetList);
       } catch (e) {
-        setInlineMessage(e instanceof Error ? e.message : "Operation failed");
+        setInlineMessage(e instanceof Error ? e.message : t("Operation failed"));
       }
     }
 
@@ -338,7 +340,7 @@ export function ModelPanel({
       setApiKeyPlain(plain);
       setApiKeyVisible(true);
     } catch (e) {
-      setInlineMessage(e instanceof Error ? e.message : "Operation failed");
+      setInlineMessage(e instanceof Error ? e.message : t("Operation failed"));
     }
   }
 
@@ -362,15 +364,19 @@ export function ModelPanel({
       setModelOptions(result.models);
       setModelListMessage(
         result.models.length > 0
-          ? `${result.models.length} model${result.models.length === 1 ? "" : "s"} available.`
-          : "No models returned."
+          ? result.models.length === 1
+            ? t("{count} model available.", { count: result.models.length })
+            : t("{count} models available.", { count: result.models.length })
+          : t("No models returned.")
       );
     } catch (e) {
       if (modelListRequestSeqRef.current !== requestSeq) {
         return;
       }
       setModelOptions([]);
-      setModelListMessage(e instanceof Error ? e.message : "Operation failed");
+      setModelListMessage(
+        e instanceof Error ? e.message : t("Operation failed")
+      );
     } finally {
       if (modelListRequestSeqRef.current === requestSeq) {
         setIsFetchingModels(false);
@@ -473,7 +479,7 @@ export function ModelPanel({
       handleEmbeddingSwitchResult(result, presetList);
       await onStatusRefresh();
     } catch (e) {
-      setInlineMessage(e instanceof Error ? e.message : "Operation failed");
+      setInlineMessage(e instanceof Error ? e.message : t("Operation failed"));
     } finally {
       setIsSwitching(false);
       setIsSaving(false);
@@ -505,8 +511,8 @@ export function ModelPanel({
     setReindexJob(null);
     setInlineMessage(
       modelName === "embedding"
-        ? "Switching embedding preset..."
-        : "Switching preset..."
+        ? t("Switching embedding preset...")
+        : t("Switching preset...")
     );
     setIsSwitching(true);
     try {
@@ -555,7 +561,7 @@ export function ModelPanel({
       }
       await activateRegularPreset(selectedPresetId, presetList);
     } catch (e) {
-      setInlineMessage(e instanceof Error ? e.message : "Operation failed");
+      setInlineMessage(e instanceof Error ? e.message : t("Operation failed"));
     } finally {
       setIsSwitching(false);
     }
@@ -575,7 +581,7 @@ export function ModelPanel({
       selectPresetFromList(newPreset.id, presetList);
       setInlineMessage("");
     } catch (e) {
-      setInlineMessage(e instanceof Error ? e.message : "Operation failed");
+      setInlineMessage(e instanceof Error ? e.message : t("Operation failed"));
     }
   }
 
@@ -591,7 +597,7 @@ export function ModelPanel({
       setRenameValue("");
       setInlineMessage("");
     } catch (e) {
-      setInlineMessage(e instanceof Error ? e.message : "Operation failed");
+      setInlineMessage(e instanceof Error ? e.message : t("Operation failed"));
     }
   }
 
@@ -601,12 +607,12 @@ export function ModelPanel({
     }
     if (modelName === "embedding" && hasActiveEmbeddingReindexJob) {
       setInlineMessage(
-        "Cannot delete embedding presets while an embedding reindex job is running."
+        t("Cannot delete embedding presets while an embedding reindex job is running.")
       );
       return;
     }
     if (presets.length <= 1) {
-      setInlineMessage("Cannot delete the last preset.");
+      setInlineMessage(t("Cannot delete the last preset."));
       return;
     }
     try {
@@ -627,7 +633,7 @@ export function ModelPanel({
       }
       setInlineMessage("");
     } catch (e) {
-      setInlineMessage(e instanceof Error ? e.message : "Operation failed");
+      setInlineMessage(e instanceof Error ? e.message : t("Operation failed"));
     }
   }
 
@@ -637,7 +643,7 @@ export function ModelPanel({
     }
     if (modelName === "embedding" && hasActiveEmbeddingReindexJob) {
       setInlineMessage(
-        "Cannot save embedding presets while an embedding reindex job is running."
+        t("Cannot save embedding presets while an embedding reindex job is running.")
       );
       return;
     }
@@ -646,7 +652,7 @@ export function ModelPanel({
     setReindexJob(null);
     setInlineMessage(
       modelName === "embedding"
-        ? "Saving and checking embedding preset..."
+        ? t("Saving and checking embedding preset...")
         : ""
     );
     setIsSaving(true);
@@ -668,14 +674,14 @@ export function ModelPanel({
         }
         await saveSelectedPresetConfig(selectedPresetId, saveConfig);
         await onStatusRefresh();
-        setInlineMessage("Saved.");
+        setInlineMessage(t("Saved."));
         return;
       }
       await saveSelectedPresetConfig(selectedPresetId, saveConfig);
       await onStatusRefresh();
-      setInlineMessage("Saved.");
+      setInlineMessage(t("Saved."));
     } catch (e) {
-      setInlineMessage(e instanceof Error ? e.message : "Operation failed");
+      setInlineMessage(e instanceof Error ? e.message : t("Operation failed"));
     } finally {
       setIsSaving(false);
     }
@@ -698,9 +704,11 @@ export function ModelPanel({
     : false;
   const pendingEmbeddingActionLabel = pendingEmbeddingAction?.label ?? "activate";
   const pendingEmbeddingActionVerb =
-    pendingEmbeddingActionLabel === "save" ? "Saving" : "Activating";
+    pendingEmbeddingActionLabel === "save" ? t("Saving") : t("Activating");
   const pendingEmbeddingConfirmLabel =
-    pendingEmbeddingActionLabel === "save" ? "Confirm save" : "Confirm activate";
+    pendingEmbeddingActionLabel === "save"
+      ? t("Confirm save")
+      : t("Confirm activate");
 
   return (
     <div className="space-y-3">
@@ -711,24 +719,34 @@ export function ModelPanel({
       {modelName === "embedding" && reindexJob && !pendingSwitchPreview ? (
         <div className="space-y-2 rounded-md border border-input bg-muted/30 p-3">
           <p className="text-sm text-foreground">
-            Embedding reindex status: {formatJobValue(reindexJob.status)}
+            {t("Embedding reindex status: {status}", {
+              status: formatJobValue(reindexJob.status),
+            })}
           </p>
           <p className="text-xs text-muted-foreground">
-            Preset: {reindexPreset?.name ?? reindexJob.preset_id}
+            {t("Preset: {preset}", {
+              preset: reindexPreset?.name ?? reindexJob.preset_id,
+            })}
           </p>
           <p className="text-xs text-muted-foreground">
-            Stage: {formatJobValue(reindexJob.stage)}
+            {t("Stage: {stage}", {
+              stage: formatJobValue(reindexJob.stage),
+            })}
           </p>
           <p className="text-xs text-muted-foreground">
-            Progress: {reindexJob.processed_documents} /{" "}
-            {reindexJob.total_documents} documents
+            {t("Progress: {processed} / {total} documents", {
+              processed: reindexJob.processed_documents,
+              total: reindexJob.total_documents,
+            })}
           </p>
           {reindexJob.error ? (
             <p className="text-xs text-destructive">{reindexJob.error}</p>
           ) : null}
           {reindexJob.failed_documents.length > 0 ? (
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Failed documents:</p>
+              <p className="text-xs text-muted-foreground">
+                {t("Failed documents:")}
+              </p>
               {reindexJob.failed_documents.map((document) => (
                 <p
                   key={document.document_id}
@@ -747,15 +765,20 @@ export function ModelPanel({
       !pendingSwitchPreview.same_dimension ? (
         <div className="space-y-2 rounded-md border border-input bg-muted/30 p-3">
           <p className="text-sm text-foreground">
-            {pendingEmbeddingActionVerb}{" "}
-            {previewPreset?.name ?? pendingSwitchPreview.preset_id} will rebuild
-            the embedding index.
+            {t("{action} {preset} will rebuild the embedding index.", {
+              action: pendingEmbeddingActionVerb,
+              preset: previewPreset?.name ?? pendingSwitchPreview.preset_id,
+            })}
           </p>
           <p className="text-xs text-muted-foreground">
-            Dimension {pendingSwitchPreview.current_dimension} to{" "}
-            {pendingSwitchPreview.new_dimension}.{" "}
-            {pendingSwitchPreview.indexed_document_count} indexed documents will be
-            reprocessed.
+            {t(
+              "Dimension {current} to {next}. {count} indexed documents will be reprocessed.",
+              {
+                current: pendingSwitchPreview.current_dimension,
+                next: pendingSwitchPreview.new_dimension,
+                count: pendingSwitchPreview.indexed_document_count,
+              }
+            )}
           </p>
           <div className="flex justify-end gap-2">
             <Button
@@ -765,7 +788,7 @@ export function ModelPanel({
               onClick={handleCancelEmbeddingSwitch}
               disabled={isSwitching}
             >
-              Cancel
+              {t("Cancel")}
             </Button>
             <Button
               type="button"
@@ -798,7 +821,9 @@ export function ModelPanel({
             isFetchingModels={isSelected && isFetchingModels}
             onFetchModels={isSelected ? handleFetchModels : undefined}
             fieldsDisabled={controlsDisabled}
-            actionLabel={isActive ? "Save" : "Activate"}
+            actionLabel={
+              (isActive ? t("Save") : t("Activate")) as "Save" | "Activate"
+            }
             actionDisabled={
               isActive
                 ? !selectedIsDirty ||
@@ -856,7 +881,7 @@ export function ModelPanel({
             : "cursor-pointer hover:border-primary/50"
         }`}
       >
-        + New preset
+        + {t("New preset")}
       </div>
     </div>
   );

@@ -17,6 +17,7 @@ import {
   sendChatMessage,
   createMemory,
 } from "@/lib/api";
+import { useLanguage } from "@/lib/i18n";
 
 const LAST_SESSION_KEY = "memento-last-chat-session";
 
@@ -151,6 +152,7 @@ interface ChatStoreValue {
 const ChatStoreContext = createContext<ChatStoreValue | null>(null);
 
 export function ChatStoreProvider({ children }: { children: ReactNode }) {
+  const { t } = useLanguage();
   const [state, dispatch] = useReducer(reducer, initialState);
   const activeIdRef = useRef<string | null>(null);
   const generationTokenRef = useRef(0);
@@ -174,9 +176,9 @@ export function ChatStoreProvider({ children }: { children: ReactNode }) {
       if (generationTokenRef.current !== navigationToken) return;
       activeIdRef.current = previousActiveId;
       dispatch({ type: "SET_ACTIVE", activeId: previousActiveId });
-      dispatch({ type: "SET_ERROR", error: e instanceof Error ? e.message : "Operation failed" });
+      dispatch({ type: "SET_ERROR", error: e instanceof Error ? e.message : t("Operation failed") });
     }
-  }, []);
+  }, [t]);
 
   const loadSessions = useCallback(async () => {
     const loadToken = generationTokenRef.current;
@@ -190,9 +192,9 @@ export function ChatStoreProvider({ children }: { children: ReactNode }) {
       }
     } catch (e) {
       if (generationTokenRef.current !== loadToken) return;
-      dispatch({ type: "SET_ERROR", error: e instanceof Error ? e.message : "Operation failed" });
+      dispatch({ type: "SET_ERROR", error: e instanceof Error ? e.message : t("Operation failed") });
     }
-  }, [selectSessionInner]);
+  }, [selectSessionInner, t]);
 
   useEffect(() => {
     void loadSessions();
@@ -273,7 +275,7 @@ export function ChatStoreProvider({ children }: { children: ReactNode }) {
                 localStorage.setItem(LAST_SESSION_KEY, newSessionId);
               } catch (e) {
                 if (generationTokenRef.current !== generationToken) return;
-                dispatch({ type: "SET_ERROR", error: e instanceof Error ? e.message : "Operation failed" });
+                dispatch({ type: "SET_ERROR", error: e instanceof Error ? e.message : t("Operation failed") });
                 dispatch({ type: "STOP_GENERATING" });
                 return;
               }
@@ -302,11 +304,11 @@ export function ChatStoreProvider({ children }: { children: ReactNode }) {
         });
       } catch (e) {
         if (generationTokenRef.current !== generationToken) return;
-        dispatch({ type: "SET_ERROR", error: e instanceof Error ? e.message : "Operation failed" });
+        dispatch({ type: "SET_ERROR", error: e instanceof Error ? e.message : t("Operation failed") });
         dispatch({ type: "STOP_GENERATING" });
       }
     },
-    [state.generating]
+    [state.generating, t]
   );
 
   const rememberCommand = useCallback(
@@ -317,12 +319,12 @@ export function ChatStoreProvider({ children }: { children: ReactNode }) {
         await createMemory(content);
         dispatch({ type: "BUMP_MEMORY_REFRESH" });
         dispatch({ type: "APPEND_MESSAGE", sessionId: bucket, message: { role: "user", content: raw } });
-        dispatch({ type: "APPEND_MESSAGE", sessionId: bucket, message: { role: "assistant", content: "Got it — remembered." } });
+        dispatch({ type: "APPEND_MESSAGE", sessionId: bucket, message: { role: "assistant", content: t("Got it — remembered.") } });
       } catch (e) {
-        dispatch({ type: "SET_ERROR", error: e instanceof Error ? e.message : "Operation failed" });
+        dispatch({ type: "SET_ERROR", error: e instanceof Error ? e.message : t("Operation failed") });
       }
     },
-    [state.activeId]
+    [state.activeId, t]
   );
 
   const acceptProposal = useCallback(async (content: string) => {
@@ -330,10 +332,10 @@ export function ChatStoreProvider({ children }: { children: ReactNode }) {
       await createMemory(content);
       dispatch({ type: "BUMP_MEMORY_REFRESH" });
     } catch (e) {
-      dispatch({ type: "SET_ERROR", error: e instanceof Error ? e.message : "Operation failed" });
+      dispatch({ type: "SET_ERROR", error: e instanceof Error ? e.message : t("Operation failed") });
     }
     dispatch({ type: "SET_PROPOSAL", proposal: null });
-  }, []);
+  }, [t]);
 
   const rejectProposal = useCallback(() => dispatch({ type: "SET_PROPOSAL", proposal: null }), []);
 
@@ -343,9 +345,9 @@ export function ChatStoreProvider({ children }: { children: ReactNode }) {
       dispatch({ type: "SET_SESSIONS", sessions: await listSessions() });
       if (activeIdRef.current === session.id) handleNew();
     } catch (e) {
-      dispatch({ type: "SET_ERROR", error: e instanceof Error ? e.message : "Operation failed" });
+      dispatch({ type: "SET_ERROR", error: e instanceof Error ? e.message : t("Operation failed") });
     }
-  }, [handleNew]);
+  }, [handleNew, t]);
 
   const activeMessages = state.messagesBySession[state.activeId ?? "__new__"] ?? [];
 

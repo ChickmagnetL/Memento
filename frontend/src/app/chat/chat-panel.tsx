@@ -15,8 +15,10 @@ import { MemoryPopover } from "@/components/chat/memory-popover";
 import { MemoryProposalBubble } from "@/components/chat/memory-proposal-bubble";
 import { StatusIndicator } from "@/components/chat/status-indicator";
 import { useChatStore } from "@/lib/chat-store";
+import { useLanguage } from "@/lib/i18n";
 
 export function ChatPanel() {
+  const { t } = useLanguage();
   const {
     state,
     activeMessages,
@@ -88,8 +90,8 @@ export function ChatPanel() {
             variant="ghost"
             size="icon"
             onClick={handleNewChat}
-            aria-label="New Chat"
-            title="New Chat"
+            aria-label={t("New Chat")}
+            title={t("New Chat")}
           >
             <Plus className="h-4 w-4" />
           </Button>
@@ -103,8 +105,8 @@ export function ChatPanel() {
           {activeMessages.length === 0 && !state.generating ? (
             <EmptyState
               icon={MessageSquare}
-              title="The important thing is not to stop questioning."
-              description="Albert Einstein"
+              title={t("The important thing is not to stop questioning.")}
+              description={t("Albert Einstein")}
               className="flex-1"
             />
           ) : (
@@ -164,15 +166,15 @@ export function ChatPanel() {
           <form className="flex gap-3" onSubmit={handleSubmit}>
             <input
               className="h-10 min-w-0 flex-1 rounded-md border border-input bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground"
-              aria-label="Message"
-              placeholder="Ask your knowledge base..."
+              aria-label={t("Message")}
+              placeholder={t("Ask your knowledge base...")}
               value={input}
               onChange={(event) => setInput(event.target.value)}
               disabled={isStreaming}
             />
             <Button type="submit" disabled={isStreaming || !input.trim()}>
               <SendHorizontal className="mr-1 h-4 w-4" />
-              Send
+              {t("Send")}
             </Button>
           </form>
         </div>

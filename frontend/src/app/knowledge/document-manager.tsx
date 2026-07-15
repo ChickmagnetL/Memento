@@ -19,12 +19,14 @@ import {
   type DocumentRecord,
   type UnimportedDocument,
 } from "@/lib/api";
+import { useLanguage } from "@/lib/i18n";
 
 interface DocumentManagerProps {
   initialDocuments: DocumentRecord[];
 }
 
 export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
+  const { t } = useLanguage();
   const [documents, setDocuments] =
     useState<DocumentRecord[]>(initialDocuments);
   const [error, setError] = useState("");
@@ -57,7 +59,7 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
     try {
       await action();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Operation failed");
+      setError(e instanceof Error ? e.message : t("Operation failed"));
     } finally {
       setBusyId(null);
     }
@@ -111,7 +113,7 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
       setUnimported(items);
       setSelectedUnimported(new Set());
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Operation failed");
+      setError(e instanceof Error ? e.message : t("Operation failed"));
     } finally {
       setScanning(false);
     }
@@ -153,7 +155,7 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
       setSelectedUnimported(new Set());
       await refresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Operation failed");
+      setError(e instanceof Error ? e.message : t("Operation failed"));
     }
   }
 
@@ -165,15 +167,18 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
         <div className="flex flex-col gap-3 rounded-md border border-border p-4">
           <div className="min-w-0">
             <p className="text-sm font-medium leading-snug">
-              {doc.title ?? "Untitled"}
+              {doc.title ?? t("Untitled")}
             </p>
             <p className="mt-0.5 text-xs text-muted-foreground">
               {doc.author && doc.author !== "Unknown"
                 ? `${doc.author} · `
                 : ""}
               {isRaw
-                ? "Not indexed"
-                : `Indexed (${doc.chunk_count} chunks, ${doc.indexed_at})`}
+                ? t("Not indexed")
+                : t("Indexed ({count} chunks, {date})", {
+                  count: doc.chunk_count,
+                    date: doc.indexed_at ?? "",
+                  })}
             </p>
           </div>
           <div className="flex flex-wrap justify-end gap-2">
@@ -183,7 +188,7 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
               disabled={busyId === doc.id}
               onClick={() => handlePreview(doc.id)}
             >
-              <Eye className="mr-1 h-4 w-4" /> Preview
+              <Eye className="mr-1 h-4 w-4" /> {t("Preview")}
             </Button>
             {isRaw ? (
               <>
@@ -193,14 +198,14 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
                   disabled={busyId === doc.id}
                   onClick={() => handleClean(doc.id)}
                 >
-                  <Sparkles className="mr-1 h-4 w-4" /> Clean
+                  <Sparkles className="mr-1 h-4 w-4" /> {t("Clean")}
                 </Button>
                 <Button
                   size="sm"
                   disabled={busyId === doc.id}
                   onClick={() => handleIndex(doc.id)}
                 >
-                  <Database className="mr-1 h-4 w-4" /> Index
+                  <Database className="mr-1 h-4 w-4" /> {t("Index")}
                 </Button>
               </>
             ) : null}
@@ -216,14 +221,16 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
                 });
               }}
             >
-              <Trash2 className="mr-1 h-4 w-4" /> Delete
+              <Trash2 className="mr-1 h-4 w-4" /> {t("Delete")}
             </Button>
           </div>
         </div>
         {isExpanded && previewChunksData.length > 0 ? (
           <div className="mt-2 space-y-2 rounded-md border border-border bg-muted/30 p-3">
             <p className="text-xs font-semibold text-muted-foreground">
-              Chunk preview ({previewChunksData.length})
+              {t("Chunk preview ({count})", {
+                count: previewChunksData.length,
+              })}
             </p>
             {previewChunksData.map((chunk) => (
               <div
@@ -250,7 +257,7 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-8 py-8">
       <header className="flex flex-wrap items-center gap-2">
-        <h1 className="text-xl font-semibold">Knowledge Base</h1>
+        <h1 className="text-xl font-semibold">{t("Knowledge Base")}</h1>
         <Button
           variant="outline"
           size="sm"
@@ -258,7 +265,7 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
           onClick={handleScanUnimported}
         >
           <FolderSearch className="mr-1 h-4 w-4" />
-          {scanning ? "Scanning..." : "Scan unimported"}
+          {scanning ? t("Scanning...") : t("Scan unimported")}
         </Button>
         {unimported.length > 0 ? (
           <>
@@ -267,10 +274,12 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
               disabled={selectedUnimported.size === 0}
               onClick={handleImportUnimported}
             >
-              Import to knowledge base ({selectedUnimported.size})
+              {t("Import to knowledge base ({count})", {
+                count: selectedUnimported.size,
+              })}
             </Button>
             <Button variant="outline" size="sm" onClick={toggleSelectAll}>
-              {allUnimportedSelected ? "Deselect all" : "Select all"}
+              {allUnimportedSelected ? t("Deselect all") : t("Select all")}
             </Button>
           </>
         ) : null}
@@ -297,7 +306,7 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
               />
               <div className="min-w-0">
                 <p className="truncate font-medium">
-                  {item.title ?? "(untitled)"}
+                  {item.title ?? t("(untitled)")}
                 </p>
                 <p className="truncate text-xs text-muted-foreground">
                   {[item.author, item.platform].filter(Boolean).join(" · ") || "?"} · {item.file_path}
@@ -318,7 +327,7 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
           }`}
           onClick={() => setActiveTab("raw")}
         >
-          Not Indexed
+          {t("Not Indexed")}
           {rawDocs.length > 0 ? (
             <span className="ml-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-muted-foreground/15 px-1.5 text-xs text-muted-foreground">
               {rawDocs.length}
@@ -334,7 +343,7 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
           }`}
           onClick={() => setActiveTab("indexed")}
         >
-          Indexed
+          {t("Indexed")}
           {indexedDocs.length > 0 ? (
             <span className="ml-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-muted-foreground/15 px-1.5 text-xs text-muted-foreground">
               {indexedDocs.length}
@@ -349,13 +358,13 @@ export function DocumentManager({ initialDocuments }: DocumentManagerProps) {
             icon={Database}
             title={
               activeTab === "raw"
-                ? "No documents yet"
-                : "No indexed documents"
+                ? t("No documents yet")
+                : t("No indexed documents")
             }
             description={
               activeTab === "raw"
-                ? "Import a video to get started"
-                : "Index a document first"
+                ? t("Import a video to get started")
+                : t("Index a document first")
             }
           />
         ) : (

@@ -33,7 +33,7 @@ test("model list control uses dropdown options with an external get button", () 
 test("model options keep an editable input with a separate arrow trigger", () => {
   assert.match(
     presetCardSource,
-    /\{hasModelOptions \? \([\s\S]*?<input[\s\S]*?aria-label=\{label\}[\s\S]*?value=\{fieldValue\}[\s\S]*?onFieldChange\(key, event\.target\.value\)[\s\S]*?<button\s+type="button"[\s\S]*?aria-label="Show model options"[\s\S]*?aria-haspopup="listbox"[\s\S]*?aria-expanded=\{isModelDropdownOpen\}[\s\S]*?<ChevronDown/
+    /\{hasModelOptions \? \([\s\S]*?<input[\s\S]*?aria-label=\{label\}[\s\S]*?value=\{fieldValue\}[\s\S]*?onFieldChange\(key, event\.target\.value\)[\s\S]*?<button\s+type="button"[\s\S]*?aria-label=\{t\("Show model options"\)\}[\s\S]*?aria-haspopup="listbox"[\s\S]*?aria-expanded=\{isModelDropdownOpen\}[\s\S]*?<ChevronDown/
   );
 
   const optionsBranch =
@@ -63,7 +63,7 @@ test("model panel clears model options when request inputs change", () => {
 test("successful preset runtime changes refresh parent-owned service status", () => {
   const refreshStatusBlock =
     settingsFormSource.match(
-      /const refreshStatus = useCallback\(async \(\) => \{[\s\S]*?\}, \[\]\);/
+      /const refreshStatus = useCallback\(async \(\) => \{[\s\S]*?\}, \[t\]\);/
     )?.[0] ?? "";
   const activateRegularPresetBlock =
     modelPanelSource.match(
@@ -89,7 +89,7 @@ test("successful preset runtime changes refresh parent-owned service status", ()
   );
   assert.match(
     handleSaveBlock,
-    /if \(modelName === "embedding"\) \{[\s\S]*?await saveSelectedPresetConfig\([\s\S]*?await onStatusRefresh\(\);\s*setInlineMessage\("Saved\."\);\s*return;[\s\S]*?\}\s*await saveSelectedPresetConfig\([\s\S]*?await onStatusRefresh\(\);\s*setInlineMessage\("Saved\."\);/
+    /if \(modelName === "embedding"\) \{[\s\S]*?await saveSelectedPresetConfig\([\s\S]*?await onStatusRefresh\(\);\s*setInlineMessage\(t\("Saved\."\)\);\s*return;[\s\S]*?\}\s*await saveSelectedPresetConfig\([\s\S]*?await onStatusRefresh\(\);\s*setInlineMessage\(t\("Saved\."\)\);/
   );
 });
 
@@ -129,7 +129,7 @@ test("manual model input has an accessible name before model options load", () =
 test("model dropdown arrow trigger supports keyboard close", () => {
   const triggerBlock =
     presetCardSource.match(
-      /<button\s+type="button"\s+aria-label="Show model options"[\s\S]*?aria-haspopup="listbox"[\s\S]*?<\/button>/
+      /<button\s+type="button"\s+aria-label=\{t\("Show model options"\)\}[\s\S]*?aria-haspopup="listbox"[\s\S]*?<\/button>/
     )?.[0] ?? "";
 
   assert.match(triggerBlock, /onKeyDown=\{\(event\) => \{/);
