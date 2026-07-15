@@ -441,7 +441,7 @@ class BilibiliSubtitleClient:
             raise BilibiliSubtitleError("Malformed Bilibili pagelist response")
 
         player_url = (
-            "https://api.bilibili.com/x/player/v2"
+            "https://api.bilibili.com/x/player/wbi/v2"
             f"?bvid={quoted_bvid}&cid={cid}"
         )
         start = time.monotonic()
@@ -607,7 +607,7 @@ class BilibiliSubtitleClient:
             return outcome_for(REASON_NO_SUBTITLES)
 
         logger.warning(
-            "Bilibili player/v2 did not return a usable subtitle for %s "
+            "Bilibili player/wbi/v2 did not return a usable subtitle for %s "
             "before retry timeout",
             bvid,
         )
