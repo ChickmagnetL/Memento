@@ -19,8 +19,8 @@ def test_transcriptions_endpoint_returns_verbose_json(monkeypatch):
     seen = []
 
     class FakeTranscriber:
-        def transcribe(self, path: str) -> list[dict]:
-            seen.append(path)
+        def transcribe(self, audio) -> list[dict]:
+            seen.append(audio.read())
             return [
                 {"start_seconds": 0.0, "text": "第一段"},
                 {"start_seconds": 3.5, "text": "第二段"},
@@ -35,7 +35,7 @@ def test_transcriptions_endpoint_returns_verbose_json(monkeypatch):
     )
 
     assert response.status_code == 200
-    assert seen and Path(seen[0]).name.startswith("memento-asr-")
+    assert seen == [b"RIFF"]
     assert response.json() == {
         "text": "第一段 第二段",
         "segments": [

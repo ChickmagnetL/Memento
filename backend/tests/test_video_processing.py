@@ -2,6 +2,7 @@
 
 from pathlib import Path
 import threading
+from types import SimpleNamespace
 
 import pytest
 
@@ -343,6 +344,38 @@ async def test_process_uses_fetch_outcome_message(
 
 
 @pytest.mark.asyncio
+async def test_automatic_bilibili_subtitles_require_asr_choice(
+    sqlite: SQLiteClient, tmp_path: Path
+):
+    from core.video.bilibili import REASON_MESSAGES, REASON_NO_SUBTITLES
+
+    class AutomaticSubtitleClient:
+        def fetch_outcome(self, video, *, allow_non_chinese: bool = False):
+            return SimpleNamespace(
+                entries=[SubtitleEntry(start_seconds=0.0, text="上游自动字幕")],
+                reason="ok",
+                message="Subtitles available.",
+                source="automatic",
+            )
+
+    pipeline = VideoPipeline(
+        sqlite=sqlite,
+        data_dir=tmp_path,
+        subtitle_client=AutomaticSubtitleClient(),
+    )
+    video = make_video("video-1", "bilibili")
+    await sqlite.create_video(
+        video_id=video["id"], platform=video["platform"],
+        title=video["title"], url=video["url"],
+    )
+
+    result = await pipeline.process(video)
+
+    assert result.status == "failed"
+    assert result.error == REASON_MESSAGES[REASON_NO_SUBTITLES]
+
+
+@pytest.mark.asyncio
 async def test_process_document_writer_runtime_error_returns_failed(
     sqlite: SQLiteClient, tmp_path: Path
 ):
@@ -415,6 +448,39 @@ async def test_no_subtitles_falls_back_to_asr(sqlite: SQLiteClient, tmp_path: Pa
     assert asr.calls == [(str(downloader.wav_path), "custom/asr-model")]
     assert downloader.cleaned_up == [downloader.wav_path]
     assert "ASR 第一段" in Path(result.document_path).read_text(encoding="utf-8")
+
+
+@pytest.mark.asyncio
+async def test_explicit_asr_skips_available_bilibili_subtitles(
+    sqlite: SQLiteClient, tmp_path: Path
+):
+    video = make_video("video-1", "bilibili")
+    await sqlite.create_video(
+        video_id=video["id"], platform=video["platform"],
+        title=video["title"], url=video["url"],
+    )
+    subtitle_client = FakeSubtitleClient(
+        [SubtitleEntry(start_seconds=0.0, text="不应使用的字幕")]
+    )
+    downloader = FakeAudioDownloader(tmp_path)
+    asr = FakeAsrClient([SubtitleEntry(start_seconds=0.0, text="ASR 内容")])
+    pipeline = VideoPipeline(
+        sqlite=sqlite,
+        data_dir=tmp_path,
+        subtitle_client=subtitle_client,
+        audio_downloader=downloader,
+        asr_client=asr,
+    )
+
+    result = await pipeline.process_with_asr(video)
+
+    assert result.status == "completed"
+    assert subtitle_client.calls == 0
+    assert asr.calls == [(str(downloader.wav_path), "iic/SenseVoiceSmall")]
+    assert "ASR 内容" in Path(result.document_path).read_text(encoding="utf-8")
+    assert "不应使用的字幕" not in Path(result.document_path).read_text(
+        encoding="utf-8"
+    )
 
 
 @pytest.mark.asyncio

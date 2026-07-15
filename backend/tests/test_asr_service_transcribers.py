@@ -1,6 +1,7 @@
 """Tests for ASR service transcriber model routing and spec mapping."""
 
 import importlib
+from io import BytesIO
 import sys
 import types
 from pathlib import Path
@@ -60,6 +61,24 @@ def test_sensevoice_local_path_supports_current_modelscope_layout(tmp_path: Path
     (snapshot / "model.pt").touch()
 
     assert transcribers._sensevoice_local_path(tmp_path) == snapshot
+
+
+def test_load_mono_accepts_in_memory_audio():
+    transcribers = _import_transcribers_module()
+    audio = BytesIO(b"RIFF")
+    seen = []
+
+    def fake_read(source, dtype):
+        seen.append((source, dtype))
+        return transcribers.np.array([0.0, 0.5], dtype="float32"), 16000
+
+    transcribers.sf = types.SimpleNamespace(read=fake_read)
+
+    samples, sample_rate = transcribers._load_mono(audio)
+
+    assert seen == [(audio, "float32")]
+    assert samples.tolist() == [0.0, 0.5]
+    assert sample_rate == 16000
 
 
 # ---------------------------------------------------------------------------

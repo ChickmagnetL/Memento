@@ -1,5 +1,7 @@
 """Model-backed transcribers. Heavy imports stay inside functions."""
 
+from typing import BinaryIO
+
 import numpy as np
 
 from chunking import iter_chunks
@@ -7,16 +9,16 @@ from chunking import iter_chunks
 sf = None
 
 
-def _load_mono(audio_path: str) -> tuple[np.ndarray, int]:
+def _load_mono(audio: str | BinaryIO) -> tuple[np.ndarray, int]:
     global sf
     if sf is None:
         import soundfile as _sf
 
         sf = _sf
-    audio, sample_rate = sf.read(audio_path, dtype="float32")
-    if audio.ndim > 1:
-        audio = audio.mean(axis=1)
-    return audio, sample_rate
+    samples, sample_rate = sf.read(audio, dtype="float32")
+    if samples.ndim > 1:
+        samples = samples.mean(axis=1)
+    return samples, sample_rate
 
 
 _MOONSHINE_SPEC_TO_ARCH = {
@@ -82,12 +84,12 @@ class FunAsrTranscriber:
             disable_update=True,
         )
 
-    def transcribe(self, audio_path: str) -> list[dict]:
+    def transcribe(self, audio: str | BinaryIO) -> list[dict]:
         from funasr.utils.postprocess_utils import rich_transcription_postprocess
 
-        audio, sample_rate = _load_mono(audio_path)
+        samples, sample_rate = _load_mono(audio)
         segments = []
-        for offset, chunk in iter_chunks(audio, sample_rate):
+        for offset, chunk in iter_chunks(samples, sample_rate):
             result = self.model.generate(
                 input=chunk, fs=sample_rate, use_itn=True
             )
@@ -125,10 +127,10 @@ class MoonshineVoiceTranscriber:
             model_arch=resolved_arch,
         )
 
-    def transcribe(self, audio_path: str) -> list[dict]:
-        audio, sample_rate = _load_mono(audio_path)
+    def transcribe(self, audio: str | BinaryIO) -> list[dict]:
+        samples, sample_rate = _load_mono(audio)
         transcript = self.transcriber.transcribe_without_streaming(
-            audio.tolist(),
+            samples.tolist(),
             sample_rate,
         )
         segments = []

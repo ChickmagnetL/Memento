@@ -2,6 +2,8 @@
 
 from pathlib import Path
 from types import SimpleNamespace
+from io import BytesIO
+from urllib.error import HTTPError
 
 import pytest
 
@@ -254,6 +256,34 @@ def test_cloud_transcriptions_chunks_large_audio_and_offsets_segments(tmp_path: 
     assert len(calls) == 2
 
 
+def test_local_transcriptions_chunks_large_audio(tmp_path: Path):
+    audio_path = _audio_file(tmp_path, size=TRANSCRIPTIONS_MAX_BYTES + 1)
+    calls = []
+
+    def fake_extract_chunk(source, start, end, destination):
+        destination.write_bytes(b"chunk")
+
+    def fake_post_multipart(url, fields, files, headers, timeout=30):
+        calls.append(files["file"].name)
+        return {"segments": [{"start": 0.0, "text": "本地分段"}]}
+
+    client = AsrServiceClient(
+        endpoint="http://localhost:8001/v1",
+        post_multipart=fake_post_multipart,
+        ensure_running=lambda endpoint: None,
+        detect_silences=lambda path: [12.0],
+        extract_chunk=fake_extract_chunk,
+    )
+
+    entries = client.transcribe(str(audio_path), model="iic/SenseVoiceSmall")
+
+    assert len(calls) == 2
+    assert entries == [
+        SubtitleEntry(start_seconds=0.0, text="本地分段"),
+        SubtitleEntry(start_seconds=12.0, text="本地分段"),
+    ]
+
+
 def test_chat_audio_uses_smaller_chunk_threshold(tmp_path: Path):
     audio_path = _audio_file(tmp_path, size=CHAT_AUDIO_MAX_BYTES + 1)
     extracted = []
@@ -372,3 +402,28 @@ def test_connection_error_wrapped_as_asr_error(tmp_path: Path):
     )
     with pytest.raises(AsrError, match="ASR service"):
         client.transcribe(str(audio_path), model="iic/SenseVoiceSmall")
+
+
+def test_http_error_is_reported_as_service_failure(tmp_path: Path):
+    audio_path = _audio_file(tmp_path)
+
+    def failing(*args, **kwargs):
+        raise HTTPError(
+            "http://localhost:8001/v1/audio/transcriptions",
+            500,
+            "Internal Server Error",
+            hdrs=None,
+            fp=BytesIO(b'{"detail":"ASR transcription failed: invalid audio"}'),
+        )
+
+    client = AsrServiceClient(
+        endpoint="http://localhost:8001/v1",
+        post_multipart=failing,
+        ensure_running=lambda endpoint: None,
+    )
+
+    with pytest.raises(AsrError, match="ASR service failed") as exc_info:
+        client.transcribe(str(audio_path), model="iic/SenseVoiceSmall")
+
+    assert "unreachable" not in str(exc_info.value)
+    assert "invalid audio" in str(exc_info.value)

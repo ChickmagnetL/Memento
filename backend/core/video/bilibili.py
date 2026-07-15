@@ -7,7 +7,7 @@ import math
 import ssl
 import time
 from typing import Callable
-from urllib.parse import quote, urlparse
+from urllib.parse import parse_qs, quote, urlparse
 from urllib.request import Request, urlopen
 
 import certifi
@@ -73,6 +73,7 @@ class SubtitleFetchOutcome:
     reason: str
     message: str
     available_languages: tuple[str, ...] = ()
+    source: str | None = None
 
     @property
     def has_subtitles(self) -> bool:
@@ -102,12 +103,14 @@ def outcome_for(
     entries: list[SubtitleEntry] | None = None,
     *,
     available_languages: tuple[str, ...] | list[str] | None = None,
+    source: str | None = None,
 ) -> SubtitleFetchOutcome:
     return SubtitleFetchOutcome(
         entries=list(entries or []),
         reason=reason,
         message=REASON_MESSAGES[reason],
         available_languages=tuple(available_languages or ()),
+        source=source,
     )
 
 
@@ -127,8 +130,22 @@ def extract_bvid(url: str) -> str | None:
     return None
 
 
+def extract_page_number(url: str) -> int:
+    """Return the requested Bilibili page number, defaulting to page 1."""
+    values = parse_qs(urlparse(url).query).get("p")
+    if values and values[0].isdigit():
+        page = int(values[0])
+        if page > 0:
+            return page
+    return 1
+
+
 def fetch_json(url: str, referer: str | None = None, cookie: str | None = None) -> dict:
-    headers = {"User-Agent": USER_AGENT}
+    headers = {
+        "User-Agent": USER_AGENT,
+        "Cache-Control": "no-cache",
+        "Pragma": "no-cache",
+    }
     if referer is not None:
         headers["Referer"] = referer
     if cookie:
@@ -186,6 +203,30 @@ def _should_reject_ai_prod_prefix(prod_segment: str, expected_prefix: str) -> bo
 def _track_has_url(track: dict) -> bool:
     url = track.get("subtitle_url")
     return isinstance(url, str) and bool(url)
+
+
+def _is_automatic_track(track: dict) -> bool:
+    lan = track.get("lan", "")
+    if isinstance(lan, str) and lan.startswith("ai-"):
+        return True
+    return any(
+        track.get(key) not in (None, 0, False)
+        for key in ("type", "ai_type", "ai_status")
+    )
+
+
+def _subtitle_entries_are_suspicious(
+    entries: list[SubtitleEntry], duration
+) -> bool:
+    if len(entries) >= 3:
+        starts = [entry.start_seconds for entry in entries]
+        if max(starts) - min(starts) <= 1.0:
+            return True
+
+    if isinstance(duration, (int, float)) and not isinstance(duration, bool):
+        if entries and entries[-1].start_seconds > float(duration) + 5.0:
+            return True
+    return False
 
 
 def _track_prod_segment(track: dict) -> str | None:
@@ -369,8 +410,21 @@ class BilibiliSubtitleClient:
             api_msg = pagelist.get("message") if isinstance(pagelist, dict) else None
             detail = f" (B站 code={api_code}, message={api_msg!r})" if api_code is not None else ""
             raise BilibiliSubtitleError(f"Malformed Bilibili pagelist response{detail}")
+        page_number = extract_page_number(source_url)
+        page_data = next(
+            (
+                item
+                for item in data
+                if isinstance(item, dict) and item.get("page") == page_number
+            ),
+            data[0] if page_number == 1 else None,
+        )
+        if page_data is None:
+            raise BilibiliSubtitleError(
+                f"Bilibili page {page_number} is not available"
+            )
         try:
-            cid = data[0]["cid"]
+            cid = page_data["cid"]
         except (KeyError, TypeError, ValueError) as exc:
             raise BilibiliSubtitleError(
                 "Malformed Bilibili pagelist response"
@@ -387,11 +441,12 @@ class BilibiliSubtitleClient:
             raise BilibiliSubtitleError("Malformed Bilibili pagelist response")
 
         player_url = (
-            "https://api.bilibili.com/x/player/v2"
+            "https://api.bilibili.com/x/player/wbi/v2"
             f"?bvid={quoted_bvid}&cid={cid}"
         )
         start = time.monotonic()
-        saw_digit_other = False
+        saw_unstable_subtitle = False
+        official_fingerprint_counts: dict[tuple, int] = {}
         while time.monotonic() - start < PLAYER_SUBTITLE_RETRY_SECONDS:
             player = self.fetch_json(player_url, source_url, self.cookie or None)
             if not isinstance(player, dict):
@@ -401,6 +456,18 @@ class BilibiliSubtitleClient:
             data = player.get("data", {})
             if not isinstance(data, dict):
                 raise BilibiliSubtitleError("Malformed Bilibili player response")
+            response_bvid = data.get("bvid")
+            response_cid = data.get("cid")
+            if (
+                response_bvid is not None
+                and response_bvid != bvid
+            ) or (
+                response_cid is not None
+                and str(response_cid) != cid
+            ):
+                saw_unstable_subtitle = True
+                time.sleep(PLAYER_SUBTITLE_RETRY_INTERVAL_SECONDS)
+                continue
             subtitle = data.get("subtitle", {})
             if not isinstance(subtitle, dict):
                 raise BilibiliSubtitleError("Malformed Bilibili player response")
@@ -431,7 +498,7 @@ class BilibiliSubtitleClient:
                 lan = track.get("lan", "")
                 if not isinstance(lan, str):
                     continue
-                if not lan.startswith("ai-"):
+                if not _is_automatic_track(track):
                     if _track_has_url(track):
                         human_with_url.append(track)
                     continue
@@ -441,7 +508,7 @@ class BilibiliSubtitleClient:
                 if not _is_usable_ai_prod(prod, expected_prefix):
                     digit_other_ai = True
                     continue
-                if lan == "ai-zh":
+                if lan == "ai-zh" or lan.lower().startswith("zh"):
                     usable_ai_zh.append(track)
                 else:
                     usable_non_zh.append(track)
@@ -461,7 +528,7 @@ class BilibiliSubtitleClient:
                     )
                 selected_subtitle = _prefer_non_chinese_track(usable_non_zh)
             elif digit_other_ai:
-                saw_digit_other = True
+                saw_unstable_subtitle = True
                 time.sleep(PLAYER_SUBTITLE_RETRY_INTERVAL_SECONDS)
                 continue
             else:
@@ -471,7 +538,8 @@ class BilibiliSubtitleClient:
                 raise BilibiliSubtitleError("Malformed Bilibili player response")
             subtitle_url = selected_subtitle.get("subtitle_url")
             if subtitle_url is None or subtitle_url == "":
-                return outcome_for(REASON_NO_SUBTITLES)
+                time.sleep(PLAYER_SUBTITLE_RETRY_INTERVAL_SECONDS)
+                continue
             if not isinstance(subtitle_url, str):
                 raise BilibiliSubtitleError("Malformed Bilibili player response")
             subtitle_url = _normalize_subtitle_url(
@@ -482,9 +550,29 @@ class BilibiliSubtitleClient:
             parsed_subtitle_url = urlparse(subtitle_url)
             prod_path_prefix = _extract_prod_path_prefix(subtitle_url)
             lan = selected_subtitle.get("lan", "")
+
+            if not _is_automatic_track(selected_subtitle):
+                fingerprint = (
+                    data.get("aid"),
+                    data.get("bvid"),
+                    data.get("cid"),
+                    selected_subtitle.get(
+                        "id_str", selected_subtitle.get("id")
+                    ),
+                    lan,
+                    parsed_subtitle_url.scheme,
+                    parsed_subtitle_url.hostname,
+                    parsed_subtitle_url.port,
+                    parsed_subtitle_url.path,
+                )
+                count = official_fingerprint_counts.get(fingerprint, 0) + 1
+                official_fingerprint_counts[fingerprint] = count
+                if count < 2:
+                    time.sleep(PLAYER_SUBTITLE_RETRY_INTERVAL_SECONDS)
+                    continue
+
             if (
-                isinstance(lan, str)
-                and lan.startswith("ai-")
+                _is_automatic_track(selected_subtitle)
                 and parsed_subtitle_url.hostname == "aisubtitle.hdslb.com"
                 and prod_path_prefix is not None
             ):
@@ -500,21 +588,30 @@ class BilibiliSubtitleClient:
 
                 expected_prefix = f"{aid}{cid}"
                 if _should_reject_ai_prod_prefix(prod_path_prefix, expected_prefix):
-                    saw_digit_other = True
+                    saw_unstable_subtitle = True
                     time.sleep(PLAYER_SUBTITLE_RETRY_INTERVAL_SECONDS)
                     continue
 
             entries = self._fetch_subtitle_body(subtitle_url, source_url)
             if entries:
-                return outcome_for(REASON_OK, entries)
+                if _subtitle_entries_are_suspicious(
+                    entries, page_data.get("duration")
+                ):
+                    return outcome_for(REASON_SUBTITLE_UNSTABLE)
+                source = (
+                    "automatic"
+                    if _is_automatic_track(selected_subtitle)
+                    else "official"
+                )
+                return outcome_for(REASON_OK, entries, source=source)
             return outcome_for(REASON_NO_SUBTITLES)
 
         logger.warning(
-            "Bilibili player/v2 did not return a usable subtitle for %s "
+            "Bilibili player/wbi/v2 did not return a usable subtitle for %s "
             "before retry timeout",
             bvid,
         )
-        if saw_digit_other:
+        if saw_unstable_subtitle:
             return outcome_for(REASON_SUBTITLE_UNSTABLE)
         return outcome_for(REASON_NO_SUBTITLES)
 

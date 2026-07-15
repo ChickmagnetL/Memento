@@ -131,6 +131,24 @@ def test_create_bilibili_video_falls_back_when_metadata_fetch_fails(
     assert data["duration"] is None
 
 
+def test_create_bilibili_page_uses_distinct_video_id(client: TestClient, monkeypatch):
+    monkeypatch.setattr(BilibiliSubtitleClient, "fetch_metadata", lambda self, bvid: None)
+
+    first = client.post(
+        "/api/videos",
+        json={"url": "https://www.bilibili.com/video/BV1234567890?p=1"},
+    )
+    second = client.post(
+        "/api/videos",
+        json={"url": "https://www.bilibili.com/video/BV1234567890?p=2"},
+    )
+
+    assert first.status_code == 201
+    assert second.status_code == 201
+    assert first.json()["id"] == "BV1234567890"
+    assert second.json()["id"] == "BV1234567890-p2"
+
+
 def test_create_video_from_douyin_url(client: TestClient):
     resp = client.post(
         "/api/videos",
@@ -328,6 +346,54 @@ def test_process_pending_video_completes_record(client: TestClient, monkeypatch)
     assert data["id"] == created["id"]
     assert data["status"] == "completed"
     assert seen_statuses == ["processing"]
+
+
+def test_process_asr_choice_uses_forced_asr_path(client: TestClient, monkeypatch):
+    created = _create_video(client)
+    seen_video_ids = []
+
+    async def process_with_asr_spy(
+        self, video: dict, *, allow_non_chinese: bool = False
+    ) -> VideoProcessingResult:
+        seen_video_ids.append(video["id"])
+        return VideoProcessingResult(video_id=video["id"], status="completed")
+
+    async def process_unexpected(self, video: dict, **kwargs):
+        raise AssertionError("subtitle path must not run after the ASR choice")
+
+    monkeypatch.setattr(VideoPipeline, "process_with_asr", process_with_asr_spy)
+    monkeypatch.setattr(VideoPipeline, "process", process_unexpected)
+
+    resp = client.post(
+        f"/api/videos/{created['id']}/process?subtitle_fallback=asr"
+    )
+
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "completed"
+    assert seen_video_ids == [created["id"]]
+
+
+def test_check_subtitles_treats_bilibili_automatic_track_as_no_official_subtitles(
+    client: TestClient, monkeypatch
+):
+    created = _create_video(client)
+
+    def fetch_outcome(self, video, *, allow_non_chinese: bool = False):
+        return SimpleNamespace(
+            has_subtitles=True,
+            reason="ok",
+            message="Subtitles available.",
+            source="automatic",
+            available_languages=(),
+        )
+
+    monkeypatch.setattr(BilibiliSubtitleClient, "fetch_outcome", fetch_outcome)
+
+    resp = client.get(f"/api/videos/{created['id']}/check-subtitles")
+
+    assert resp.status_code == 200
+    assert resp.json()["has_subtitles"] is False
+    assert resp.json()["reason"] == "no_subtitles"
 
 
 @pytest.mark.parametrize(

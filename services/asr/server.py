@@ -5,8 +5,9 @@ audio and returns OpenAI-compatible verbose JSON transcription output.
 The configured Settings ASR model is lazy-loaded on first use.
 """
 
+import io
+import logging
 import os
-import tempfile
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
@@ -17,6 +18,7 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 os.environ.setdefault("HF_ENDPOINT", "https://hf-mirror.com")
 
 app = FastAPI(title="Memento ASR Service", version="0.1.0")
+logger = logging.getLogger(__name__)
 
 SERVICE_DIR = Path(__file__).resolve().parent
 _MODELS_DIR = SERVICE_DIR / "models"
@@ -170,23 +172,29 @@ def transcribe(
     model: str = Form(DEFAULT_ASR_MODEL),
     response_format: str = Form("verbose_json"),
 ) -> dict:
-    suffix = Path(file.filename or "").suffix
-    temp_path = None
     try:
-        with tempfile.NamedTemporaryFile(
-            prefix="memento-asr-",
-            suffix=suffix,
-            delete=False,
-        ) as temp_file:
-            temp_path = Path(temp_file.name)
-            temp_file.write(file.file.read())
-        transcriber = get_transcriber(model or DEFAULT_ASR_MODEL)
-        segments = transcriber.transcribe(str(temp_path))
+        audio = io.BytesIO(file.file.read())
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
-    finally:
-        if temp_path is not None:
-            temp_path.unlink(missing_ok=True)
+        logger.exception("ASR upload read failed")
+        raise HTTPException(
+            status_code=500, detail=f"ASR upload read failed: {exc}"
+        ) from exc
+
+    try:
+        transcriber = get_transcriber(model or DEFAULT_ASR_MODEL)
+    except Exception as exc:
+        logger.exception("ASR model load failed")
+        raise HTTPException(
+            status_code=500, detail=f"ASR model load failed: {exc}"
+        ) from exc
+
+    try:
+        segments = transcriber.transcribe(audio)
+    except Exception as exc:
+        logger.exception("ASR transcription failed")
+        raise HTTPException(
+            status_code=500, detail=f"ASR transcription failed: {exc}"
+        ) from exc
 
     response_segments = [
         {"start": segment["start_seconds"], "text": segment["text"]}

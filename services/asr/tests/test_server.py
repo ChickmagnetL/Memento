@@ -12,12 +12,12 @@ import server
 
 def test_transcribe_uses_requested_model(monkeypatch, tmp_path: Path):
     seen_models = []
-    seen_paths = []
+    seen_audio = []
 
     class FakeTranscriber:
-        def transcribe(self, path: str) -> list[dict]:
-            seen_paths.append(path)
-            return [{"start_seconds": 0.0, "text": Path(path).name}]
+        def transcribe(self, audio) -> list[dict]:
+            seen_audio.append(audio)
+            return [{"start_seconds": 0.0, "text": audio.read().decode()}]
 
     def fake_get_transcriber(model: str):
         seen_models.append(model)
@@ -28,15 +28,39 @@ def test_transcribe_uses_requested_model(monkeypatch, tmp_path: Path):
     response = TestClient(server.app).post(
         "/v1/audio/transcriptions",
         data={"model": "custom-asr-model"},
-        files={"file": ("audio.wav", b"RIFF", "audio/wav")},
+        files={
+            "file": (
+                "C:\\Users\\tester\\audio.wav",
+                b"RIFF",
+                "audio/wav",
+            )
+        },
     )
 
     assert response.status_code == 200
     assert seen_models == ["custom-asr-model"]
-    assert seen_paths and Path(seen_paths[0]).name.startswith("memento-asr-")
+    assert seen_audio and seen_audio[0].seekable()
     assert response.json()["segments"] == [
-        {"start": 0.0, "text": Path(seen_paths[0]).name}
+        {"start": 0.0, "text": "RIFF"}
     ]
+
+
+def test_transcribe_identifies_inference_failure_stage(monkeypatch, caplog):
+    class FailingTranscriber:
+        def transcribe(self, audio):
+            raise OSError(22, "Invalid argument")
+
+    monkeypatch.setattr(server, "get_transcriber", lambda model: FailingTranscriber())
+
+    response = TestClient(server.app).post(
+        "/v1/audio/transcriptions",
+        files={"file": ("audio.wav", b"RIFF", "audio/wav")},
+    )
+
+    assert response.status_code == 500
+    assert response.json()["detail"].startswith("ASR transcription failed:")
+    assert "Invalid argument" in response.json()["detail"]
+    assert "ASR transcription failed" in caplog.text
 
 
 def test_transcribe_defaults_to_sensevoice_model(monkeypatch):

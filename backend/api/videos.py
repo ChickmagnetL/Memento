@@ -16,9 +16,11 @@ from core.video.bilibili import (
     BilibiliSubtitleClient,
     REASON_AUTH_EXPIRED,
     REASON_MESSAGES,
+    REASON_NO_SUBTITLES,
     REASON_NOT_LOGGED_IN,
     REASON_OK,
     extract_bvid,
+    extract_page_number,
 )
 from core.video.douyin import (
     DouyinAudioDownloader,
@@ -95,7 +97,8 @@ async def create_video(payload: VideoCreateRequest, request: Request) -> dict:
     if platform == "bilibili":
         bvid = extract_bvid(payload.url)
         if bvid is not None:
-            video_id = bvid
+            page_number = extract_page_number(payload.url)
+            video_id = bvid if page_number == 1 else f"{bvid}-p{page_number}"
             settings = get_settings()
             client = BilibiliSubtitleClient(cookie=settings.video_processing.bilibili_cookie)
             try:
@@ -323,13 +326,23 @@ async def check_subtitles(video_id: str, request: Request) -> dict:
             cookie=settings.video_processing.bilibili_cookie
         )
     outcome = await asyncio.to_thread(client.fetch_outcome, video)
+    automatic_only = (
+        platform == "bilibili"
+        and getattr(outcome, "source", None) == "automatic"
+    )
+    outcome_reason = REASON_NO_SUBTITLES if automatic_only else outcome.reason
+    outcome_message = (
+        REASON_MESSAGES[REASON_NO_SUBTITLES]
+        if automatic_only
+        else outcome.message
+    )
     payload = {
-        "has_subtitles": outcome.has_subtitles,
+        "has_subtitles": outcome.has_subtitles and not automatic_only,
         "platform": platform,
-        "reason": outcome.reason,
-        "message": outcome.message,
+        "reason": outcome_reason,
+        "message": outcome_message,
     }
-    if outcome.reason in (REASON_NOT_LOGGED_IN, REASON_AUTH_EXPIRED):
+    if outcome_reason in (REASON_NOT_LOGGED_IN, REASON_AUTH_EXPIRED):
         payload["login_path"] = "/login"
     if getattr(outcome, "available_languages", None):
         payload["available_languages"] = list(outcome.available_languages)

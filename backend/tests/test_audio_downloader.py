@@ -44,6 +44,23 @@ def test_download_invokes_ytdlp_and_returns_wav_path(tmp_path: Path):
     assert "--no-playlist" not in args
 
 
+def test_download_uses_requested_bilibili_page(tmp_path: Path):
+    commands: list[list[str]] = []
+
+    def fake_run(args: list[str]) -> None:
+        commands.append(args)
+        output_template = args[args.index("-o") + 1]
+        Path(output_template.replace("%(ext)s", "wav")).write_bytes(b"RIFF")
+
+    video = make_video()
+    video["url"] = "https://www.bilibili.com/video/BV1abc?p=2"
+
+    AudioDownloader(data_dir=tmp_path, run_command=fake_run).download(video)
+
+    args = commands[0]
+    assert args[args.index("--playlist-items") + 1] == "2"
+
+
 def test_download_can_explicitly_ignore_playlist_for_youtube_watch_url(
     tmp_path: Path,
 ):
@@ -102,6 +119,35 @@ def test_download_sets_ytdlp_noplaylist_option(monkeypatch, tmp_path: Path):
     )
 
     assert seen_options[0]["noplaylist"] is True
+
+
+def test_download_sets_ytdlp_network_retries(monkeypatch, tmp_path: Path):
+    seen_options = []
+
+    class FakeYoutubeDL:
+        def __init__(self, options):
+            seen_options.append(options)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, traceback):
+            return None
+
+        def download(self, urls):
+            output_template = seen_options[-1]["outtmpl"]
+            Path(output_template.replace("%(ext)s", "wav")).write_bytes(b"RIFF")
+
+    monkeypatch.setattr("core.video.audio.yt_dlp.YoutubeDL", FakeYoutubeDL)
+
+    AudioDownloader(data_dir=tmp_path).download(make_video())
+
+    assert seen_options[0]["retries"] == 10
+    assert seen_options[0]["fragment_retries"] == 10
+    assert seen_options[0]["socket_timeout"] == 30
+    assert seen_options[0]["postprocessor_args"] == {
+        "ExtractAudio+ffmpeg_o": ["-ar", "16000", "-ac", "1"]
+    }
 
 
 def test_download_raises_when_command_fails(tmp_path: Path):
