@@ -1,12 +1,29 @@
-# Memento
+<h1 align="center">Memento</h1>
 
-English | [简体中文](./README.md)
+<p align="center">English | <a href="./README.md">简体中文</a></p>
 
-**Turn videos into a queryable, source-traceable knowledge base on your own machine.**
+<p align="center"><strong>Turn videos into a queryable, source-traceable knowledge base on your own machine.</strong></p>
 
-![](asset/hero.png)
+<p align="center">
+  <img src="https://img.shields.io/badge/platform-macOS-000000?logo=apple&logoColor=white" alt="macOS">
+  <img src="https://img.shields.io/badge/platform-Windows-0078D4?logo=windows&logoColor=white" alt="Windows">
+  <img src="https://img.shields.io/badge/data-local--first-2E7D32" alt="Local First">
+  <img src="https://img.shields.io/badge/sources-Bilibili%20%C2%B7%20Douyin%20%C2%B7%20YouTube-FF6699" alt="Bilibili · Douyin · YouTube">
+</p>
+
+<p align="center"><img src="asset/hero.png" width="100%" alt=""></p>
 
 Paste a Bilibili, Douyin, or YouTube video link, and Memento extracts the subtitles automatically (transcribing the audio via ASR when none are available) and organizes them into your own knowledge base. From there, you can ask questions, summarize, and search through the video content in a conversation — every answer comes with a timestamp that links back to the exact moment in the original video for verification.
+
+<p align="center">
+  <a href="#what-problems-does-it-solve">What problems does it solve</a> ·
+  <a href="#three-core-capabilities">Three core capabilities</a> ·
+  <a href="#other-features">Other features</a> ·
+  <a href="#installation">Installation</a> ·
+  <a href="#quick-start">Quick start</a> ·
+  <a href="#technical-docs">Technical docs</a> ·
+  <a href="#faq">FAQ</a>
+</p>
 
 ---
 
@@ -22,9 +39,11 @@ Paste a Bilibili, Douyin, or YouTube video link, and Memento extracts the subtit
 
 Ordinary video Q&A usually grabs only the few most relevant subtitle fragments, so answers to "what is this whole video about?" end up incomplete. Memento builds a three-layer knowledge structure for every video:
 
-- **L1 Verbatim** — the subtitles line by line, each with a timestamp, for precise location and citation of specific content.
-- **L2 Summary** — a content summary of the video (a paragraph or two) that lays out the key points and overall flow, so you can grasp the full picture of a single video without rewatching it.
-- **L3 Description** — like a video description: one sentence on what the video is about. As the knowledge base accumulates many videos, it's used to quickly judge whether a video is relevant to your question and to discover the right target.
+| Knowledge layer | Content |
+| :---: | :--- |
+| **L1 Verbatim** | the subtitles line by line, each with a timestamp, for precise location and citation of specific content. |
+| **L2 Summary** | a content summary of the video (a paragraph or two) that lays out the key points and overall flow, so you can grasp the full picture of a single video without rewatching it. |
+| **L3 Description** | like a video description: one sentence on what the video is about. As the knowledge base accumulates many videos, it's used to quickly judge whether a video is relevant to your question and to discover the right target. |
 
 When you ask a question, the AI selects the layer to query based on the type of question: for specifics, it searches L1 verbatim fragments directly; for holistic or exploratory questions, it first locates relevant videos via the L3 description, then reads the L2 summary to go deeper when needed.
 
@@ -57,9 +76,9 @@ Every answer includes timestamp references to the original video; click one to p
 
 > Note: Bilibili and YouTube support jumping to the exact position when you click a timestamp. Douyin does not support timestamp parameters on the platform side, so clicking opens the video and you'll need to seek to the time manually.
 
-![](asset/chat-citation.png)
+<p align="center"><img src="asset/chat-citation.png" width="88%" alt=""></p>
 
-![](asset/chat-citation_2.png)
+<p align="center"><img src="asset/chat-citation_2.png" width="88%" alt=""></p>
 
 ## Other features
 
@@ -112,12 +131,16 @@ Online Wiki: <https://chickmagnetl.github.io/Memento/#/>
 
 ## FAQ
 
+### Usage and data
+
 <details>
 <summary><b>New here — is there a tutorial?</b></summary>
 
 The **Help** page in the sidebar provides a complete app tutorial. We recommend starting there.
 
 </details>
+
+<br>
 
 <details>
 <summary><b>Where is my data stored?</b></summary>
@@ -126,12 +149,16 @@ Business data such as conversations, the knowledge base, and personal preference
 
 </details>
 
+<br>
+
 <details>
 <summary><b>Does it need an internet connection?</b></summary>
 
 Importing a video requires accessing the platform to fetch its content; processing and chatting require accessing the model endpoints. With local models, you can work offline except for the initial download.
 
 </details>
+
+### Models and content processing
 
 <details>
 <summary><b>Do the models cost money?</b></summary>
@@ -140,12 +167,16 @@ It depends on your configuration. Cloud APIs (such as DeepSeek, SiliconFlow) are
 
 </details>
 
+<br>
+
 <details>
 <summary><b>What about videos without subtitles?</b></summary>
 
 You can download the audio and generate a transcript via ASR transcription, then clean and index it.
 
 </details>
+
+### Platform login and support
 
 <details>
 <summary><b>Do I need to log in to a platform account?</b></summary>
@@ -154,12 +185,16 @@ Some content on Bilibili and Douyin (such as AI subtitles) requires a logged-in 
 
 </details>
 
+<br>
+
 <details>
 <summary><b>Is it safe to log in inside the app?</b></summary>
 
 Login happens on the platform's official page, running inside an isolated session within the app; the app never touches your plaintext password. After login, only the session credentials used for fetching are retained and stored on your local machine. Note that, like any other sensitive data on your machine, their safety ultimately depends on the security of the machine itself.
 
 </details>
+
+<br>
 
 <details>
 <summary><b>What's the YouTube support scope?</b></summary>
