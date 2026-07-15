@@ -58,12 +58,14 @@
       "target": [
         "dmg"
       ],
+      "artifactName": "Memento-macOS.${ext}",
       "icon": "build/icon.png"
     },
     "win": {
       "target": [
         "nsis"
       ],
+      "artifactName": "Memento-Windows.${ext}",
       "icon": "build/icon.png"
     }
   }
