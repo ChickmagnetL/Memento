@@ -4,10 +4,13 @@ from dataclasses import dataclass
 import json
 import logging
 import math
+import ssl
 import time
 from typing import Callable
 from urllib.parse import quote, urlparse
 from urllib.request import Request, urlopen
+
+import certifi
 
 logger = logging.getLogger(__name__)
 
@@ -132,7 +135,8 @@ def fetch_json(url: str, referer: str | None = None, cookie: str | None = None) 
         headers["Cookie"] = cookie
 
     request = Request(url, headers=headers)
-    with urlopen(request, timeout=10) as response:
+    ssl_context = ssl.create_default_context(cafile=certifi.where())
+    with urlopen(request, timeout=10, context=ssl_context) as response:
         return json.loads(response.read().decode("utf-8"))
 
 

@@ -1,8 +1,47 @@
 """Tests for Bilibili video metadata fetching."""
 
+import json
+
 import pytest
 
+from core.video import bilibili
 from core.video.bilibili import BilibiliSubtitleClient
+
+
+def test_fetch_json_uses_bundled_certifi_ca(monkeypatch):
+    ssl_context = object()
+    calls = {}
+
+    monkeypatch.setattr(bilibili.certifi, "where", lambda: "/bundle/cacert.pem")
+
+    def fake_create_default_context(*, cafile):
+        calls["cafile"] = cafile
+        return ssl_context
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, traceback):
+            return False
+
+        def read(self):
+            return json.dumps({"code": 0}).encode("utf-8")
+
+    def fake_urlopen(request, *, timeout, context):
+        calls["timeout"] = timeout
+        calls["context"] = context
+        return FakeResponse()
+
+    monkeypatch.setattr(bilibili.ssl, "create_default_context", fake_create_default_context)
+    monkeypatch.setattr(bilibili, "urlopen", fake_urlopen)
+
+    assert bilibili.fetch_json("https://api.bilibili.com/test") == {"code": 0}
+    assert calls == {
+        "cafile": "/bundle/cacert.pem",
+        "timeout": 10,
+        "context": ssl_context,
+    }
 
 
 def test_fetch_metadata_parses_view_response():
