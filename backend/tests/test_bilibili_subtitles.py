@@ -382,9 +382,10 @@ def test_fetch_json_uses_urllib_headers_timeout_and_parses_json(monkeypatch):
         def read(self) -> bytes:
             return b'{"ok": true, "count": 2}'
 
-    def fake_urlopen(request, timeout):
+    def fake_urlopen(request, timeout, context):
         captured["request"] = request
         captured["timeout"] = timeout
+        captured["context"] = context
         return FakeResponse()
 
     monkeypatch.setattr(bilibili, "urlopen", fake_urlopen)
@@ -396,6 +397,7 @@ def test_fetch_json_uses_urllib_headers_timeout_and_parses_json(monkeypatch):
 
     assert result == {"ok": True, "count": 2}
     assert captured["timeout"] == 10
+    assert captured["context"] is not None
     assert captured["request"].full_url == "https://api.example.com/subtitle.json"
     assert captured["request"].has_header("User-agent")
     assert "Mozilla/5.0" in captured["request"].get_header("User-agent")
@@ -418,7 +420,7 @@ def test_fetch_json_sets_cookie_header_when_cookie_provided(monkeypatch):
         def read(self) -> bytes:
             return b'{"ok": true}'
 
-    def fake_urlopen(request, timeout):
+    def fake_urlopen(request, timeout, context):
         captured["request"] = request
         return FakeResponse()
 
@@ -475,7 +477,7 @@ def test_fetch_json_omits_cookie_header_when_cookie_not_provided(monkeypatch):
         def read(self) -> bytes:
             return b'{"ok": true}'
 
-    def fake_urlopen(request, timeout):
+    def fake_urlopen(request, timeout, context):
         captured["request"] = request
         return FakeResponse()
 
