@@ -45,6 +45,23 @@ def _import_server_module():
     return mod
 
 
+def test_sensevoice_local_path_supports_current_modelscope_layout(tmp_path: Path):
+    transcribers = _import_transcribers_module()
+    snapshot = (
+        tmp_path
+        / "models"
+        / "sensevoice"
+        / "models"
+        / "iic--SenseVoiceSmall"
+        / "snapshots"
+        / "master"
+    )
+    snapshot.mkdir(parents=True)
+    (snapshot / "model.pt").touch()
+
+    assert transcribers._sensevoice_local_path(tmp_path) == snapshot
+
+
 # ---------------------------------------------------------------------------
 # _moonshine_voice_model tests
 # ---------------------------------------------------------------------------
@@ -244,6 +261,7 @@ class TestGetTranscriber:
         server_mod._transcribers.clear()
         server_mod.MoonshineVoiceTranscriber = None
         server_mod.FunAsrTranscriber = None
+        monkeypatch.setattr(server_mod, "detect_best_device", lambda: "mps")
         self.server = server_mod
 
     def test_normalizes_sensevoice_small_alias(self):
@@ -251,23 +269,23 @@ class TestGetTranscriber:
         seen_models = []
 
         class TrackedFunAsrTranscriber:
-            def __init__(self, *, model: str) -> None:
-                seen_models.append(("funasr", model))
+            def __init__(self, *, model: str, device: str) -> None:
+                seen_models.append(("funasr", model, device))
 
         self.server.FunAsrTranscriber = TrackedFunAsrTranscriber
 
         transcriber = self.server.get_transcriber("sensevoice-small")
 
         assert isinstance(transcriber, TrackedFunAsrTranscriber)
-        assert seen_models == [("funasr", "iic/SenseVoiceSmall")]
+        assert seen_models == [("funasr", "iic/SenseVoiceSmall", "mps")]
 
     def test_normalizes_sensevoice_small_alias_once(self):
         """sensevoice-small alias is normalized before caching."""
         seen_models = []
 
         class TrackedFunAsrTranscriber:
-            def __init__(self, *, model: str) -> None:
-                seen_models.append(("funasr", model))
+            def __init__(self, *, model: str, device: str) -> None:
+                seen_models.append(("funasr", model, device))
 
         self.server.FunAsrTranscriber = TrackedFunAsrTranscriber
 
@@ -276,19 +294,19 @@ class TestGetTranscriber:
 
         assert first is second
         assert len(seen_models) == 1
-        assert seen_models[0] == ("funasr", "iic/SenseVoiceSmall")
+        assert seen_models[0] == ("funasr", "iic/SenseVoiceSmall", "mps")
 
     def test_backward_compat_medium_streaming_en(self):
         """moonshine_voice/medium-streaming-en still works and uses correct spec."""
         seen_models = []
 
         class TrackedMoonshineVoiceTranscriber:
-            def __init__(self, *, model: str) -> None:
-                seen_models.append(("moonshine", model))
+            def __init__(self, *, model: str, device: str) -> None:
+                seen_models.append(("moonshine", model, device))
 
         class TrackedFunAsrTranscriber:
-            def __init__(self, *, model: str) -> None:
-                seen_models.append(("funasr", model))
+            def __init__(self, *, model: str, device: str) -> None:
+                seen_models.append(("funasr", model, device))
 
         self.server.MoonshineVoiceTranscriber = TrackedMoonshineVoiceTranscriber
         self.server.FunAsrTranscriber = TrackedFunAsrTranscriber
@@ -299,7 +317,7 @@ class TestGetTranscriber:
 
         assert isinstance(transcriber, TrackedMoonshineVoiceTranscriber)
         assert seen_models == [
-            ("moonshine", "moonshine_voice/medium-streaming-en")
+            ("moonshine", "moonshine_voice/medium-streaming-en", "mps")
         ]
 
     def test_all_five_variants_via_bare_spec(self):
@@ -307,12 +325,12 @@ class TestGetTranscriber:
         seen_models = []
 
         class TrackedMoonshineVoiceTranscriber:
-            def __init__(self, *, model: str) -> None:
-                seen_models.append(("moonshine", model))
+            def __init__(self, *, model: str, device: str) -> None:
+                seen_models.append(("moonshine", model, device))
 
         class TrackedFunAsrTranscriber:
-            def __init__(self, *, model: str) -> None:
-                seen_models.append(("funasr", model))
+            def __init__(self, *, model: str, device: str) -> None:
+                seen_models.append(("funasr", model, device))
 
         self.server.MoonshineVoiceTranscriber = TrackedMoonshineVoiceTranscriber
         self.server.FunAsrTranscriber = TrackedFunAsrTranscriber
@@ -330,7 +348,7 @@ class TestGetTranscriber:
 
         assert len(seen_models) == 5
         for i, spec in enumerate(specs):
-            assert seen_models[i] == ("moonshine", spec)
+            assert seen_models[i] == ("moonshine", spec, "mps")
 
 
 # ---------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { type MouseEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -42,6 +42,12 @@ export function Sidebar() {
       localStorage.setItem("sidebar-collapsed", String(next));
       return next;
     });
+  }
+
+  function openGitHub(event: MouseEvent<HTMLAnchorElement>) {
+    if (!window.electron?.openGitHub) return;
+    event.preventDefault();
+    void window.electron.openGitHub();
   }
 
   const width = collapsed
@@ -127,6 +133,28 @@ export function Sidebar() {
           );
         })()}
       </nav>
+      <div className="p-2">
+        <a
+          href="https://github.com/ChickmagnetL/Memento"
+          target="_blank"
+          rel="noreferrer"
+          onClick={openGitHub}
+          className={cn(
+            "flex h-8 w-8 items-center justify-center rounded-md text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-bg-hover)] hover:text-[var(--color-text)]",
+            !collapsed && "ml-1.5"
+          )}
+          aria-label="Open Memento on GitHub"
+          title="GitHub"
+        >
+          <svg
+            className="h-5 w-5 fill-current"
+            viewBox="0 0 16 16"
+            aria-hidden="true"
+          >
+            <path d="M8 0C3.58 0 0 3.64 0 8.13c0 3.59 2.29 6.64 5.47 7.71.4.08.55-.18.55-.39 0-.19-.01-.83-.01-1.51-2.01.44-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.53-.01-.54.63-.01 1.08.59 1.23.83.72 1.23 1.87.88 2.33.67.07-.53.28-.88.51-1.08-1.78-.21-3.64-.91-3.64-4.02 0-.89.31-1.62.82-2.19-.08-.21-.36-1.04.08-2.16 0 0 .67-.22 2.2.84A7.46 7.46 0 0 1 8 3.95c.68 0 1.36.09 2 .27 1.53-1.06 2.2-.84 2.2-.84.44 1.12.16 1.95.08 2.16.51.57.82 1.29.82 2.19 0 3.12-1.87 3.81-3.65 4.02.29.25.54.74.54 1.5 0 1.08-.01 1.95-.01 2.22 0 .22.15.47.55.39A8.12 8.12 0 0 0 16 8.13C16 3.64 12.42 0 8 0Z" />
+          </svg>
+        </a>
+      </div>
     </aside>
   );
 }

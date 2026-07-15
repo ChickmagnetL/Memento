@@ -173,9 +173,15 @@ def _run_with_hf_endpoint_fallback(
 def detect_best_device() -> str:
     """Detect the best available torch device: cuda > mps > cpu.
 
-    Probes via the service venv python (which has torch), not the running
-    python, since deploy.py may run under system python without torch.
+    Check host hardware first so a clean Settings deploy can select the right
+    torch wheel before the service venv exists.  Fall back to probing the venv
+    when the platform has no obvious accelerator.
     """
+    if shutil.which("nvidia-smi") is not None:
+        return "cuda"
+    if sys.platform == "darwin":
+        return "mps"
+
     script = (
         "import torch;"
         " print('cuda' if torch.cuda.is_available()"

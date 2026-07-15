@@ -409,76 +409,37 @@ export async function fetchApiKey(modelName: string): Promise<string | null> {
   return data.api_key;
 }
 
-export interface AsrDeployStatus {
-  venv_exists: boolean;
-  models_installed: boolean;
-}
+// ── Local Model Management ──────────────────────────────────────────────────
 
-export interface AsrDeployProgress {
-  stage: string;
-  detail: string;
-  percent: number | null;
-  done: boolean;
-  error: string | null;
-}
+export type LocalModelService = "asr" | "embedding";
 
-export async function getAsrDeployStatus(): Promise<AsrDeployStatus> {
-  const res = await fetch(`${API_BASE_URL}/api/asr/deploy/status`, {
-    cache: "no-store",
-  });
-  await assertOk(res, "Get ASR deploy status");
-  return res.json();
-}
-
-export async function deployAsr(): Promise<AsrDeployProgress> {
-  const res = await fetch(`${API_BASE_URL}/api/asr/deploy`, {
-    method: "POST",
-  });
-  await assertOk(res, "Deploy ASR");
-  return res.json();
-}
-
-export async function getAsrDeployProgress(): Promise<AsrDeployProgress> {
-  const res = await fetch(`${API_BASE_URL}/api/asr/deploy/progress`, {
-    cache: "no-store",
-  });
-  await assertOk(res, "Get ASR deploy progress");
-  return res.json();
-}
-
-// ── Local ASR Manager (model shelf) ──────────────────────────────────────────
-
-export interface AsrEnvironment {
+export interface LocalModelEnvironment {
   venv_exists: boolean;
   service_python_exists: boolean;
   service_dir_exists: boolean;
   platform: string;
+  target_device: string;
+  runtime_device: string | null;
 }
 
-export interface AsrModelInfo {
+export interface LocalModelInfo {
   slug: string;
-  family: string;
+  family?: string;
   label: string;
   model_id: string;
-  spec: string | null;
-  size: string;
-  runtime: string;
+  spec?: string | null;
+  size?: string;
+  runtime?: string;
   installed: boolean | null;
   installing: boolean;
-  selected: boolean;
-  estimated_size: string;
+  selected?: boolean;
+  estimated_size?: string;
   cache_path: string | null;
-  cache_paths_checked: string[];
+  cache_paths_checked?: string[];
   last_error: string | null;
 }
 
-export interface AsrDiskInfo {
-  total: number;
-  free: number;
-  used: number;
-}
-
-export interface AsrManagerProgress {
+export interface LocalModelProgress {
   stage: string;
   model_slug: string | null;
   percent: number | null;
@@ -487,68 +448,54 @@ export interface AsrManagerProgress {
   done: boolean;
 }
 
-export interface AsrManagerStatus {
-  environment: AsrEnvironment;
-  models: Record<string, AsrModelInfo>;
-  current: string | null;
-  disks: {
-    service_disk: AsrDiskInfo;
-    data_disk: AsrDiskInfo;
-  };
-  progress: AsrManagerProgress;
+export interface LocalModelManagerStatus {
+  environment: LocalModelEnvironment;
+  models: Record<string, LocalModelInfo>;
+  progress: LocalModelProgress;
 }
 
-export async function getLocalAsrStatus(): Promise<AsrManagerStatus> {
-  const res = await fetch(`${API_BASE_URL}/api/asr/local/status`, {
+export async function getLocalModelStatus(
+  service: LocalModelService,
+  options?: { probeRuntimeDevice?: boolean },
+): Promise<LocalModelManagerStatus> {
+  const query =
+    options?.probeRuntimeDevice === false ? "?probe_runtime_device=false" : "";
+  const res = await fetch(`${API_BASE_URL}/api/${service}/local/status${query}`, {
     cache: "no-store",
   });
-  await assertOk(res, "Get local ASR status");
+  await assertOk(res, `Get local ${service} status`);
   return res.json();
 }
 
-export async function installLocalAsrModel(
-  slug: string
-): Promise<AsrManagerProgress> {
-  const res = await fetch(`${API_BASE_URL}/api/asr/local/models/${slug}/install`, {
+export async function installLocalModel(
+  service: LocalModelService,
+  slug: string,
+): Promise<LocalModelProgress> {
+  const res = await fetch(`${API_BASE_URL}/api/${service}/local/models/${slug}/install`, {
     method: "POST",
   });
-  await assertOk(res, "Install local ASR model");
+  await assertOk(res, `Install local ${service} model`);
   return res.json();
 }
 
-export async function selectLocalAsrModel(
-  slug: string
-): Promise<{ current: string }> {
-  const res = await fetch(`${API_BASE_URL}/api/asr/local/models/${slug}/select`, {
-    method: "POST",
-  });
-  await assertOk(res, "Select local ASR model");
-  return res.json();
-}
-
-export async function uninstallLocalAsrModel(
-  slug: string
-): Promise<AsrManagerProgress> {
-  const res = await fetch(`${API_BASE_URL}/api/asr/local/models/${slug}`, {
+export async function uninstallLocalModel(
+  service: LocalModelService,
+  slug: string,
+): Promise<LocalModelProgress> {
+  const res = await fetch(`${API_BASE_URL}/api/${service}/local/models/${slug}`, {
     method: "DELETE",
   });
-  await assertOk(res, "Uninstall local ASR model");
+  await assertOk(res, `Uninstall local ${service} model`);
   return res.json();
 }
 
-export async function uninstallAllLocalAsr(): Promise<AsrManagerProgress> {
-  const res = await fetch(`${API_BASE_URL}/api/asr/local/uninstall-all`, {
+export async function uninstallAllLocalModels(
+  service: LocalModelService,
+): Promise<LocalModelProgress> {
+  const res = await fetch(`${API_BASE_URL}/api/${service}/local/uninstall-all`, {
     method: "POST",
   });
-  await assertOk(res, "Uninstall all local ASR");
-  return res.json();
-}
-
-export async function getLocalAsrProgress(): Promise<AsrManagerProgress> {
-  const res = await fetch(`${API_BASE_URL}/api/asr/local/progress`, {
-    cache: "no-store",
-  });
-  await assertOk(res, "Get local ASR progress");
+  await assertOk(res, `Uninstall all local ${service} models`);
   return res.json();
 }
 

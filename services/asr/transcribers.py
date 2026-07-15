@@ -28,6 +28,20 @@ _MOONSHINE_SPEC_TO_ARCH = {
 }
 
 
+def _sensevoice_local_path(service_dir):
+    """Find SenseVoiceSmall in legacy or current ModelScope cache layouts."""
+    root = service_dir / "models" / "sensevoice"
+    legacy = root / "iic" / "SenseVoiceSmall"
+    if (legacy / "model.pt").is_file():
+        return legacy
+    snapshots = root / "models" / "iic--SenseVoiceSmall" / "snapshots"
+    if snapshots.is_dir():
+        for candidate in sorted(snapshots.iterdir()):
+            if candidate.is_dir() and (candidate / "model.pt").is_file():
+                return candidate
+    return None
+
+
 def _moonshine_voice_model(model: str, ModelArch):
     """Resolve a Moonshine model spec or model_id to (language, ModelArch).
 
@@ -60,8 +74,8 @@ class FunAsrTranscriber:
         # if present; otherwise fall back to the model id (triggers modelscope
         # download via MODELSCOPE_CACHE or the default home cache).
         service_dir = Path(__file__).resolve().parent
-        local_path = service_dir / "models" / "sensevoice" / "iic" / "SenseVoiceSmall"
-        resolved = str(local_path) if local_path.is_dir() else model
+        local_path = _sensevoice_local_path(service_dir)
+        resolved = str(local_path) if local_path is not None else model
         self.model = AutoModel(
             model=resolved,
             device=device,

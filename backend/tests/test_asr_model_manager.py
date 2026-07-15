@@ -47,6 +47,22 @@ def _make_sensevoice_cache(service_dir: Path) -> Path:
     return cache_dir
 
 
+def _make_modelscope_sensevoice_cache(service_dir: Path) -> Path:
+    """Create the cache layout produced by current ModelScope versions."""
+    cache_dir = (
+        service_dir
+        / "models"
+        / "sensevoice"
+        / "models"
+        / "iic--SenseVoiceSmall"
+        / "snapshots"
+        / "master"
+    )
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    (cache_dir / "model.pt").touch()
+    return cache_dir
+
+
 def _make_moonshine_cache(service_dir: Path, spec: str) -> Path:
     """Create a fake moonshine cache at the relocated services/asr/models/ path.
 
@@ -116,6 +132,31 @@ def test_environment_service_dir_missing(tmp_path: Path, monkeypatch: pytest.Mon
     assert status.environment.venv_exists is False
 
 
+def test_fast_status_skips_runtime_probe_and_full_status_caches_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+):
+    service_dir = tmp_path / "services" / "asr"
+    data_dir = tmp_path / "data"
+    _make_venv(service_dir / ".venv")
+    calls = []
+
+    class Result:
+        stdout = "mps\n"
+
+    def fake_run(*args, **kwargs):
+        calls.append((args, kwargs))
+        return Result()
+
+    monkeypatch.setattr("core.asr_model_manager.subprocess.run", fake_run)
+    manager = AsrModelManager(service_dir=service_dir, data_dir=data_dir)
+
+    assert manager.get_status(probe_runtime_device=False).environment.runtime_device is None
+    assert calls == []
+    assert manager.get_status().environment.runtime_device == "mps"
+    assert manager.get_status().environment.runtime_device == "mps"
+    assert len(calls) == 1
+
+
 # ---------------------------------------------------------------------------
 # Cache detection — SenseVoice
 # ---------------------------------------------------------------------------
@@ -164,6 +205,18 @@ def test_sensevoice_not_installed_when_cache_missing(
     sv_status = status.models["sensevoice-small"]
     assert sv_status.installed is False
     assert sv_status.cache_path is None
+
+
+def test_sensevoice_installed_with_current_modelscope_cache_layout(tmp_path: Path):
+    service_dir = tmp_path / "services" / "asr"
+    service_dir.mkdir(parents=True)
+    cache_dir = _make_modelscope_sensevoice_cache(service_dir)
+
+    status = AsrModelManager(service_dir, tmp_path / "data").get_status()
+
+    sensevoice = status.models["sensevoice-small"]
+    assert sensevoice.installed is True
+    assert sensevoice.cache_path == str(cache_dir)
 
 
 def test_sensevoice_installed_from_state_file_overrides(
@@ -869,6 +922,26 @@ def test_install_model_sensevoice_writes_state(
     state = json.loads((data_dir / "local_asr_models.json").read_text())
     assert state["models"]["sensevoice-small"]["installed"] is True
     assert state["current_model_slug"] is None
+
+
+def test_install_model_fails_when_download_has_no_usable_cache(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+):
+    service_dir = tmp_path / "services" / "asr"
+    service_dir.mkdir(parents=True)
+    data_dir = tmp_path / "data"
+    fake_deploy = _FakeDeployModule()
+    mgr = AsrModelManager(service_dir=service_dir, data_dir=data_dir)
+    monkeypatch.setattr(mgr, "_load_deploy_module", lambda: fake_deploy)
+
+    mgr.install_model("sensevoice-small")
+    if mgr._job_future is not None:
+        mgr._job_future.result(timeout=5)
+
+    progress = mgr._progress()
+    assert progress.stage == "failed"
+    assert "no usable model cache" in (progress.error or "")
+    assert not (data_dir / "local_asr_models.json").exists()
 
 
 def test_install_model_busy_returns_current_progress(

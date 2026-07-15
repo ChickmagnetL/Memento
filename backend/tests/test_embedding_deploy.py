@@ -62,6 +62,7 @@ def test_download_model_falls_back_to_second_endpoint(monkeypatch, tmp_path: Pat
         # second endpoint succeeds — create weights so _model_present is True
         cache = (tmp_path / "models") / "models--BAAI--bge-m3" / "snapshots" / "abc"
         cache.mkdir(parents=True)
+        (cache / "config.json").write_text("{}")
         (cache / "model.safetensors").write_bytes(b"x" * 1_000_001)
 
     monkeypatch.setattr(deploy_module, "run_command", fake_run_command)
@@ -112,6 +113,7 @@ def test_download_model_uses_mem_download_env_not_path_interpolation(monkeypatch
         # create weights so _model_present is True after success
         cache = (tmp_path / "models") / "models--BAAI--bge-m3" / "snapshots" / "abc"
         cache.mkdir(parents=True)
+        (cache / "config.json").write_text("{}")
         (cache / "model.safetensors").write_bytes(b"x" * 1_000_001)
 
     monkeypatch.setattr(deploy_module, "run_command", fake_run_command)
@@ -187,6 +189,68 @@ def test_ensure_environment_cuda_skips_force_when_probe_ok(monkeypatch, tmp_path
     assert not any("--force-reinstall" in c for c in joined)
 
 
+def test_detect_best_device_uses_mps_before_clean_venv_exists(monkeypatch):
+    deploy_module = load_deploy_module("embedding_deploy_clean_macos")
+    monkeypatch.setattr(deploy_module.shutil, "which", lambda name: None)
+    monkeypatch.setattr(deploy_module.sys, "platform", "darwin")
+    monkeypatch.setattr(
+        deploy_module.subprocess,
+        "run",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            AssertionError("clean macOS detection should not probe venv torch")
+        ),
+    )
+
+    assert deploy_module.detect_best_device() == "mps"
+
+
+def test_frozen_environment_uses_managed_toolchain(monkeypatch, tmp_path: Path):
+    deploy_module = load_deploy_module("embedding_deploy_frozen_toolchain")
+    calls = []
+    venv = tmp_path / ".venv"
+    monkeypatch.setattr(deploy_module, "SERVICE_DIR", tmp_path)
+    monkeypatch.setattr(deploy_module, "VENV_DIR", venv)
+    monkeypatch.setattr(deploy_module.sys, "frozen", True, raising=False)
+    monkeypatch.setattr(
+        deploy_module,
+        "_ensure_managed_toolchain",
+        lambda: (calls.append("toolchain"), venv.mkdir()),
+    )
+    monkeypatch.setattr(deploy_module, "run_command", lambda *args, **kwargs: None)
+    (tmp_path / "requirements.txt").write_text("")
+
+    deploy_module.ensure_environment(device="mps")
+
+    assert calls == ["toolchain"]
+
+
+def test_uninstall_model_and_all_stay_inside_managed_paths(monkeypatch, tmp_path: Path):
+    deploy_module = load_deploy_module("embedding_deploy_uninstall")
+    models = tmp_path / "models"
+    venv = tmp_path / ".venv"
+    bge = models / "models--BAAI--bge-m3"
+    qwen = models / "models--Qwen--Qwen3-Embedding-0.6B"
+    bge.mkdir(parents=True)
+    qwen.mkdir(parents=True)
+    venv.mkdir()
+    keep = tmp_path / "keep.txt"
+    keep.write_text("keep")
+    monkeypatch.setattr(deploy_module, "MODELS_DIR", models)
+    monkeypatch.setattr(deploy_module, "VENV_DIR", venv)
+
+    deploy_module.uninstall_model("BAAI/bge-m3")
+
+    assert not bge.exists()
+    assert qwen.exists()
+    assert venv.exists()
+
+    deploy_module.uninstall_all()
+
+    assert not models.exists()
+    assert not venv.exists()
+    assert keep.exists()
+
+
 def test_deploy_skips_download_when_model_present(monkeypatch, tmp_path: Path):
     """deploy always ensures env; skips model download when complete weights exist."""
     deploy_module = load_deploy_module("embedding_deploy_skip_model")
@@ -198,6 +262,7 @@ def test_deploy_skips_download_when_model_present(monkeypatch, tmp_path: Path):
     cache = models_dir / "models--BAAI--bge-m3"
     nested = cache / "snapshots" / "abc"
     nested.mkdir(parents=True)
+    (nested / "config.json").write_text("{}")
     (nested / "model.safetensors").write_bytes(b"x" * 1_000_001)
     (tmp_path / "requirements.txt").write_text("")
 
@@ -244,6 +309,7 @@ def test_deploy_downloads_when_model_incomplete(monkeypatch, tmp_path: Path, cap
         # Create large weights so post-download verification succeeds
         nested = cache / "snapshots" / "abc"
         nested.mkdir(parents=True)
+        (nested / "config.json").write_text("{}")
         (nested / "model.safetensors").write_bytes(b"x" * 1_000_001)
 
     monkeypatch.setattr(deploy_module, "download_model", fake_download)
@@ -277,6 +343,9 @@ def test_model_present_false_for_empty_or_config_only(tmp_path: Path, monkeypatc
     assert deploy_module._model_present("BAAI/bge-m3") is False
 
     (nested / "model.safetensors").write_bytes(b"x" * 1_000_001)
+    assert deploy_module._model_present("BAAI/bge-m3") is False
+
+    (nested / "config.json").write_text("{}")
     assert deploy_module._model_present("BAAI/bge-m3") is True
 
 
@@ -299,6 +368,7 @@ def test_deploy_downloads_when_model_missing(monkeypatch, tmp_path: Path):
         cache = models_dir / "models--BAAI--bge-m3"
         nested = cache / "snapshots" / "abc"
         nested.mkdir(parents=True)
+        (nested / "config.json").write_text("{}")
         (nested / "model.safetensors").write_bytes(b"x" * 1_000_001)
 
     monkeypatch.setattr(deploy_module, "download_model", fake_download)
@@ -342,6 +412,7 @@ def test_deploy_force_model_wipes_and_redownloads(monkeypatch, tmp_path: Path, c
     cache = models_dir / "models--BAAI--bge-m3"
     nested = cache / "snapshots" / "abc"
     nested.mkdir(parents=True)
+    (nested / "config.json").write_text("{}")
     (nested / "model.safetensors").write_bytes(b"x" * 1_000_001)  # complete cache
     (tmp_path / "requirements.txt").write_text("")
 
@@ -356,6 +427,7 @@ def test_deploy_force_model_wipes_and_redownloads(monkeypatch, tmp_path: Path, c
         assert not cache.exists()
         nested2 = cache / "snapshots" / "abc"
         nested2.mkdir(parents=True)
+        (nested2 / "config.json").write_text("{}")
         (nested2 / "model.safetensors").write_bytes(b"x" * 1_000_001)
 
     monkeypatch.setattr(deploy_module, "download_model", fake_download)
@@ -477,6 +549,7 @@ def test_download_model_falls_back_when_weights_missing_after_success(monkeypatc
             # second endpoint creates weights
             cache = (tmp_path / "models") / "models--BAAI--bge-m3" / "snapshots" / "abc"
             cache.mkdir(parents=True)
+            (cache / "config.json").write_text("{}")
             (cache / "model.safetensors").write_bytes(b"x" * 1_000_001)
         # first endpoint: succeed but no weights
 
@@ -550,6 +623,7 @@ def test_download_model_sets_hf_hub_disable_xet(monkeypatch, tmp_path: Path):
         envs.append(env)
         cache = (tmp_path / "models") / "models--BAAI--bge-m3" / "snapshots" / "abc"
         cache.mkdir(parents=True)
+        (cache / "config.json").write_text("{}")
         (cache / "model.safetensors").write_bytes(b"x" * 1_000_001)
 
     monkeypatch.setattr(deploy_module, "run_command", fake_run_command)

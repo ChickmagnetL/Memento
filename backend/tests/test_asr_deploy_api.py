@@ -39,6 +39,28 @@ def test_deploy_status_reports_modelscope_cached_sensevoice(monkeypatch, tmp_pat
     }
 
 
+def test_deploy_status_reports_current_modelscope_snapshot_layout(monkeypatch, tmp_path: Path):
+    monkeypatch.setattr(asr_api, "SERVICE_DIR", tmp_path)
+    monkeypatch.setattr(asr_api, "VENV_DIR", tmp_path / ".venv")
+    (tmp_path / ".venv").mkdir()
+    cache = (
+        tmp_path
+        / "models"
+        / "sensevoice"
+        / "models"
+        / "iic--SenseVoiceSmall"
+        / "snapshots"
+        / "master"
+    )
+    cache.mkdir(parents=True)
+    (cache / "model.pt").touch()
+
+    response = TestClient(app).get("/api/asr/deploy/status")
+
+    assert response.status_code == 200
+    assert response.json()["models_installed"] is True
+
+
 def test_deploy_starts_background_task(monkeypatch, tmp_path: Path):
     monkeypatch.setattr(asr_api, "SERVICE_DIR", tmp_path)
     monkeypatch.setattr(asr_api, "VENV_DIR", tmp_path / ".venv")
