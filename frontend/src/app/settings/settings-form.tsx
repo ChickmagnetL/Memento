@@ -20,6 +20,8 @@ const TABS: { name: PresetModelName; label: string }[] = [
   { name: "asr", label: "ASR" },
 ];
 
+const LOCAL_MODEL_SERVICES: LocalModelService[] = ["asr", "embedding"];
+
 const FIELDS: { key: keyof ModelConfig; label: string }[] = [
   { key: "endpoint", label: "Endpoint" },
   { key: "api_key", label: "API Key" },
@@ -165,17 +167,18 @@ export function SettingsForm() {
         ? localModelsCard(activeTab, false)
         : null}
 
-      {localModelService ? (
+      {LOCAL_MODEL_SERVICES.map((service) => (
         <LocalModelModal
-          service={localModelService}
-          open
+          key={service}
+          service={service}
+          open={localModelService === service}
           onClose={() => setLocalModelService(null)}
           onConfigured={() => {
             setPanelRevision((current) => current + 1);
             void refreshStatus();
           }}
         />
-      ) : null}
+      ))}
     </div>
   );
 }

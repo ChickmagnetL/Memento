@@ -43,3 +43,12 @@ test("installed local models can configure and activate a matching preset", () =
   assert.match(localModelModal, /switchEmbeddingPreset/);
   assert.match(settingsForm, /onConfigured/);
 });
+
+test("local model dialogs render cached status before background device probing", () => {
+  assert.match(settingsForm, /LOCAL_MODEL_SERVICES\.map/);
+  assert.match(settingsForm, /open=\{localModelService === service\}/);
+  assert.match(localModelModal, /localStorage/);
+  assert.match(localModelModal, /probeRuntimeDevice: false/);
+  assert.match(localModelModal, /void refresh\(\)/);
+  assert.doesNotMatch(settingsForm, /localModelService \? \(/);
+});

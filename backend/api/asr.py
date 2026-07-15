@@ -124,9 +124,9 @@ def deploy_progress() -> DeployProgress:
 
 
 @router.get("/local/status", response_model=AsrManagerStatus)
-def local_status() -> AsrManagerStatus:
+def local_status(probe_runtime_device: bool = True) -> AsrManagerStatus:
     """Return full local ASR status: environment, models, current, disks, progress."""
-    return _get_manager().get_status()
+    return _get_manager().get_status(probe_runtime_device=probe_runtime_device)
 
 
 @router.post(

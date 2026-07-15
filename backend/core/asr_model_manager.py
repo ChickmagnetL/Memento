@@ -112,6 +112,8 @@ class AsrModelManager:
         self.data_dir = Path(data_dir).expanduser()
         self._state_path = self.data_dir / _STATE_FILENAME
         self._lock = threading.RLock()
+        self._runtime_device_cache_signature: tuple[bool, int | None] | None = None
+        self._runtime_device_cache: str | None = None
 
         # Background job plumbing (single-process, no concurrent jobs)
         self._executor = ThreadPoolExecutor(max_workers=1)
@@ -143,7 +145,7 @@ class AsrModelManager:
     # Environment
     # ------------------------------------------------------------------
 
-    def _env_status(self) -> AsrEnvironmentStatus:
+    def _env_status(self, *, probe_runtime_device: bool = True) -> AsrEnvironmentStatus:
         venv_dir = self.service_dir / ".venv"
         venv_exists = venv_dir.is_dir()
 
@@ -154,46 +156,77 @@ class AsrModelManager:
             python_path = bin_dir / python_name
             python_exists = python_path.is_file()
 
+        target_device = (
+            self._target_device()
+            if probe_runtime_device
+            else self._target_device(probe=False)
+        )
+        runtime_device = (
+            self._runtime_device()
+            if probe_runtime_device
+            else self._runtime_device(probe=False)
+        )
         return AsrEnvironmentStatus(
             venv_exists=venv_exists,
             service_python_exists=python_exists,
             service_dir_exists=self.service_dir.is_dir(),
             platform=sys.platform,
-            target_device=self._target_device(),
-            runtime_device=self._runtime_device(),
+            target_device=target_device,
+            runtime_device=runtime_device,
         )
 
-    def _runtime_device(self) -> str | None:
+    def _runtime_device(self, *, probe: bool = True) -> str | None:
         venv_dir = self.service_dir / ".venv"
         if sys.platform == "win32":
             python = venv_dir / "Scripts" / "python.exe"
         else:
             python = venv_dir / "bin" / "python"
-        if not python.is_file():
-            return None
-        script = (
-            "import torch;"
-            " print('cuda' if torch.cuda.is_available()"
-            " else 'mps' if torch.backends.mps.is_available() else 'cpu')"
-        )
         try:
-            result = subprocess.run(
-                [str(python), "-c", script],
-                capture_output=True,
-                text=True,
-                timeout=30,
+            signature = (True, python.stat().st_mtime_ns)
+        except OSError:
+            signature = (False, None)
+        with self._lock:
+            if self._runtime_device_cache_signature == signature:
+                return self._runtime_device_cache
+            if not signature[0]:
+                self._runtime_device_cache_signature = signature
+                self._runtime_device_cache = None
+                return None
+            if not probe:
+                return None
+            device = None
+            script = (
+                "import torch;"
+                " print('cuda' if torch.cuda.is_available()"
+                " else 'mps' if torch.backends.mps.is_available() else 'cpu')"
             )
-        except Exception:
-            return None
-        device = result.stdout.strip()
-        return device if device in {"cuda", "mps", "cpu"} else None
+            try:
+                result = subprocess.run(
+                    [str(python), "-c", script],
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                )
+                detected = result.stdout.strip()
+                if detected in {"cuda", "mps", "cpu"}:
+                    device = detected
+            except Exception:
+                pass
+            self._runtime_device_cache_signature = signature
+            self._runtime_device_cache = device
+            return device
 
-    def _target_device(self) -> str:
+    def _invalidate_runtime_device_cache(self) -> None:
+        with self._lock:
+            self._runtime_device_cache_signature = None
+            self._runtime_device_cache = None
+
+    def _target_device(self, *, probe: bool = True) -> str:
         if shutil.which("nvidia-smi") is not None:
             return "cuda"
         if sys.platform == "darwin":
             return "mps"
-        return self._runtime_device() or "cpu"
+        return self._runtime_device(probe=probe) or "cpu"
 
     # ------------------------------------------------------------------
     # Per-model cache detection
@@ -419,11 +452,11 @@ class AsrModelManager:
     # Public orchestration API
     # ------------------------------------------------------------------
 
-    def get_status(self) -> AsrManagerStatus:
+    def get_status(self, *, probe_runtime_device: bool = True) -> AsrManagerStatus:
         """Return full status snapshot — environment, models, current, disks, progress."""
         with self._lock:
             state = self._read_state()
-            env = self._env_status()
+            env = self._env_status(probe_runtime_device=probe_runtime_device)
 
             models_status: dict[str, AsrModelStatus] = {}
             for model in list_local_asr_models():
@@ -519,6 +552,8 @@ class AsrModelManager:
                 percent=None,
                 error=str(exc),
             )
+        finally:
+            self._invalidate_runtime_device_cache()
 
     # ------------------------------------------------------------------
     # select_model
@@ -634,3 +669,5 @@ class AsrModelManager:
                 percent=None,
                 error=str(exc),
             )
+        finally:
+            self._invalidate_runtime_device_cache()

@@ -32,6 +32,9 @@ class EmbeddingModelManager:
         self._executor = ThreadPoolExecutor(max_workers=1)
         self._job_future: Future | None = None
         self._job_lock = threading.RLock()
+        self._runtime_device_lock = threading.Lock()
+        self._runtime_device_cache_signature: tuple[bool, int | None] | None = None
+        self._runtime_device_cache: str | None = None
         self._progress_state = EmbeddingManagerProgress()
 
     def _service_python(self) -> Path:
@@ -39,33 +42,54 @@ class EmbeddingModelManager:
             return self.service_dir / ".venv" / "Scripts" / "python.exe"
         return self.service_dir / ".venv" / "bin" / "python"
 
-    def _runtime_device(self) -> str | None:
+    def _runtime_device(self, *, probe: bool = True) -> str | None:
         python = self._service_python()
-        if not python.is_file():
-            return None
-        script = (
-            "import torch;"
-            " print('cuda' if torch.cuda.is_available()"
-            " else 'mps' if torch.backends.mps.is_available() else 'cpu')"
-        )
         try:
-            result = subprocess.run(
-                [str(python), "-c", script],
-                capture_output=True,
-                text=True,
-                timeout=30,
+            signature = (True, python.stat().st_mtime_ns)
+        except OSError:
+            signature = (False, None)
+        with self._runtime_device_lock:
+            if self._runtime_device_cache_signature == signature:
+                return self._runtime_device_cache
+            if not signature[0]:
+                self._runtime_device_cache_signature = signature
+                self._runtime_device_cache = None
+                return None
+            if not probe:
+                return None
+            device = None
+            script = (
+                "import torch;"
+                " print('cuda' if torch.cuda.is_available()"
+                " else 'mps' if torch.backends.mps.is_available() else 'cpu')"
             )
-        except Exception:
-            return None
-        device = result.stdout.strip()
-        return device if device in {"cuda", "mps", "cpu"} else None
+            try:
+                result = subprocess.run(
+                    [str(python), "-c", script],
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                )
+                detected = result.stdout.strip()
+                if detected in {"cuda", "mps", "cpu"}:
+                    device = detected
+            except Exception:
+                pass
+            self._runtime_device_cache_signature = signature
+            self._runtime_device_cache = device
+            return device
 
-    def _target_device(self) -> str:
+    def _invalidate_runtime_device_cache(self) -> None:
+        with self._runtime_device_lock:
+            self._runtime_device_cache_signature = None
+            self._runtime_device_cache = None
+
+    def _target_device(self, *, probe: bool = True) -> str:
         if shutil.which("nvidia-smi") is not None:
             return "cuda"
         if sys.platform == "darwin":
             return "mps"
-        return self._runtime_device() or "cpu"
+        return self._runtime_device(probe=probe) or "cpu"
 
     def _cache_roots(self, model: EmbeddingModel) -> list[Path]:
         slug = model.model_id.replace("/", "--")
@@ -146,9 +170,19 @@ class EmbeddingModelManager:
         spec.loader.exec_module(module)
         return module
 
-    def get_status(self) -> EmbeddingManagerStatus:
+    def get_status(self, *, probe_runtime_device: bool = True) -> EmbeddingManagerStatus:
         python = self._service_python()
         progress = self._progress()
+        target_device = (
+            self._target_device()
+            if probe_runtime_device
+            else self._target_device(probe=False)
+        )
+        runtime_device = (
+            self._runtime_device()
+            if probe_runtime_device
+            else self._runtime_device(probe=False)
+        )
         models: dict[str, EmbeddingModelStatus] = {}
         for model in list_local_embedding_models():
             cache = self._find_cache(model)
@@ -171,8 +205,8 @@ class EmbeddingModelManager:
                 service_python_exists=python.is_file(),
                 service_dir_exists=self.service_dir.is_dir(),
                 platform=sys.platform,
-                target_device=self._target_device(),
-                runtime_device=self._runtime_device(),
+                target_device=target_device,
+                runtime_device=runtime_device,
             ),
             models=models,
             progress=progress,
@@ -220,6 +254,8 @@ class EmbeddingModelManager:
                 model_slug=model.slug,
                 error=str(exc),
             )
+        finally:
+            self._invalidate_runtime_device_cache()
 
     def uninstall_model(self, slug: str) -> EmbeddingManagerProgress:
         model = get_local_embedding_model(slug)
@@ -274,3 +310,5 @@ class EmbeddingModelManager:
             self._set_progress("done", "Local Embedding environment removed", percent=100)
         except Exception as exc:
             self._set_progress("failed", f"Uninstall all failed: {exc}", error=str(exc))
+        finally:
+            self._invalidate_runtime_device_cache()

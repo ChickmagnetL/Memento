@@ -456,8 +456,11 @@ export interface LocalModelManagerStatus {
 
 export async function getLocalModelStatus(
   service: LocalModelService,
+  options?: { probeRuntimeDevice?: boolean },
 ): Promise<LocalModelManagerStatus> {
-  const res = await fetch(`${API_BASE_URL}/api/${service}/local/status`, {
+  const query =
+    options?.probeRuntimeDevice === false ? "?probe_runtime_device=false" : "";
+  const res = await fetch(`${API_BASE_URL}/api/${service}/local/status${query}`, {
     cache: "no-store",
   });
   await assertOk(res, `Get local ${service} status`);

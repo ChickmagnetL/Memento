@@ -46,6 +46,34 @@ function normalizedEndpoint(value: string | null | undefined) {
   return (value ?? "").trim().replace(/\/+$/, "");
 }
 
+const STATUS_CACHE_PREFIX = "memento.local-model-status.v1";
+
+function readCachedStatus(service: LocalModelService) {
+  if (typeof window === "undefined") return null;
+  try {
+    const value = window.localStorage.getItem(`${STATUS_CACHE_PREFIX}.${service}`);
+    if (!value) return null;
+    const parsed = JSON.parse(value) as LocalModelManagerStatus;
+    return parsed?.models && parsed?.environment ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedStatus(
+  service: LocalModelService,
+  status: LocalModelManagerStatus,
+) {
+  try {
+    window.localStorage.setItem(
+      `${STATUS_CACHE_PREFIX}.${service}`,
+      JSON.stringify(status),
+    );
+  } catch {
+    // Status caching is an optimization; storage may be unavailable.
+  }
+}
+
 export function LocalModelModal({
   service,
   open,
@@ -57,7 +85,9 @@ export function LocalModelModal({
   onClose: () => void;
   onConfigured: () => void;
 }) {
-  const [status, setStatus] = useState<LocalModelManagerStatus | null>(null);
+  const [status, setStatus] = useState<LocalModelManagerStatus | null>(() =>
+    readCachedStatus(service),
+  );
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [configurationMessage, setConfigurationMessage] = useState("");
@@ -69,31 +99,37 @@ export function LocalModelModal({
     updateBeforeSwitch: boolean;
   } | null>(null);
 
-  const refresh = useCallback(async () => {
-    const next = await getLocalModelStatus(service);
+  const applyStatus = useCallback((next: LocalModelManagerStatus) => {
     setStatus(next);
+    writeCachedStatus(service, next);
     setSelectedSlug((current) =>
       current && next.models[current]
         ? current
         : (Object.keys(next.models)[0] ?? null),
     );
-    return next;
   }, [service]);
 
+  const refresh = useCallback(async () => {
+    const next = await getLocalModelStatus(service);
+    applyStatus(next);
+    return next;
+  }, [applyStatus, service]);
+
   useEffect(() => {
-    if (!open) return;
     let cancelled = false;
 
     const load = async () => {
       try {
-        const next = await getLocalModelStatus(service);
+        const next = await getLocalModelStatus(service, {
+          probeRuntimeDevice: false,
+        });
         if (cancelled) return;
-        setStatus(next);
-        setSelectedSlug((current) =>
-          current && next.models[current]
-            ? current
-            : (Object.keys(next.models)[0] ?? null),
-        );
+        applyStatus(next);
+        void refresh().catch((error) => {
+          if (!cancelled) {
+            setMessage(error instanceof Error ? error.message : "Operation failed");
+          }
+        });
       } catch (error) {
         if (!cancelled) {
           setMessage(error instanceof Error ? error.message : "Operation failed");
@@ -105,7 +141,19 @@ export function LocalModelModal({
     return () => {
       cancelled = true;
     };
-  }, [open, service]);
+  }, [applyStatus, refresh, service]);
+
+  useEffect(() => {
+    if (!open || !status) return;
+    const timeoutId = window.setTimeout(() => {
+      void refresh().catch((error) => {
+        setMessage(error instanceof Error ? error.message : "Operation failed");
+      });
+    }, 0);
+    return () => window.clearTimeout(timeoutId);
+    // Refresh when a retained dialog is reopened.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   useEffect(() => {
     if (!open || !isBusy(status)) return;

@@ -20,8 +20,8 @@ def _get_manager() -> EmbeddingModelManager:
 
 
 @router.get("/local/status", response_model=EmbeddingManagerStatus)
-def local_status() -> EmbeddingManagerStatus:
-    return _get_manager().get_status()
+def local_status(probe_runtime_device: bool = True) -> EmbeddingManagerStatus:
+    return _get_manager().get_status(probe_runtime_device=probe_runtime_device)
 
 
 @router.post(

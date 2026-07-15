@@ -18,6 +18,19 @@ test("main window is shown before packaged services are prepared", () => {
   assert.match(mainSource, /await window\.loadURL\(FRONTEND_URL\)/);
 });
 
+test("desktop waits for the configured frontend before loading it", () => {
+  const waitAt = mainSource.indexOf("await waitForFrontendHealth();");
+  const loadAt = mainSource.indexOf("await window.loadURL(FRONTEND_URL);");
+
+  assert.match(mainSource, /fetch\(FRONTEND_URL\)/);
+  assert.ok(waitAt >= 0);
+  assert.ok(loadAt > waitAt);
+  assert.doesNotMatch(
+    mainSource,
+    /if \(isPackaged\(\)\) \{\s*await waitForFrontendHealth\(\);/,
+  );
+});
+
 test("GitHub links open in the system browser through a fixed IPC action", () => {
   assert.match(mainSource, /const \{[\s\S]*?shell[\s\S]*?\} = require\("electron"\)/);
   assert.match(

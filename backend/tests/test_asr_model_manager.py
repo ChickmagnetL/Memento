@@ -132,6 +132,31 @@ def test_environment_service_dir_missing(tmp_path: Path, monkeypatch: pytest.Mon
     assert status.environment.venv_exists is False
 
 
+def test_fast_status_skips_runtime_probe_and_full_status_caches_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+):
+    service_dir = tmp_path / "services" / "asr"
+    data_dir = tmp_path / "data"
+    _make_venv(service_dir / ".venv")
+    calls = []
+
+    class Result:
+        stdout = "mps\n"
+
+    def fake_run(*args, **kwargs):
+        calls.append((args, kwargs))
+        return Result()
+
+    monkeypatch.setattr("core.asr_model_manager.subprocess.run", fake_run)
+    manager = AsrModelManager(service_dir=service_dir, data_dir=data_dir)
+
+    assert manager.get_status(probe_runtime_device=False).environment.runtime_device is None
+    assert calls == []
+    assert manager.get_status().environment.runtime_device == "mps"
+    assert manager.get_status().environment.runtime_device == "mps"
+    assert len(calls) == 1
+
+
 # ---------------------------------------------------------------------------
 # Cache detection — SenseVoice
 # ---------------------------------------------------------------------------
