@@ -445,22 +445,23 @@ def test_cache_permission_error_returns_error_detail_not_raises(
     data_dir = tmp_path / "data"
     data_dir.mkdir(parents=True, exist_ok=True)
 
-    # Create an unreadable cache directory
+    # Create a cache directory and simulate it being unreadable.
     sensevoice_cache = _make_sensevoice_cache(service_dir)
 
-    # Make directory unreadable
-    sensevoice_cache.chmod(0o000)
-    try:
-        mgr = AsrModelManager(service_dir=service_dir, data_dir=data_dir)
-        status = mgr.get_status()
+    original_iterdir = Path.iterdir
 
-        sv_status = status.models["sensevoice-small"]
-        # Should not crash — either reports not installed or captures error
-        assert sv_status.installed is not True  # can't confirm installation
-        # checked paths should still be recorded
-        assert len(sv_status.cache_paths_checked) > 0
-    finally:
-        sensevoice_cache.chmod(0o755)  # restore so tmp_path can be cleaned
+    def permission_denied(path: Path):
+        if path == sensevoice_cache:
+            raise PermissionError("permission denied")
+        return original_iterdir(path)
+
+    monkeypatch.setattr(Path, "iterdir", permission_denied)
+    mgr = AsrModelManager(service_dir=service_dir, data_dir=data_dir)
+    status = mgr.get_status()
+
+    sv_status = status.models["sensevoice-small"]
+    assert sv_status.installed is not True
+    assert len(sv_status.cache_paths_checked) > 0
 
 
 def test_state_file_corrupted_json(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):

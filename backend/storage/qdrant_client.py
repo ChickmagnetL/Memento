@@ -159,6 +159,15 @@ class QdrantStore:
         """Replace a collection with a fresh cosine collection of the given size."""
         client = self._require_client()
         collection_name = self._resolve_collection_name(name)
+        # qdrant-client 1.11 leaves the local collection's SQLite handle open.
+        # Windows then cannot remove its directory and the recreated collection
+        # silently reloads the old points from disk.
+        local_client = getattr(client, "_client", None)
+        local_collections = getattr(local_client, "collections", None)
+        if isinstance(local_collections, dict):
+            local_collection = local_collections.get(collection_name)
+            if local_collection is not None:
+                local_collection.close()
         client.delete_collection(collection_name=collection_name)
         client.create_collection(
             collection_name=collection_name,

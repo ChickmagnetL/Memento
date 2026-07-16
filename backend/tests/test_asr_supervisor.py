@@ -315,8 +315,11 @@ def test_shutdown_terminates_spawned_process_group(monkeypatch):
     proc.pid = 4242
     asr_supervisor._spawned_proc = proc
     killed = []
-    monkeypatch.setattr(os, "getpgid", lambda pid: 5555)
-    monkeypatch.setattr(os, "killpg", lambda pgid, sig: killed.append((pgid, sig)))
+    monkeypatch.setattr(sys, "platform", "linux")
+    monkeypatch.setattr(os, "getpgid", lambda pid: 5555, raising=False)
+    monkeypatch.setattr(
+        os, "killpg", lambda pgid, sig: killed.append((pgid, sig)), raising=False
+    )
 
     shutdown()
 

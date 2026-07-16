@@ -58,7 +58,7 @@ def client(tmp_path: Path, monkeypatch):
     (config_dir / "default.yaml").write_text(
         f"""
 storage:
-  data_dir: "{data_dir}"
+  data_dir: "{data_dir.as_posix()}"
 models:
   asr:
     protocol: transcriptions

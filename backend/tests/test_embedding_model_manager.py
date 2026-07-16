@@ -47,7 +47,8 @@ def test_fast_status_skips_runtime_probe_and_full_status_caches_it(
     monkeypatch, tmp_path,
 ):
     service_dir = tmp_path / "embedding"
-    python = service_dir / ".venv" / "bin" / "python"
+    manager = EmbeddingModelManager(service_dir=service_dir)
+    python = manager._service_python()
     python.parent.mkdir(parents=True)
     python.touch()
     calls = []
@@ -60,7 +61,6 @@ def test_fast_status_skips_runtime_probe_and_full_status_caches_it(
         return Result()
 
     monkeypatch.setattr("core.embedding_model_manager.subprocess.run", fake_run)
-    manager = EmbeddingModelManager(service_dir=service_dir)
 
     assert manager.get_status(probe_runtime_device=False).environment.runtime_device is None
     assert calls == []

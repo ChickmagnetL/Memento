@@ -102,10 +102,12 @@ def test_default_asr_protocol_is_transcriptions():
 
 def test_config_local_partial_override_preserves_config_yaml_nested_values(tmp_path, monkeypatch):
     backend_config_dir = _isolate_project_config(tmp_path, monkeypatch)
+    default_data_dir = tmp_path / "default-data"
+    user_data_dir = tmp_path / "user-data"
     (backend_config_dir / "default.yaml").write_text(
-        """
+        f"""
 storage:
-  data_dir: "/default/data"
+  data_dir: "{default_data_dir.as_posix()}"
 models:
   embedding:
     endpoint: "http://default-embedding:11434"
@@ -115,9 +117,9 @@ video_processing:
         encoding="utf-8",
     )
     (tmp_path / "config.yaml").write_text(
-        """
+        f"""
 storage:
-  data_dir: "/user/data"
+  data_dir: "{user_data_dir.as_posix()}"
 models:
   embedding:
     endpoint: "http://user-embedding:11434"
@@ -136,7 +138,7 @@ video_processing:
 
     settings = get_settings()
 
-    assert settings.storage.data_dir.as_posix() == "/user/data"
+    assert settings.storage.data_dir == user_data_dir
     assert settings.models.embedding.endpoint == "http://user-embedding:11434"
     assert settings.video_processing.auto_clean is False
     assert settings.video_processing.bilibili_cookie == "SESSDATA=local"
@@ -159,17 +161,18 @@ storage:
 
 def test_absolute_data_dir_not_changed(tmp_path, monkeypatch):
     backend_config_dir = _isolate_project_config(tmp_path, monkeypatch)
+    absolute_data_dir = tmp_path / "absolute-data"
     (backend_config_dir / "default.yaml").write_text(
-        """
+        f"""
 storage:
-  data_dir: "/absolute/data"
+  data_dir: "{absolute_data_dir.as_posix()}"
 """,
         encoding="utf-8",
     )
 
     settings = get_settings()
 
-    assert settings.storage.data_dir.as_posix() == "/absolute/data"
+    assert settings.storage.data_dir == absolute_data_dir
 
 
 def test_bilibili_cookie_env_overrides_config_local_value(tmp_path, monkeypatch):
@@ -217,7 +220,7 @@ def test_db_overrides_yaml_model_config(tmp_path, monkeypatch):
     (backend_config_dir / "default.yaml").write_text(
         f"""
 storage:
-  data_dir: "{data_dir}"
+  data_dir: "{data_dir.as_posix()}"
 models:
   chat:
     model: claude-3-5-sonnet
@@ -281,7 +284,7 @@ def test_db_overrides_yaml_app_config(tmp_path, monkeypatch):
     (backend_config_dir / "default.yaml").write_text(
         f"""
 storage:
-  data_dir: "{data_dir}"
+  data_dir: "{data_dir.as_posix()}"
 rag:
   chunk_size: 800
   overlap: 80
@@ -328,7 +331,7 @@ def test_db_missing_falls_back_to_yaml(tmp_path, monkeypatch):
     (backend_config_dir / "default.yaml").write_text(
         f"""
 storage:
-  data_dir: "{data_dir}"
+  data_dir: "{data_dir.as_posix()}"
 """,
         encoding="utf-8",
     )
@@ -346,7 +349,7 @@ def test_db_partial_override_preserves_yaml_values(tmp_path, monkeypatch):
     (backend_config_dir / "default.yaml").write_text(
         f"""
 storage:
-  data_dir: "{data_dir}"
+  data_dir: "{data_dir.as_posix()}"
 """,
         encoding="utf-8",
     )
@@ -404,7 +407,7 @@ def test_update_models_writes_to_db_not_yaml(tmp_path, monkeypatch):
     (backend_config_dir / "default.yaml").write_text(
         f"""
 storage:
-  data_dir: "{data_dir}"
+  data_dir: "{data_dir.as_posix()}"
 models:
   chat:
     model: claude-3-5-sonnet
@@ -496,7 +499,7 @@ def test_update_models_masked_api_key_preservation(tmp_path, monkeypatch):
     (backend_config_dir / "default.yaml").write_text(
         f"""
 storage:
-  data_dir: "{data_dir}"
+  data_dir: "{data_dir.as_posix()}"
 """,
         encoding="utf-8",
     )
@@ -570,7 +573,7 @@ def test_update_models_only_affects_active_preset(tmp_path, monkeypatch):
     (backend_config_dir / "default.yaml").write_text(
         f"""
 storage:
-  data_dir: "{data_dir}"
+  data_dir: "{data_dir.as_posix()}"
 """,
         encoding="utf-8",
     )

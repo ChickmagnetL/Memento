@@ -426,13 +426,12 @@ async def test_run_reindex_job_records_document_failure_and_resets_failed_doc(
     assert job["processed_documents"] == 2
     assert job["status"] == "completed_with_errors"
     assert job["stage"] == "completed_with_errors"
-    assert job["failed_documents"] == [
-        {
-            "document_id": "bad-doc",
-            "title": "Bad Doc",
-            "error": f"[Errno 2] No such file or directory: '{bad['file_path']}'",
-        }
-    ]
+    assert len(job["failed_documents"]) == 1
+    failure = job["failed_documents"][0]
+    assert failure["document_id"] == "bad-doc"
+    assert failure["title"] == "Bad Doc"
+    assert "No such file or directory" in failure["error"]
+    assert Path(bad["file_path"]).name in failure["error"]
 
 
 @pytest.mark.asyncio

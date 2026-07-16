@@ -67,7 +67,7 @@ def client(tmp_path: Path, monkeypatch):
     (config_dir / "default.yaml").write_text(
         f"""
 storage:
-  data_dir: "{data_dir}"
+  data_dir: "{data_dir.as_posix()}"
 models:
   asr:
     protocol: transcriptions
@@ -929,7 +929,7 @@ def test_embedding_switch_preview_partial_preset_uses_layered_embedding_config(
     default_yaml_path.write_text(
         f"""
 storage:
-  data_dir: "{db_path.parent}"
+  data_dir: "{db_path.parent.as_posix()}"
 models:
   asr:
     protocol: transcriptions
@@ -1388,7 +1388,7 @@ def test_embedding_switch_partial_preset_reindex_uses_layered_embedding_config(
     default_yaml_path.write_text(
         f"""
 storage:
-  data_dir: "{db_path.parent}"
+  data_dir: "{db_path.parent.as_posix()}"
 models:
   asr:
     protocol: transcriptions

@@ -1,8 +1,9 @@
 """Tests for the OpenAI-compatible ASR client."""
 
-from pathlib import Path
-from types import SimpleNamespace
 from io import BytesIO
+from pathlib import Path
+import sys
+from types import SimpleNamespace
 from urllib.error import HTTPError
 
 import pytest
@@ -54,7 +55,8 @@ def test_transcriptions_posts_multipart_and_maps_segments(tmp_path: Path):
         SubtitleEntry(start_seconds=30.0, text="第二段"),
     ]
     url, fields, files, headers, timeout = calls[0]
-    assert url == "http://localhost:8001/v1/audio/transcriptions"
+    loopback = "127.0.0.1" if sys.platform == "win32" else "localhost"
+    assert url == f"http://{loopback}:8001/v1/audio/transcriptions"
     assert fields == {
         "model": "iic/SenseVoiceSmall",
         "response_format": "verbose_json",
@@ -160,7 +162,8 @@ def test_localhost_transcriptions_ensures_service_running(tmp_path: Path):
 
     client.transcribe(str(audio_path), model="iic/SenseVoiceSmall")
 
-    assert order == [("ensure", "http://localhost:8001"), "post"]
+    loopback = "127.0.0.1" if sys.platform == "win32" else "localhost"
+    assert order == [("ensure", f"http://{loopback}:8001"), "post"]
 
 
 def test_windows_localhost_transcriptions_use_ipv4_loopback(
@@ -200,7 +203,8 @@ def test_localhost_transcriptions_adds_v1_for_legacy_endpoint(tmp_path: Path):
 
     client.transcribe(str(audio_path), model="iic/SenseVoiceSmall")
 
-    assert calls == ["http://localhost:8001/v1/audio/transcriptions"]
+    loopback = "127.0.0.1" if sys.platform == "win32" else "localhost"
+    assert calls == [f"http://{loopback}:8001/v1/audio/transcriptions"]
 
 
 def test_remote_transcriptions_and_chat_audio_do_not_ensure(tmp_path: Path):
