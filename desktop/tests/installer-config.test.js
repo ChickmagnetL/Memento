@@ -38,3 +38,31 @@ test("upgrades preserve managed siblings while explicit uninstall removes them",
   assert.match(installerSource, /RMDir \/r "\$R8\\cache"/);
   assert.match(installerSource, /RMDir \/r "\$APPDATA\\\$\{APP_PACKAGE_NAME\}"/);
 });
+
+test("explicit uninstall stops runtime processes outside the app subdirectory", () => {
+  assert.match(
+    installerSource,
+    /Function un\.StopMementoRuntimeProcesses[\s\S]*?FunctionEnd/,
+  );
+  assert.match(
+    installerSource,
+    /SetEnvironmentVariableW\(w "MEMENTO_UNINSTALL_ROOT", w "\$R8"\)/,
+  );
+  assert.match(
+    installerSource,
+    /ExecutablePath\.StartsWith\(\$\$prefix, \[StringComparison\]::OrdinalIgnoreCase\)/,
+  );
+  assert.match(installerSource, /Stop-Process -Id \$\$_\.ProcessId -Force/);
+  assert.match(
+    installerSource,
+    /\$\{AndIf\} \$R6 == "\$\{APP_FILENAME\}"[\s\S]*?Call un\.StopMementoRuntimeProcesses/,
+  );
+});
+
+test("locked runtime directories are scheduled for deletion on restart", () => {
+  assert.match(installerSource, /RMDir \/r \/REBOOTOK "\$R8\\services"/);
+  assert.match(installerSource, /RMDir \/r \/REBOOTOK "\$R8\\cache"/);
+  assert.match(installerSource, /RMDir \/r \/REBOOTOK "\$R8\\data"/);
+  assert.match(installerSource, /RMDir \/r \/REBOOTOK "\$INSTDIR"/);
+  assert.match(installerSource, /RMDir \/REBOOTOK "\$R8"/);
+});

@@ -357,6 +357,13 @@ jobs:
       - name: Build Windows installer (electron-builder)
         run: cd desktop && npx electron-builder --win
 
+      - name: Smoke test Windows uninstall cleanup
+        shell: pwsh
+        run: |
+          ./desktop/tests/windows-uninstall-cleanup.ps1 `
+            -InstallerPath desktop/dist/Memento-Windows.exe `
+            -ProductName Memento
+
       - name: Smoke test packaged Windows app
         shell: pwsh
         run: |

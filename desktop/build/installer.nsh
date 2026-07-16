@@ -56,6 +56,23 @@
   done:
     Return
   FunctionEnd
+!else
+  Function un.StopMementoRuntimeProcesses
+    Push $0
+    Push $1
+
+    DetailPrint "Stopping Memento runtime processes..."
+    System::Call 'kernel32::SetEnvironmentVariableW(w "MEMENTO_UNINSTALL_ROOT", w "$R8") i.r0'
+    nsExec::ExecToLog `"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "$$root = [Environment]::GetEnvironmentVariable('MEMENTO_UNINSTALL_ROOT'); if ([string]::IsNullOrWhiteSpace($$root)) { exit 1 }; $$prefix = [IO.Path]::GetFullPath($$root).TrimEnd([IO.Path]::DirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar; foreach ($$attempt in 1..3) { $$processes = @(Get-CimInstance -ClassName Win32_Process -ErrorAction SilentlyContinue | Where-Object { $$_.ExecutablePath -and $$_.ExecutablePath.StartsWith($$prefix, [StringComparison]::OrdinalIgnoreCase) }); if ($$processes.Count -eq 0) { exit 0 }; $$processes | ForEach-Object { Stop-Process -Id $$_.ProcessId -Force -ErrorAction SilentlyContinue }; Start-Sleep -Milliseconds 300 }; exit 2"`
+    Pop $0
+    System::Call 'kernel32::SetEnvironmentVariableW(w "MEMENTO_UNINSTALL_ROOT", p 0) i.r1'
+
+    ${If} $0 != 0
+      DetailPrint "Some Memento runtime processes could not be stopped; locked files will be removed after restart."
+    ${EndIf}
+    Pop $1
+    Pop $0
+  FunctionEnd
 !endif
 
 !macro customUnInstall
@@ -95,13 +112,42 @@
     ${GetFileName} "$INSTDIR" $R7
     ${GetParent} "$INSTDIR" $R8
     ${GetFileName} "$R8" $R6
-    RMDir /r "$INSTDIR"
     ${If} $R7 == "app"
     ${AndIf} $R6 == "${APP_FILENAME}"
-      RMDir /r "$R8\data"
+      Call un.StopMementoRuntimeProcesses
+
+      ClearErrors
       RMDir /r "$R8\services"
+      ${If} ${Errors}
+        DetailPrint "Scheduling locked service files for removal after restart."
+        RMDir /r /REBOOTOK "$R8\services"
+      ${EndIf}
+
+      ClearErrors
       RMDir /r "$R8\cache"
-      RMDir "$R8"
+      ${If} ${Errors}
+        DetailPrint "Scheduling locked cache files for removal after restart."
+        RMDir /r /REBOOTOK "$R8\cache"
+      ${EndIf}
+
+      ClearErrors
+      RMDir /r "$INSTDIR"
+      ${If} ${Errors}
+        RMDir /r /REBOOTOK "$INSTDIR"
+      ${EndIf}
+
+      ClearErrors
+      RMDir /r "$R8\data"
+      ${If} ${Errors}
+        DetailPrint "Scheduling locked data files for removal after restart."
+        RMDir /r /REBOOTOK "$R8\data"
+      ${EndIf}
+
+      RMDir /REBOOTOK "$R8"
+    ${Else}
+      # Preserve electron-builder's normal behavior if an older install does
+      # not use the expected Memento\app layout.
+      RMDir /r /REBOOTOK "$INSTDIR"
     ${EndIf}
   ${EndIf}
 !macroend
