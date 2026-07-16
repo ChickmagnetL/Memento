@@ -19,7 +19,7 @@ os.environ.setdefault("HF_ENDPOINT", "https://hf-mirror.com")
 SERVICE_DIR = Path(__file__).resolve().parent
 MODELS_DIR = SERVICE_DIR / "models"
 
-app = FastAPI(title="Memento Embedding Service", version="0.1.0")
+app = FastAPI(title="Memento Embedding Service", version="0.1.1")
 
 # --- Lazy model cache ---
 _embedding_model: Optional[object] = None

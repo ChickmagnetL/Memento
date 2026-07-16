@@ -17,7 +17,7 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 # (e.g. HF_ENDPOINT=https://huggingface.co).
 os.environ.setdefault("HF_ENDPOINT", "https://hf-mirror.com")
 
-app = FastAPI(title="Memento ASR Service", version="0.1.0")
+app = FastAPI(title="Memento ASR Service", version="0.1.1")
 logger = logging.getLogger(__name__)
 
 SERVICE_DIR = Path(__file__).resolve().parent

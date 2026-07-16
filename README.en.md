@@ -131,16 +131,12 @@ Online Wiki: <https://chickmagnetl.github.io/Memento/#/>
 
 ## FAQ
 
-### Usage and data
-
 <details>
 <summary><b>New here — is there a tutorial?</b></summary>
 
 The **Help** page in the sidebar provides a complete app tutorial. We recommend starting there.
 
 </details>
-
-<br>
 
 <details>
 <summary><b>Where is my data stored?</b></summary>
@@ -149,16 +145,12 @@ Business data such as conversations, the knowledge base, and personal preference
 
 </details>
 
-<br>
-
 <details>
 <summary><b>Does it need an internet connection?</b></summary>
 
 Importing a video requires accessing the platform to fetch its content; processing and chatting require accessing the model endpoints. With local models, you can work offline except for the initial download.
 
 </details>
-
-### Models and content processing
 
 <details>
 <summary><b>Do the models cost money?</b></summary>
@@ -167,16 +159,12 @@ It depends on your configuration. Cloud APIs (such as DeepSeek, SiliconFlow) are
 
 </details>
 
-<br>
-
 <details>
 <summary><b>What about videos without subtitles?</b></summary>
 
 You can download the audio and generate a transcript via ASR transcription, then clean and index it.
 
 </details>
-
-### Platform login and support
 
 <details>
 <summary><b>Do I need to log in to a platform account?</b></summary>
@@ -185,16 +173,12 @@ Some content on Bilibili and Douyin (such as AI subtitles) requires a logged-in 
 
 </details>
 
-<br>
-
 <details>
 <summary><b>Is it safe to log in inside the app?</b></summary>
 
 Login happens on the platform's official page, running inside an isolated session within the app; the app never touches your plaintext password. After login, only the session credentials used for fetching are retained and stored on your local machine. Note that, like any other sensitive data on your machine, their safety ultimately depends on the security of the machine itself.
 
 </details>
-
-<br>
 
 <details>
 <summary><b>What's the YouTube support scope?</b></summary>

@@ -12,7 +12,7 @@ import re
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-app = FastAPI(title="Memento Douyin Fetcher", version="0.1.0")
+app = FastAPI(title="Memento Douyin Fetcher", version="0.1.1")
 
 
 class ResolveRequest(BaseModel):
