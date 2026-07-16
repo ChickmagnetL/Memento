@@ -163,6 +163,27 @@ def test_localhost_transcriptions_ensures_service_running(tmp_path: Path):
     assert order == [("ensure", "http://localhost:8001"), "post"]
 
 
+def test_windows_localhost_transcriptions_use_ipv4_loopback(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+):
+    audio_path = _audio_file(tmp_path)
+    order = []
+
+    monkeypatch.setattr("core.video.asr_client.sys.platform", "win32")
+    client = AsrServiceClient(
+        endpoint="http://localhost:8001/v1",
+        post_multipart=lambda url, *args, **kwargs: order.append(url) or {"segments": []},
+        ensure_running=lambda endpoint: order.append(endpoint),
+    )
+
+    client.transcribe(str(audio_path), model="iic/SenseVoiceSmall")
+
+    assert order == [
+        "http://127.0.0.1:8001",
+        "http://127.0.0.1:8001/v1/audio/transcriptions",
+    ]
+
+
 def test_localhost_transcriptions_adds_v1_for_legacy_endpoint(tmp_path: Path):
     audio_path = _audio_file(tmp_path)
     calls = []

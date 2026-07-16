@@ -5,6 +5,7 @@ import json
 import mimetypes
 import re
 import subprocess
+import sys
 import tempfile
 import uuid
 from pathlib import Path
@@ -150,6 +151,14 @@ def _is_localhost(endpoint: str) -> bool:
     return host in {"localhost", "127.0.0.1", "::1"}
 
 
+def _normalize_windows_loopback_endpoint(endpoint: str) -> str:
+    parsed = urlparse(endpoint)
+    if sys.platform != "win32" or parsed.hostname not in {"localhost", "::1"}:
+        return endpoint
+    port = f":{parsed.port}" if parsed.port else ""
+    return parsed._replace(netloc=f"127.0.0.1{port}").geturl()
+
+
 def _health_endpoint(endpoint: str) -> str:
     parsed = urlparse(endpoint)
     if parsed.path.rstrip("/") == "/v1":
@@ -178,7 +187,7 @@ class AsrServiceClient:
         probe_duration: Callable[[Path], float] = probe_duration,
         extract_chunk: Callable[[Path, float, float | None, Path], None] = extract_chunk,
     ) -> None:
-        self.endpoint = endpoint.rstrip("/")
+        self.endpoint = _normalize_windows_loopback_endpoint(endpoint.rstrip("/"))
         self.protocol = protocol
         self.api_key = api_key
         self.post_json = post_json
