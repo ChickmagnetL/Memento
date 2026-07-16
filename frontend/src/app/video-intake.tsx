@@ -124,7 +124,7 @@ export function VideoIntake({ initialVideos }: VideoIntakeProps) {
       return t("Couldn't fetch subtitles. Check your network or login status and try again.");
     }
     if (lower.includes("asr")) {
-      return t("ASR service is unavailable. Check the ASR settings and try again.");
+      return t("ASR processing failed: {detail}", { detail: message.trim() });
     }
     if (
       lower.includes("audio") ||

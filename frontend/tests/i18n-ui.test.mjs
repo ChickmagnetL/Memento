@@ -66,6 +66,14 @@ test("translation interpolation preserves dynamic values", () => {
 test("home video errors use localized messages instead of backend English", () => {
   assert.match(videoIntakeSource, /function localizedVideoError/);
   assert.match(videoIntakeSource, /showLocalizedError\(/);
+  assert.match(
+    videoIntakeSource,
+    /ASR processing failed: \{detail\}[\s\S]*?detail: message\.trim\(\)/,
+  );
+  assert.doesNotMatch(
+    videoIntakeSource,
+    /return t\("ASR service is unavailable\. Check the ASR settings and try again\."\)/,
+  );
   assert.doesNotMatch(
     videoIntakeSource,
     /<ErrorBanner message=\{processed\.error_message\}/,

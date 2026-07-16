@@ -19,7 +19,7 @@ const zhCN: Record<string, string> = {
   "This video link is not supported. Check the link and try again.": "此视频链接不受支持，请检查链接后重试。",
   "This video is already being processed.": "此视频正在处理中。",
   "Couldn't fetch subtitles. Check your network or login status and try again.": "无法获取字幕，请检查网络或登录状态后重试。",
-  "ASR service is unavailable. Check the ASR settings and try again.": "ASR 服务不可用，请检查 ASR 设置后重试。",
+  "ASR processing failed: {detail}": "ASR 处理失败：{detail}",
   "Couldn't download or prepare the video audio. Check your network and try again.": "无法下载或处理视频音频，请检查网络后重试。",
   "Couldn't import the video. Check the link and network, then try again.": "无法导入视频，请检查链接和网络后重试。",
   "Video processing failed. Check your network and model settings, then try again.": "视频处理失败，请检查网络和模型设置后重试。",
