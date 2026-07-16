@@ -85,6 +85,12 @@ export function VideoIntake({ initialVideos }: VideoIntakeProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [processingVideoId, setProcessingVideoId] = useState<string | null>(null);
   const [checkingVideoId, setCheckingVideoId] = useState<string | null>(null);
+  const processingBaselineRef = useRef<{
+    videoId: string;
+    status: VideoRecord["status"] | null;
+    processedAt: string | null;
+    observedProcessing: boolean;
+  } | null>(null);
   const [pendingSubtitleDecision, setPendingSubtitleDecision] = useState<{
     videoId: string;
     title: string;
@@ -178,6 +184,13 @@ export function VideoIntake({ initialVideos }: VideoIntakeProps) {
     fallback?: "asr",
     options?: { allowNonChinese?: boolean }
   ) {
+    const currentVideo = videos.find((item) => item.id === videoId);
+    processingBaselineRef.current = {
+      videoId,
+      status: currentVideo?.status ?? null,
+      processedAt: currentVideo?.processed_at ?? null,
+      observedProcessing: false,
+    };
     setProcessingVideoId(videoId);
     try {
       const processed = await processVideo(videoId, fallback, options);
@@ -206,6 +219,7 @@ export function VideoIntake({ initialVideos }: VideoIntakeProps) {
       );
     } finally {
       setProcessingVideoId(null);
+      processingBaselineRef.current = null;
     }
   }
 
@@ -304,6 +318,59 @@ export function VideoIntake({ initialVideos }: VideoIntakeProps) {
     const totalHeight = parseFloat(last.style.getPropertyValue("--list-y")) + last.offsetHeight;
     stage.style.setProperty("--stage-height", `${totalHeight}px`);
   }, [isExpanded, videos]);
+
+  const shouldPollProcessingStatus =
+    processingVideoId !== null || videos.some((video) => video.status === "processing");
+
+  useEffect(() => {
+    if (!shouldPollProcessingStatus) return;
+
+    let cancelled = false;
+    let refreshing = false;
+    const pollProcessingStatus = async () => {
+      if (refreshing) return;
+      refreshing = true;
+      try {
+        const items = await listVideos();
+        if (cancelled) return;
+        setVideos(items);
+        setActiveCardIndex((current) =>
+          current >= items.length ? Math.max(0, items.length - 1) : current
+        );
+
+        const baseline = processingBaselineRef.current;
+        if (!baseline) return;
+        const latestVideo = items.find((item) => item.id === baseline.videoId);
+        if (latestVideo?.status === "processing") {
+          baseline.observedProcessing = true;
+          return;
+        }
+        const hasNewTerminalStatus =
+          (latestVideo?.status === "completed" || latestVideo?.status === "failed") &&
+          (baseline.observedProcessing ||
+            latestVideo.status !== baseline.status ||
+            latestVideo.processed_at !== baseline.processedAt);
+        if (hasNewTerminalStatus) {
+          setProcessingVideoId((current) =>
+            current === baseline.videoId ? null : current
+          );
+          processingBaselineRef.current = null;
+        }
+      } catch {
+        // Keep the current state and retry while processing is active.
+      } finally {
+        refreshing = false;
+      }
+    };
+
+    const intervalId = window.setInterval(() => {
+      void pollProcessingStatus();
+    }, 1500);
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [shouldPollProcessingStatus]);
 
   // Wheel event for carousel scrolling.
   // Trackpads emit many small continuous events per swipe; accumulate deltaY
