@@ -11,8 +11,6 @@ from core.video.audio import AudioDownloadError
 from core.video.bilibili import (
     BilibiliSubtitleClient,
     BilibiliSubtitleError,
-    REASON_MESSAGES,
-    REASON_NO_SUBTITLES,
 )
 from core.video.douyin import DouyinError
 from core.video.markdown import MarkdownDraftWriter
@@ -103,16 +101,9 @@ class VideoPipeline:
                         allow_non_chinese=allow_non_chinese,
                     )
                     entries = outcome.entries
-                    if getattr(outcome, "source", None) == "automatic":
-                        entries = []
-                        empty_error = BilibiliSubtitleError(
-                            REASON_MESSAGES[REASON_NO_SUBTITLES],
-                            reason=REASON_NO_SUBTITLES,
-                        )
-                    else:
-                        empty_error = BilibiliSubtitleError(
-                            outcome.message, reason=outcome.reason
-                        )
+                    empty_error = BilibiliSubtitleError(
+                        outcome.message, reason=outcome.reason
+                    )
                 else:
                     entries = await asyncio.to_thread(
                         self.subtitle_client.fetch,
