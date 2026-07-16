@@ -58,7 +58,7 @@ jobs:
           cd backend
           python -m venv venv
           source venv/bin/activate
-          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
           pip install pyinstaller
 
       - name: Setup Douyin fetcher venv
@@ -75,10 +75,29 @@ jobs:
       - name: Install desktop dependencies
         run: cd desktop && npm ci
 
+      - name: Test backend
+        run: |
+          cd backend
+          source venv/bin/activate
+          pytest
+
+      - name: Check frontend
+        run: |
+          cd frontend
+          npm run lint
+
       - name: Test desktop shell
         run: cd desktop && npm test
 
+      - name: Restore backend build cache
+        id: backend-cache
+        uses: actions/cache@v4
+        with:
+          path: backend/dist/memento-backend
+          key: ${{ runner.os }}-backend-${{ hashFiles('backend/**', 'scripts/fix-pyi-symlinks.sh', '.github/workflows/build-desktop.yml') }}
+
       - name: Build backend (PyInstaller)
+        if: steps.backend-cache.outputs.cache-hit != 'true'
         run: |
           cd backend
           source venv/bin/activate
@@ -103,7 +122,15 @@ jobs:
             desktop_entry.py
           bash ../scripts/fix-pyi-symlinks.sh dist/memento-backend
 
+      - name: Restore Douyin fetcher build cache
+        id: douyin-fetcher-cache
+        uses: actions/cache@v4
+        with:
+          path: services/douyin_fetcher/dist/memento-douyin-fetcher
+          key: ${{ runner.os }}-douyin-fetcher-${{ hashFiles('services/douyin_fetcher/**', 'scripts/fix-pyi-symlinks.sh', '.github/workflows/build-desktop.yml') }}
+
       - name: Build Douyin fetcher (PyInstaller)
+        if: steps.douyin-fetcher-cache.outputs.cache-hit != 'true'
         run: |
           cd services/douyin_fetcher
           source .packaging-venv/bin/activate
@@ -113,7 +140,15 @@ jobs:
             desktop_entry.py
           bash ../../scripts/fix-pyi-symlinks.sh dist/memento-douyin-fetcher
 
+      - name: Restore frontend build cache
+        id: frontend-cache
+        uses: actions/cache@v4
+        with:
+          path: frontend/.next/standalone
+          key: ${{ runner.os }}-frontend-${{ hashFiles('frontend/**', '.github/workflows/build-desktop.yml') }}
+
       - name: Build frontend (Next.js standalone)
+        if: steps.frontend-cache.outputs.cache-hit != 'true'
         run: |
           cd frontend
           npm run build
@@ -183,7 +218,7 @@ jobs:
           cd backend
           python -m venv venv
           .\venv\Scripts\Activate.ps1
-          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
           pip install pyinstaller
 
       - name: Setup Douyin fetcher venv
@@ -200,10 +235,29 @@ jobs:
       - name: Install desktop dependencies
         run: cd desktop && npm ci
 
+      - name: Test backend
+        run: |
+          cd backend
+          .\venv\Scripts\Activate.ps1
+          pytest
+
+      - name: Check frontend
+        run: |
+          cd frontend
+          npm run lint
+
       - name: Test desktop shell
         run: cd desktop && npm test
 
+      - name: Restore backend build cache
+        id: backend-cache
+        uses: actions/cache@v4
+        with:
+          path: backend/dist/memento-backend
+          key: ${{ runner.os }}-backend-${{ hashFiles('backend/**', 'scripts/fix-pyi-symlinks.sh', '.github/workflows/build-desktop.yml') }}
+
       - name: Build backend (PyInstaller)
+        if: steps.backend-cache.outputs.cache-hit != 'true'
         run: |
           cd backend
           .\venv\Scripts\Activate.ps1
@@ -227,7 +281,15 @@ jobs:
             --copy-metadata starlette `
             desktop_entry.py
 
+      - name: Restore Douyin fetcher build cache
+        id: douyin-fetcher-cache
+        uses: actions/cache@v4
+        with:
+          path: services/douyin_fetcher/dist/memento-douyin-fetcher
+          key: ${{ runner.os }}-douyin-fetcher-${{ hashFiles('services/douyin_fetcher/**', 'scripts/fix-pyi-symlinks.sh', '.github/workflows/build-desktop.yml') }}
+
       - name: Build Douyin fetcher (PyInstaller)
+        if: steps.douyin-fetcher-cache.outputs.cache-hit != 'true'
         run: |
           cd services/douyin_fetcher
           .\.packaging-venv\Scripts\Activate.ps1
@@ -236,7 +298,15 @@ jobs:
             --collect-all f2 `
             desktop_entry.py
 
+      - name: Restore frontend build cache
+        id: frontend-cache
+        uses: actions/cache@v4
+        with:
+          path: frontend/.next/standalone
+          key: ${{ runner.os }}-frontend-${{ hashFiles('frontend/**', '.github/workflows/build-desktop.yml') }}
+
       - name: Build frontend (Next.js standalone)
+        if: steps.frontend-cache.outputs.cache-hit != 'true'
         run: |
           cd frontend
           npm run build
