@@ -30,6 +30,19 @@ for (const relative of required) {
   }
 }
 
+for (const relative of [
+  path.join("services", "asr", "server.py"),
+  path.join("services", "asr", "transcribers.py"),
+]) {
+  const source = path.resolve(relative);
+  const staged = path.join(resourcesDir, relative);
+  if (!fs.readFileSync(source).equals(fs.readFileSync(staged))) {
+    throw new Error(
+      `Desktop ASR runtime resource is stale: ${staged}. Run scripts/stage-desktop-resources.mjs before packaging.`,
+    );
+  }
+}
+
 const iconPath = path.resolve("desktop/build/icon.png");
 if (!fs.existsSync(iconPath)) {
   throw new Error(`Desktop app icon is missing: ${iconPath}`);
