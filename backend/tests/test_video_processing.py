@@ -344,11 +344,9 @@ async def test_process_uses_fetch_outcome_message(
 
 
 @pytest.mark.asyncio
-async def test_automatic_bilibili_subtitles_require_asr_choice(
+async def test_automatic_bilibili_subtitles_write_document(
     sqlite: SQLiteClient, tmp_path: Path
 ):
-    from core.video.bilibili import REASON_MESSAGES, REASON_NO_SUBTITLES
-
     class AutomaticSubtitleClient:
         def fetch_outcome(self, video, *, allow_non_chinese: bool = False):
             return SimpleNamespace(
@@ -371,8 +369,11 @@ async def test_automatic_bilibili_subtitles_require_asr_choice(
 
     result = await pipeline.process(video)
 
-    assert result.status == "failed"
-    assert result.error == REASON_MESSAGES[REASON_NO_SUBTITLES]
+    assert result.status == "completed"
+    assert result.document_path is not None
+    assert Path(result.document_path).read_text(encoding="utf-8").endswith(
+        "[00:00] 上游自动字幕\n"
+    )
 
 
 @pytest.mark.asyncio

@@ -326,23 +326,13 @@ async def check_subtitles(video_id: str, request: Request) -> dict:
             cookie=settings.video_processing.bilibili_cookie
         )
     outcome = await asyncio.to_thread(client.fetch_outcome, video)
-    automatic_only = (
-        platform == "bilibili"
-        and getattr(outcome, "source", None) == "automatic"
-    )
-    outcome_reason = REASON_NO_SUBTITLES if automatic_only else outcome.reason
-    outcome_message = (
-        REASON_MESSAGES[REASON_NO_SUBTITLES]
-        if automatic_only
-        else outcome.message
-    )
     payload = {
-        "has_subtitles": outcome.has_subtitles and not automatic_only,
+        "has_subtitles": outcome.has_subtitles,
         "platform": platform,
-        "reason": outcome_reason,
-        "message": outcome_message,
+        "reason": outcome.reason,
+        "message": outcome.message,
     }
-    if outcome_reason in (REASON_NOT_LOGGED_IN, REASON_AUTH_EXPIRED):
+    if outcome.reason in (REASON_NOT_LOGGED_IN, REASON_AUTH_EXPIRED):
         payload["login_path"] = "/login"
     if getattr(outcome, "available_languages", None):
         payload["available_languages"] = list(outcome.available_languages)

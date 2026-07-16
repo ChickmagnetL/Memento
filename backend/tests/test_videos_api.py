@@ -373,7 +373,7 @@ def test_process_asr_choice_uses_forced_asr_path(client: TestClient, monkeypatch
     assert seen_video_ids == [created["id"]]
 
 
-def test_check_subtitles_treats_bilibili_automatic_track_as_no_official_subtitles(
+def test_check_subtitles_accepts_bilibili_automatic_track(
     client: TestClient, monkeypatch
 ):
     created = _create_video(client)
@@ -392,8 +392,8 @@ def test_check_subtitles_treats_bilibili_automatic_track_as_no_official_subtitle
     resp = client.get(f"/api/videos/{created['id']}/check-subtitles")
 
     assert resp.status_code == 200
-    assert resp.json()["has_subtitles"] is False
-    assert resp.json()["reason"] == "no_subtitles"
+    assert resp.json()["has_subtitles"] is True
+    assert resp.json()["reason"] == "ok"
 
 
 @pytest.mark.parametrize(
