@@ -2,6 +2,7 @@
 
 import os
 import signal
+import subprocess
 import sys
 from pathlib import Path
 from unittest.mock import Mock
@@ -102,6 +103,22 @@ def test_missing_venv_skips_spawn_and_does_not_raise():
     spawn.assert_not_called()
 
 
+def test_missing_venv_writes_diagnostic_log(monkeypatch, tmp_path):
+    log_path = tmp_path / "logs" / "server.log"
+    missing_venv = tmp_path / ".venv" / "Scripts" / "uvicorn.exe"
+    monkeypatch.setattr(asr_supervisor, "_default_log_path", lambda: log_path)
+
+    ensure_asr_running(
+        "http://localhost:8001",
+        is_healthy=lambda endpoint: False,
+        venv_path=lambda: missing_venv,
+        spawn=Mock(),
+        sleep=lambda _: None,
+    )
+
+    assert f"ASR service launcher not found: {missing_venv}" in log_path.read_text()
+
+
 @pytest.mark.parametrize(
     "endpoint",
     [
@@ -155,6 +172,54 @@ def test_spawn_exit_surfaces_startup_error(existing_venv):
             spawn=spawn,
             sleep=lambda _: None,
         )
+
+
+def test_spawn_redirects_service_output_to_log(monkeypatch, tmp_path):
+    service_dir = tmp_path / "services" / "asr"
+    service_dir.mkdir(parents=True)
+    venv = service_dir / ".venv" / "bin" / "uvicorn"
+    venv.parent.mkdir(parents=True)
+    venv.touch()
+    proc = _fake_proc()
+    popen = Mock(return_value=proc)
+    monkeypatch.setattr(asr_supervisor, "resolve_project_root", lambda: tmp_path)
+    monkeypatch.setattr(asr_supervisor.subprocess, "Popen", popen)
+    monkeypatch.setattr(sys, "platform", "linux")
+
+    assert asr_supervisor._spawn(venv, 8001) is proc
+
+    kwargs = popen.call_args.kwargs
+    log_path = service_dir / "logs" / "server.log"
+    assert kwargs["cwd"] == str(service_dir)
+    assert kwargs["stdout"].name == str(log_path)
+    assert kwargs["stdout"].closed is True
+    assert kwargs["stderr"] is subprocess.STDOUT
+    assert "Starting ASR service on 127.0.0.1:8001" in log_path.read_text()
+
+
+def test_spawn_exit_surfaces_log_tail_when_stderr_is_redirected(
+    existing_venv,
+    monkeypatch,
+    tmp_path,
+):
+    log_path = tmp_path / "server.log"
+    log_path.write_text("uvicorn startup\nmissing native dependency\n")
+    proc = _exited_proc(b"")
+    monkeypatch.setattr(asr_supervisor, "_default_log_path", lambda: log_path)
+
+    with pytest.raises(AsrError) as error:
+        ensure_asr_running(
+            "http://localhost:8001",
+            timeout=10.0,
+            is_healthy=lambda endpoint: False,
+            venv_path=lambda: existing_venv,
+            spawn=lambda venv, port: proc,
+            sleep=lambda _: None,
+        )
+
+    message = str(error.value)
+    assert "missing native dependency" in message
+    assert str(log_path) in message
 
 
 def test_does_not_respawn_when_already_spawned(existing_venv):

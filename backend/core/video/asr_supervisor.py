@@ -35,6 +35,7 @@ class AsrError(Exception):
 _SPAWN_LOCK = threading.Lock()
 _spawned_proc: subprocess.Popen | None = None
 _cleanup_registered = False
+_LOG_TAIL_BYTES = 4_000
 
 
 def _default_venv_path() -> Path:
@@ -42,6 +43,29 @@ def _default_venv_path() -> Path:
     if sys.platform == "win32":
         return venv_dir / "Scripts" / "uvicorn.exe"
     return venv_dir / "bin" / "uvicorn"
+
+
+def _default_log_path() -> Path:
+    return resolve_project_root() / "services" / "asr" / "logs" / "server.log"
+
+
+def _append_log(message: str) -> None:
+    log_path = _default_log_path()
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+    with log_path.open("a", encoding="utf-8") as log_file:
+        log_file.write(f"\n[{timestamp}] {message}\n")
+
+
+def _read_log_tail() -> str:
+    log_path = _default_log_path()
+    try:
+        with log_path.open("rb") as log_file:
+            log_file.seek(0, os.SEEK_END)
+            log_file.seek(max(0, log_file.tell() - _LOG_TAIL_BYTES))
+            return log_file.read().decode("utf-8", errors="replace").strip()
+    except OSError:
+        return ""
 
 
 def _is_healthy(endpoint: str, timeout: float = 1.0) -> bool:
@@ -65,18 +89,22 @@ def _is_local_endpoint(endpoint: str) -> bool:
 
 def _spawn(venv: Path, port: int) -> subprocess.Popen:
     project_root = resolve_project_root()
+    service_dir = project_root / "services" / "asr"
+    log_path = _default_log_path()
     platform_options = (
         {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP}
         if sys.platform == "win32"
         else {"start_new_session": True}
     )
-    return subprocess.Popen(
-        [str(venv), "server:app", "--host", "127.0.0.1", "--port", str(port)],
-        cwd=str(project_root / "services" / "asr"),
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.PIPE,
-        **platform_options,
-    )
+    _append_log(f"Starting ASR service on 127.0.0.1:{port} with {venv}")
+    with log_path.open("a", encoding="utf-8") as log_file:
+        return subprocess.Popen(
+            [str(venv), "server:app", "--host", "127.0.0.1", "--port", str(port)],
+            cwd=str(service_dir),
+            stdout=log_file,
+            stderr=subprocess.STDOUT,
+            **platform_options,
+        )
 
 
 def _terminate(proc: subprocess.Popen) -> None:
@@ -98,12 +126,18 @@ def _startup_error(proc: subprocess.Popen) -> str:
     try:
         _, stderr = proc.communicate(timeout=0.1)
     except Exception:
-        return "process exited before becoming healthy"
+        stderr = None
     if isinstance(stderr, bytes):
         detail = stderr.decode("utf-8", errors="replace").strip()
     else:
         detail = str(stderr or "").strip()
-    return detail[-1000:] or "process exited before becoming healthy"
+    if detail:
+        return detail[-1000:]
+    log_path = _default_log_path()
+    log_tail = _read_log_tail()
+    if log_tail:
+        return f"{log_tail[-1000:]}\nASR service log: {log_path}"
+    return f"process exited before becoming healthy; ASR service log: {log_path}"
 
 
 def shutdown() -> None:
@@ -145,6 +179,7 @@ def ensure_asr_running(
 
     venv = venv_path()
     if not venv.exists():
+        _append_log(f"ASR service launcher not found: {venv}")
         return
 
     with _SPAWN_LOCK:
@@ -174,5 +209,6 @@ def ensure_asr_running(
             raise AsrError(f"ASR service failed to start at {endpoint}: {detail}")
         sleep(poll_interval)
     raise AsrError(
-        f"ASR service did not become healthy at {endpoint} within {timeout}s"
+        f"ASR service did not become healthy at {endpoint} within {timeout}s; "
+        f"ASR service log: {_default_log_path()}"
     )

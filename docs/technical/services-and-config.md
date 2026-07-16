@@ -43,8 +43,8 @@
 1. 仅 `transcriptions` 协议会进入 supervisor；`chat_audio` 要求 endpoint 已经运行
 2. 仅 hostname 为 `localhost` / `127.0.0.1` / `::1` 才可能 spawn
 3. 已健康则立即返回
-4. 否则检查 **`services/asr/.venv/bin/uvicorn`** 是否存在（不是“有 `.venv` 目录即可”）；不存在则 **静默返回**
-5. 该路径和进程组回收逻辑目前按 macOS / Linux 实现；Windows 常见的 `.venv/Scripts/uvicorn.exe` 不会被发现，需手动启动或使用 Remote Node
+4. 否则按平台检查 ASR 启动器：macOS / Linux 使用 **`services/asr/.venv/bin/uvicorn`**，Windows 使用 **`services/asr/.venv/Scripts/uvicorn.exe`**
+5. 启动器缺失、服务启动输出和运行时错误会写入 **`services/asr/logs/server.log`**
 6. 存在则在 `127.0.0.1:<port>` spawn（port 来自 endpoint）
 7. 默认最多等 **120s**，超时抛错
 8. backend lifespan / `atexit` 调用 `shutdown()` 回收子进程
