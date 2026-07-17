@@ -37,6 +37,7 @@ def test_http_resolver_returns_video_url_and_metadata(monkeypatch):
         def read(self) -> bytes:
             return (
                 b'{"video_url":"https://cdn.example.com/video.mp4",'
+                b'"audio_url":"https://cdn.example.com/audio.mp3",'
                 b'"title":"Example",'
                 b'"author":"Creator",'
                 b'"author_id":"sec-user",'
@@ -54,6 +55,7 @@ def test_http_resolver_returns_video_url_and_metadata(monkeypatch):
 
     assert resolve("1234567890", "cookie=value") == DouyinMetadata(
         video_url="https://cdn.example.com/video.mp4",
+        audio_url="https://cdn.example.com/audio.mp3",
         title="Example",
         author="Creator",
         author_id="sec-user",

@@ -5,7 +5,12 @@ from urllib.error import HTTPError
 
 import pytest
 
-from core.video.douyin import DouyinAudioDownloader, DouyinError, direct_aweme_id
+from core.video.douyin import (
+    DouyinAudioDownloader,
+    DouyinError,
+    DouyinMetadata,
+    direct_aweme_id,
+)
 
 
 def test_direct_aweme_id_from_video_path():
@@ -75,6 +80,100 @@ def test_download_resolves_fetches_and_extracts(tmp_path: Path):
     assert ffmpeg_args[0] == "ffmpeg"
     assert str(tmp_path / "videos" / "temp" / "video-1.mp4") in ffmpeg_args
     assert not (tmp_path / "videos" / "temp" / "video-1.mp4").exists()
+
+
+def test_download_prefers_resolved_audio_url(tmp_path: Path):
+    downloaded = []
+    ffmpeg_inputs = []
+
+    def fake_run_command(args: list[str]) -> None:
+        ffmpeg_inputs.append(Path(args[args.index("-i") + 1]))
+        Path(args[-1]).write_bytes(b"RIFF")
+
+    downloader = DouyinAudioDownloader(
+        data_dir=tmp_path,
+        keep_videos=False,
+        cookie="c",
+        resolve_video_url=lambda aweme_id, cookie: DouyinMetadata(
+            video_url="https://cdn.example.com/video.mp4",
+            audio_url="https://cdn.example.com/audio.mp3",
+        ),
+        fetch_bytes=lambda url: downloaded.append(url) or b"AUDIODATA",
+        run_command=fake_run_command,
+    )
+
+    wav_path = downloader.download(make_video())
+
+    assert wav_path.exists()
+    assert downloaded == ["https://cdn.example.com/audio.mp3"]
+    assert [path.suffix for path in ffmpeg_inputs] == [".mp3"]
+    assert not ffmpeg_inputs[0].exists()
+    assert not (downloader.temp_dir / "video-1.mp4").exists()
+
+
+def test_download_falls_back_to_video_when_audio_download_fails(tmp_path: Path):
+    downloaded = []
+    ffmpeg_inputs = []
+
+    def fake_fetch_bytes(url: str) -> bytes:
+        downloaded.append(url)
+        if url.endswith("audio.mp3"):
+            raise OSError("audio unavailable")
+        return b"MP4DATA"
+
+    def fake_run_command(args: list[str]) -> None:
+        ffmpeg_inputs.append(Path(args[args.index("-i") + 1]))
+        Path(args[-1]).write_bytes(b"RIFF")
+
+    downloader = DouyinAudioDownloader(
+        data_dir=tmp_path,
+        keep_videos=False,
+        cookie="c",
+        resolve_video_url=lambda aweme_id, cookie: DouyinMetadata(
+            video_url="https://cdn.example.com/video.mp4",
+            audio_url="https://cdn.example.com/audio.mp3",
+        ),
+        fetch_bytes=fake_fetch_bytes,
+        run_command=fake_run_command,
+    )
+
+    wav_path = downloader.download(make_video())
+
+    assert wav_path.exists()
+    assert downloaded == [
+        "https://cdn.example.com/audio.mp3",
+        "https://cdn.example.com/video.mp4",
+    ]
+    assert [path.suffix for path in ffmpeg_inputs] == [".mp4"]
+
+
+def test_download_falls_back_to_video_when_audio_conversion_fails(tmp_path: Path):
+    ffmpeg_inputs = []
+
+    def fake_run_command(args: list[str]) -> None:
+        input_path = Path(args[args.index("-i") + 1])
+        ffmpeg_inputs.append(input_path)
+        if input_path.suffix == ".mp3":
+            raise RuntimeError("audio conversion failed")
+        Path(args[-1]).write_bytes(b"RIFF")
+
+    downloader = DouyinAudioDownloader(
+        data_dir=tmp_path,
+        keep_videos=False,
+        cookie="c",
+        resolve_video_url=lambda aweme_id, cookie: DouyinMetadata(
+            video_url="https://cdn.example.com/video.mp4",
+            audio_url="https://cdn.example.com/audio.mp3",
+        ),
+        fetch_bytes=lambda url: b"DATA",
+        run_command=fake_run_command,
+    )
+
+    wav_path = downloader.download(make_video())
+
+    assert wav_path.exists()
+    assert [path.suffix for path in ffmpeg_inputs] == [".mp3", ".mp4"]
+    assert not ffmpeg_inputs[0].exists()
 
 
 def test_download_re_resolves_once_after_forbidden_video_url(tmp_path: Path):

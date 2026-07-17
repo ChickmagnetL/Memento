@@ -22,6 +22,7 @@ class ResolveRequest(BaseModel):
 
 class ResolveResponse(BaseModel):
     video_url: str
+    audio_url: str | None
     title: str | None
     author: str | None
     author_id: str | None
@@ -61,6 +62,19 @@ def _extract_video_url(detail: dict) -> str:
     raise HTTPException(status_code=502, detail="No playable video URL found in response")
 
 
+def _extract_audio_url(detail: dict) -> str | None:
+    music = detail.get("music") or {}
+    if not isinstance(music, dict):
+        return None
+    play_url = music.get("play_url") or {}
+    if not isinstance(play_url, dict):
+        return None
+    urls = play_url.get("url_list") or []
+    if urls and isinstance(urls[0], str) and urls[0]:
+        return urls[0]
+    return None
+
+
 def _optional_str(value) -> str | None:
     return value if isinstance(value, str) else None
 
@@ -97,6 +111,7 @@ def _build_resolve_payload(detail: dict) -> dict:
 
     return {
         "video_url": _extract_video_url(detail),
+        "audio_url": _extract_audio_url(detail),
         "title": _title_without_topics(detail.get("desc")),
         "author": _optional_str(author.get("nickname")),
         "author_id": _optional_str(author.get("sec_uid")),

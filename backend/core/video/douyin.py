@@ -22,6 +22,7 @@ class DouyinError(Exception):
 @dataclass(frozen=True)
 class DouyinMetadata:
     video_url: str
+    audio_url: str | None = None
     title: str | None = None
     author: str | None = None
     author_id: str | None = None
@@ -89,6 +90,7 @@ def _build_http_resolver(endpoint: str) -> Callable[[str, str], DouyinMetadata]:
             raise DouyinError("Fetcher returned no video URL")
         return DouyinMetadata(
             video_url=url,
+            audio_url=_optional_str(body.get("audio_url")),
             title=_optional_str(body.get("title")),
             author=_optional_str(body.get("author")),
             author_id=_optional_str(body.get("author_id")),
@@ -143,14 +145,39 @@ class DouyinAudioDownloader:
             )
 
         self.temp_dir.mkdir(parents=True, exist_ok=True)
+        audio_path = self.temp_dir / f"{video['id']}.mp3"
         mp4_path = self.temp_dir / f"{video['id']}.mp4"
         wav_path = self.temp_dir / f"{video['id']}.wav"
 
-        def resolve_download_url() -> str:
-            resolved = self.resolve_video_url(aweme_id, self.cookie)
-            return resolved.video_url if isinstance(resolved, DouyinMetadata) else resolved
+        resolved = self.resolve_video_url(aweme_id, self.cookie)
 
-        video_url = resolve_download_url()
+        def video_url_from(value: str | DouyinMetadata) -> str:
+            return value.video_url if isinstance(value, DouyinMetadata) else value
+
+        if isinstance(resolved, DouyinMetadata) and resolved.audio_url:
+            try:
+                audio_path.write_bytes(self.fetch_bytes(resolved.audio_url))
+                self.run_command(
+                    [
+                        "ffmpeg", "-y",
+                        "-i", str(audio_path),
+                        "-vn", "-acodec", "pcm_s16le", "-ar", "16000", "-ac", "1",
+                        str(wav_path),
+                    ]
+                )
+                if not wav_path.exists():
+                    raise AudioDownloadError(f"ffmpeg produced no WAV at {wav_path}")
+                return wav_path
+            except Exception:
+                wav_path.unlink(missing_ok=True)
+            finally:
+                audio_path.unlink(missing_ok=True)
+
+        def resolve_download_url() -> str:
+            refreshed = self.resolve_video_url(aweme_id, self.cookie)
+            return video_url_from(refreshed)
+
+        video_url = video_url_from(resolved)
         try:
             mp4_path.write_bytes(self.fetch_bytes(video_url))
         except HTTPError as exc:
