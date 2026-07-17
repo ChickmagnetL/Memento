@@ -6,6 +6,12 @@ Memento 的本地持久化分三块：**业务 SQLite**、**配置 SQLite**、**
 
 根目录：`settings.storage.data_dir`（resolve 后为绝对路径）。
 
+- 开发态：相对路径按 `MEMENTO_PROJECT_ROOT`（默认仓库根）解析
+- Windows 打包态：`<安装根>/data/storage`
+- 其它平台打包态：Electron `<userData>/data`
+
+打包态路径由 Electron 通过 `STORAGE__DATA_DIR` 覆盖 YAML / 数据库中可能存在的相对路径。
+
 | 路径 | 用途 |
 |------|------|
 | `{data_dir}/metadata.db` | 业务连接（`app.state.sqlite`） |
@@ -51,7 +57,7 @@ schema 中另有历史表 `config`（key/value），**当前代码未使用**；
 
 - 距离：COSINE
 - `vector_size` 默认 **768**（`RAGConfig` / settings 默认值），必须与当前 embedding 输出维度一致
-- 主集合 payload 常见字段：`document_id`、`video_id`、`chunk_index`、`title_path`、`text`、`start_timestamp`
+- 主集合 payload 常见字段：`document_id`、`video_id`、`platform`、`chunk_index`、`title_path`、`text`、`start_timestamp`；旧点缺少 `platform` 时，检索只会尝试从 B 站 / 抖音 `video_id` 兼容推断
 - 摘要集合 payload：`document_id`、`title`、`brief`
 
 **默认值冲突**：独立 Embedding 服务默认模型 `BAAI/bge-m3` 输出 **1024** 维，与 RAG 的 768 默认值不兼容。首次用该服务前应把 `rag.vector_size` 配为 1024；若集合已经创建，仅修改配置不会调整已有集合，须通过 embedding switch / reindex 流程重建。
@@ -87,6 +93,8 @@ clean 成功路径会自动 index；也可单独触发 index API（不生成 L2/
 3. **加权 RRF** 融合（`fusion.py`，k=60）：默认权重 `bm25:0.3`、`vector:0.7`（`settings.rag.hybrid_weights`，可配置覆盖）
 4. 截断为 `top_k` 返回
 
+BM25 语料当前在每次查询时通过 Qdrant 全量 scroll 重建。返回结果的 `score` 不是 RRF 融合分：有向量命中时保留原始向量相似度，仅 BM25 命中时使用 `1/rank`；RRF 只决定排序。
+
 对外：`POST /api/search`；对话工具 `search_knowledge` 走同一检索能力。
 
 ## Embedding 客户端
@@ -95,7 +103,7 @@ clean 成功路径会自动 index；也可单独触发 index API（不生成 L2/
 - 生产实现类：`CloudEmbeddingClient`（`backend/core/rag/embedding.py`）
 - 协议：OpenAI 兼容 `POST {endpoint}/embeddings`
 - 可指向：云厂商、Ollama、本仓库 `services/embedding`、Remote Node（都是 endpoint 目标，不是第二套 client）
-- 构造要求 `endpoint` / `api_key` / `model` 均非空；本地无真实 key 时填占位（如 `local`）
+- 低层客户端要求 `endpoint` / `api_key` / `model` 均非空；工厂会为 loopback endpoint 自动补 `local` 占位，云端或局域网 endpoint 仍须配置非空 key
 
 ## Embedding 切换与重建
 
@@ -121,6 +129,8 @@ clean 成功路径会自动 index；也可单独触发 index API（不生成 L2/
 embedding **禁止** 直接 `PUT .../active`，须走 switch 流程。
 
 ## 文档删除与重新导入
+
+`DELETE /api/videos/{video_id}` 只删除导入记录，并把关联 document 的 `video_id` 置空；document 记录、markdown 和向量都会保留。它与下面的文档删除不是同一语义。
 
 `DELETE /api/documents/{id}` 总会删除 document 数据库记录和主集合中的 L1 切块；是否删除磁盘文件由 `delete_source_file` 控制：
 
