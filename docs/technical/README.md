@@ -16,11 +16,11 @@
 
 | 文档 | 说明 | 状态 |
 |------|------|------|
-| [system-overview.md](./system-overview.md) | 产品形态、进程边界、主数据流 | 初稿 |
-| [video-pipeline.md](./video-pipeline.md) | B 站 / 抖音 / YouTube 导入、字幕、ASR、清洗、索引 | 初稿 |
-| [storage-and-retrieval.md](./storage-and-retrieval.md) | SQLite / Qdrant / chunk / hybrid retrieval | 初稿 |
-| [memory-architecture.md](./memory-architecture.md) | 会话历史 · 知识摘要层 · 个人偏好 | 已有长文 |
-| [services-and-config.md](./services-and-config.md) | ASR、Embedding、Remote Node、Settings | 初稿 |
+| [system-overview.md](./system-overview.md) | 产品形态、进程边界、主数据流 | 已核对 |
+| [video-pipeline.md](./video-pipeline.md) | B 站 / 抖音 / YouTube 导入、字幕、ASR、清洗、索引 | 已核对 |
+| [storage-and-retrieval.md](./storage-and-retrieval.md) | SQLite / Qdrant / chunk / hybrid retrieval | 已核对 |
+| [memory-architecture.md](./memory-architecture.md) | 会话历史 · 知识摘要层 · 个人偏好 | 已核对 |
+| [services-and-config.md](./services-and-config.md) | ASR、Embedding、Remote Node、Settings | 已核对 |
 
 ## 目录约定
 
