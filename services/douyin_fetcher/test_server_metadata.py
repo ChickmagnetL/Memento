@@ -47,10 +47,14 @@ def test_build_resolve_payload_includes_metadata():
             "duration": 42000,
             "play_addr": {"url_list": ["https://cdn.example.com/video.mp4"]},
         },
+        "music": {
+            "play_url": {"url_list": ["https://cdn.example.com/audio.mp3"]},
+        },
     }
 
     assert _build_resolve_payload(detail) == {
         "video_url": "https://cdn.example.com/video.mp4",
+        "audio_url": "https://cdn.example.com/audio.mp3",
         "title": "视频标题",
         "author": "作者",
         "author_id": "sec-user",
@@ -119,6 +123,7 @@ def test_build_resolve_payload_defaults_missing_metadata_to_none():
 
     assert _build_resolve_payload(detail) == {
         "video_url": "https://cdn.example.com/video.mp4",
+        "audio_url": None,
         "title": None,
         "author": None,
         "author_id": None,
@@ -138,6 +143,7 @@ def test_build_resolve_payload_ignores_malformed_optional_metadata():
 
     assert _build_resolve_payload(detail) == {
         "video_url": "https://cdn.example.com/video.mp4",
+        "audio_url": None,
         "title": None,
         "author": None,
         "author_id": None,
