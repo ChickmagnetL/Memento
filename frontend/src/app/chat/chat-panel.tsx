@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { Check, MessageSquare, Pencil, Plus, SendHorizontal, Square, Trash2, X } from "lucide-react";
+import { Check, CircleStop, MessageSquare, Pencil, Plus, SendHorizontal, Trash2, X } from "lucide-react";
 import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorBanner } from "@/components/ui/error-banner";
 import { VideoTimestampLink } from "@/components/VideoTimestampLink";
 import { ChatSessionDropdown } from "@/components/chat/chat-session-dropdown";
+import { DeleteMessageDialog } from "@/components/chat/delete-message-dialog";
 import { DeleteSessionDialog } from "@/components/chat/delete-session-dialog";
 import { MemoryPopover } from "@/components/chat/memory-popover";
 import { MemoryProposalBubble } from "@/components/chat/memory-proposal-bubble";
@@ -38,6 +39,7 @@ export function ChatPanel() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState("");
   const [pendingDeleteMessageId, setPendingDeleteMessageId] = useState<string | null>(null);
+  const [deletingMessage, setDeletingMessage] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<typeof state.sessions[number] | null>(null);
   const [deletingSession, setDeletingSession] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -54,16 +56,6 @@ export function ChatPanel() {
       setComposerInput("");
     }
   }, [state.composerInput, setComposerInput]);
-
-  useEffect(() => {
-    if (pendingDeleteMessageId === null) return;
-    const ok = window.confirm(t("Delete this message and its reply?"));
-    if (ok) {
-      void deleteMessage(pendingDeleteMessageId);
-    }
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- clear one-shot confirm trigger after handling
-    setPendingDeleteMessageId(null);
-  }, [pendingDeleteMessageId, deleteMessage, t]);
 
   // ESC stops + retracts the in-flight turn (only while generating).
   useEffect(() => {
@@ -151,64 +143,17 @@ export function ChatPanel() {
             activeMessages.map((message) => {
               const isUser = message.role === "user";
               const isEditing = editingId === message.id;
-              return (
-                <div
-                  key={message.id}
-                  className={
-                    isUser
-                      ? "group ml-auto max-w-[85%] break-words rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground [overflow-wrap:anywhere]"
-                      : "group mr-auto max-w-full overflow-hidden rounded-md bg-muted px-3 py-2 text-sm"
-                  }
-                >
-                  {isUser && isEditing ? (
-                    <div className="flex flex-col gap-2">
-                      <textarea
-                        className="min-h-[60px] w-full resize-y rounded-md border border-input bg-background px-2 py-1 text-sm text-foreground"
-                        value={editDraft}
-                        onChange={(e) => setEditDraft(e.target.value)}
-                        aria-label={t("Edit message")}
-                      />
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          aria-label={t("Cancel")}
-                          onClick={() => {
-                            setEditingId(null);
-                            setEditDraft("");
-                          }}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          aria-label={t("Confirm")}
-                          disabled={!editDraft.trim() || isStreaming}
-                          onClick={() => {
-                            const trimmed = editDraft.trim();
-                            if (!trimmed) return;
-                            setEditingId(null);
-                            setEditDraft("");
-                            void editMessage(message.id, trimmed);
-                          }}
-                        >
-                          <Check className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ) : isUser ? (
-                    <div className="flex items-end gap-2">
-                      <div className="min-w-0 flex-1 whitespace-pre-wrap break-words">
-                        {message.content}
-                      </div>
+
+              if (isUser) {
+                return (
+                  <div key={message.id} className="group ml-auto flex max-w-[85%] items-end gap-1">
+                    {!isEditing ? (
                       <div className="flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
                         <Button
                           type="button"
                           variant="ghost"
                           size="icon"
-                          className="h-6 w-6 text-primary-foreground/80 hover:text-primary-foreground"
+                          className="h-6 w-6"
                           disabled={isStreaming}
                           aria-label={t("Edit")}
                           title={t("Edit")}
@@ -223,7 +168,7 @@ export function ChatPanel() {
                           type="button"
                           variant="ghost"
                           size="icon"
-                          className="h-6 w-6 text-primary-foreground/80 hover:text-primary-foreground"
+                          className="h-6 w-6"
                           disabled={isStreaming}
                           aria-label={t("Delete")}
                           title={t("Delete")}
@@ -232,46 +177,83 @@ export function ChatPanel() {
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
+                    ) : null}
+                    <div className="min-w-0 break-words rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground [overflow-wrap:anywhere]">
+                      {isEditing ? (
+                        <div className="flex flex-col gap-2">
+                          <textarea
+                            className="min-h-[60px] w-full resize-y rounded-md border border-input bg-background px-2 py-1 text-sm text-foreground"
+                            value={editDraft}
+                            onChange={(e) => setEditDraft(e.target.value)}
+                            aria-label={t("Edit message")}
+                          />
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              aria-label={t("Cancel")}
+                              onClick={() => {
+                                setEditingId(null);
+                                setEditDraft("");
+                              }}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              aria-label={t("Confirm")}
+                              disabled={!editDraft.trim() || isStreaming}
+                              onClick={() => {
+                                const trimmed = editDraft.trim();
+                                if (!trimmed) return;
+                                setEditingId(null);
+                                setEditDraft("");
+                                void editMessage(message.id, trimmed);
+                              }}
+                            >
+                              <Check className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="whitespace-pre-wrap break-words">{message.content}</div>
+                      )}
                     </div>
-                  ) : (
-                    <div className="prose prose-sm max-w-none break-words dark:prose-invert prose-pre:overflow-x-auto prose-pre:whitespace-pre-wrap prose-code:break-words prose-table:block prose-table:overflow-x-auto [overflow-wrap:anywhere]">
-                      <ReactMarkdown
-                        remarkPlugins={[remarkGfm]}
-                        urlTransform={(value) =>
-                          value.startsWith("memento://") ? value : defaultUrlTransform(value)
-                        }
-                        components={{
-                          a: ({ href, children }) => {
-                            if (href?.startsWith("memento://")) {
-                              return <VideoTimestampLink href={href}>{children}</VideoTimestampLink>;
-                            }
-                            return <a className="break-words" href={href}>{children}</a>;
-                          },
-                        }}
-                      >
-                        {message.content}
-                      </ReactMarkdown>
-                    </div>
-                  )}
+                  </div>
+                );
+              }
+
+              return (
+                <div
+                  key={message.id}
+                  className="group mr-auto max-w-full overflow-hidden rounded-md bg-muted px-3 py-2 text-sm"
+                >
+                  <div className="prose prose-sm max-w-none break-words dark:prose-invert prose-pre:overflow-x-auto prose-pre:whitespace-pre-wrap prose-code:break-words prose-table:block prose-table:overflow-x-auto [overflow-wrap:anywhere]">
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      urlTransform={(value) =>
+                        value.startsWith("memento://") ? value : defaultUrlTransform(value)
+                      }
+                      components={{
+                        a: ({ href, children }) => {
+                          if (href?.startsWith("memento://")) {
+                            return <VideoTimestampLink href={href}>{children}</VideoTimestampLink>;
+                          }
+                          return <a className="break-words" href={href}>{children}</a>;
+                        },
+                      }}
+                    >
+                      {message.content}
+                    </ReactMarkdown>
+                  </div>
                 </div>
               );
             })
           )}
           {state.generating ? (
-            <div className="mr-auto flex items-center gap-2">
-              <StatusIndicator status={state.generating.status} tool={state.generating.tool} />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={retractLast}
-                aria-label={t("Stop generating")}
-                title={t("Stop generating")}
-              >
-                <Square className="h-3.5 w-3.5" />
-                {t("Stop generating")}
-              </Button>
-            </div>
+            <StatusIndicator status={state.generating.status} tool={state.generating.tool} />
           ) : null}
           {state.pendingProposal ? (
             <MemoryProposalBubble
@@ -298,13 +280,45 @@ export function ChatPanel() {
               onChange={(event) => setInput(event.target.value)}
               disabled={isStreaming}
             />
-            <Button type="submit" disabled={isStreaming || !input.trim()}>
-              <SendHorizontal className="mr-1 h-4 w-4" />
-              {t("Send")}
-            </Button>
+            {isStreaming ? (
+              <Button
+                type="button"
+                onClick={retractLast}
+                aria-label={t("Stop")}
+                title={t("Stop")}
+              >
+                <CircleStop className="mr-1 h-4 w-4" />
+                {t("Stop")}
+              </Button>
+            ) : (
+              <Button type="submit" disabled={!input.trim()}>
+                <SendHorizontal className="mr-1 h-4 w-4" />
+                {t("Send")}
+              </Button>
+            )}
           </form>
         </div>
       </div>
+
+      <DeleteMessageDialog
+        open={pendingDeleteMessageId !== null}
+        deleting={deletingMessage}
+        onCancel={() => {
+          if (!deletingMessage) {
+            setPendingDeleteMessageId(null);
+          }
+        }}
+        onConfirm={async () => {
+          if (!pendingDeleteMessageId || deletingMessage) return;
+          setDeletingMessage(true);
+          try {
+            await deleteMessage(pendingDeleteMessageId);
+            setPendingDeleteMessageId(null);
+          } finally {
+            setDeletingMessage(false);
+          }
+        }}
+      />
 
       <DeleteSessionDialog
         open={pendingDelete !== null}

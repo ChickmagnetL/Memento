@@ -280,10 +280,9 @@ test("confirm edit calls editMessage(content) from the store", () => {
 
 test("delete click shows a confirm dialog then calls deleteMessage", () => {
   assert.match(chatPanelSource, /pendingDeleteMessageId/);
-  assert.match(
-    chatPanelSource,
-    /deleteMessage\(pendingDeleteMessageId\)/,
-  );
+  assert.doesNotMatch(chatPanelSource, /window\.confirm/);
+  assert.match(chatPanelSource, /DeleteMessageDialog|delete-message-dialog/);
+  assert.match(chatPanelSource, /deleteMessage\(/);
 });
 
 test("chat-panel has a keydown Escape listener gated on state.generating", () => {
@@ -295,12 +294,39 @@ test("chat-panel has a keydown Escape listener gated on state.generating", () =>
   );
 });
 
-test("chat-panel shows a Stop button next to StatusIndicator while generating", () => {
-  // A Square icon button labeled "Stop generating" only renders when generating.
-  assert.match(chatPanelSource, /import \{[^}]*Square[^}]*\} from "lucide-react"/);
+test("chat-panel shows a Stop button in the composer while generating", () => {
+  assert.match(chatPanelSource, /import \{[^}]*CircleStop[^}]*\} from "lucide-react"/);
+  // Stop replaces Send while generating
   assert.match(
     chatPanelSource,
-    /\{state\.generating \? \([\s\S]*?<Button[\s\S]*?onClick=\{retractLast\}[\s\S]*?aria-label=\{t\("Stop generating"\)\}[\s\S]*?<Square/,
+    /isStreaming \? \([\s\S]*?onClick=\{retractLast\}[\s\S]*?aria-label=\{t\("Stop"\)\}[\s\S]*?<CircleStop/,
+  );
+  // StatusIndicator no longer accompanied by Stop button in the message list area
+  assert.doesNotMatch(
+    chatPanelSource,
+    /StatusIndicator[\s\S]{0,200}retractLast/,
+  );
+});
+
+test("user Edit/Delete controls sit outside the primary bubble", () => {
+  assert.match(
+    chatPanelSource,
+    /group ml-auto flex max-w-\[85%\] items-end gap-1/,
+  );
+  assert.match(
+    chatPanelSource,
+    /disabled=\{isStreaming\}[\s\S]*?aria-label=\{t\("Edit"\)\}/,
+  );
+  assert.match(
+    chatPanelSource,
+    /disabled=\{isStreaming\}[\s\S]*?aria-label=\{t\("Delete"\)\}/,
+  );
+});
+
+test("deleteMessage removes empty session after last messages deleted", () => {
+  assert.match(
+    chatStoreSource,
+    /const deleteMessage = useCallback\([\s\S]*?deleteMessageApi[\s\S]*?getSessionMessages[\s\S]*?length === 0[\s\S]*?deleteSession[\s\S]*?handleNew/,
   );
 });
 
@@ -311,7 +337,8 @@ test("i18n catalog has new keys for edit/delete/stop", () => {
   );
   // catalog entries are "key": "translation"
   assert.match(i18nSource, /"Edit message":/);
-  assert.match(i18nSource, /"Stop generating":/);
+  assert.match(i18nSource, /"Stop":/);
+  assert.match(i18nSource, /"Delete message":/);
   assert.match(
     i18nSource,
     /"Delete this message and its reply\?":/,

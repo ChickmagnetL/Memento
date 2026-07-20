@@ -460,7 +460,18 @@ export function ChatStoreProvider({ children }: { children: ReactNode }) {
       try {
         const result = await deleteMessageApi(activeId, messageId);
         dispatch({ type: "DELETE_MESSAGES", ids: result.deleted });
-        // Refresh sidebar in case the session title was derived from this user msg.
+        const serverMsgs = await getSessionMessages(activeId);
+        if (serverMsgs.length === 0) {
+          await deleteSession(activeId);
+          dispatch({ type: "SET_SESSIONS", sessions: await listSessions() });
+          if (activeIdRef.current === activeId) handleNew();
+          return;
+        }
+        dispatch({
+          type: "SET_MESSAGES",
+          sessionId: activeId,
+          messages: serverMsgs.map((m) => ({ id: m.id, role: m.role, content: m.content })),
+        });
         try {
           const sessions = await listSessions();
           dispatch({ type: "SET_SESSIONS", sessions });
@@ -471,7 +482,7 @@ export function ChatStoreProvider({ children }: { children: ReactNode }) {
         dispatch({ type: "SET_ERROR", error: e instanceof Error ? e.message : t("Operation failed") });
       }
     },
-    [t],
+    [handleNew, t],
   );
 
   const retractLast = useCallback(() => {
