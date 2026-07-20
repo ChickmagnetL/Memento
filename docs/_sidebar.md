@@ -7,4 +7,5 @@
   - [存储与检索](/technical/storage-and-retrieval.md)
 - **对话**
   - [记忆系统架构](/technical/memory-architecture.md)
+  - [Chat 会话、编辑与停止](/technical/chat-sessions-and-editing.md)
 - [关于 Wiki](/technical/README.md)

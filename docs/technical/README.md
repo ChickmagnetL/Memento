@@ -10,6 +10,7 @@
 | 视频从 URL 到可检索知识 | [视频摄入流水线](./video-pipeline.md) |
 | 数据落在哪、怎么切块检索 | [存储与检索](./storage-and-retrieval.md) |
 | 对话为什么分三层记忆 | [记忆系统架构](./memory-architecture.md) |
+| Chat 编辑 / 删除 / 停止与会话时机 | [Chat 会话、编辑与停止](./chat-sessions-and-editing.md) |
 | ASR / Embedding 独立服务与配置 | [独立服务与配置](./services-and-config.md) |
 
 ## 文档列表
@@ -20,6 +21,7 @@
 | [video-pipeline.md](./video-pipeline.md) | B 站 / 抖音 / YouTube 导入、字幕、ASR、清洗、索引 | 已核对 |
 | [storage-and-retrieval.md](./storage-and-retrieval.md) | SQLite / Qdrant / chunk / hybrid retrieval | 已核对 |
 | [memory-architecture.md](./memory-architecture.md) | 会话历史 · 知识摘要层 · 个人偏好 | 已核对 |
+| [chat-sessions-and-editing.md](./chat-sessions-and-editing.md) | 会话时机、消息编辑/删除、停止回填、SSE 取消 | 已核对 |
 | [services-and-config.md](./services-and-config.md) | ASR、Embedding、Remote Node、Settings | 已核对 |
 
 ## 目录约定
@@ -32,8 +34,8 @@
 
 ## 建议后续补全
 
-- Chat Agent 工具与 SSE 协议
-- 前端页面结构与 API 客户端
+- Chat Agent 工具目录与完整 SSE 事件表（delta / tool / memory_proposal 等）
+- 前端页面结构与 API 客户端总览（非 Chat 专章）
 - Electron 桌面壳打包与 sidecar
 - 抖音 fetcher 服务细节
 - 数据生命周期补强（孤立摘要清理 / 物理文件统一管理）

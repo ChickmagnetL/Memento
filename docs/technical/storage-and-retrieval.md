@@ -35,7 +35,7 @@ Memento 的本地持久化分三块：**业务 SQLite**、**配置 SQLite**、**
 
 - `videos`：导入记录与处理状态
 - `documents`：文稿记录；`status` 为 `raw | indexed`；含 `chunk_count`、`summary`、`brief` 等
-- `chat_sessions` / `chat_messages`：会话历史
+- `chat_sessions` / `chat_messages`：会话历史（编辑截断、删除配对、停止不落半截 assistant 等行为见 [Chat 会话、编辑与停止](./chat-sessions-and-editing.md)）
 - `memories`：用户记忆 / 学习画像条目
 
 ### memento.db（配置连接）
