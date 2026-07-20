@@ -91,3 +91,68 @@ async def test_history_for_agent(sqlite: SQLiteClient):
 @pytest.mark.asyncio
 async def test_get_session_missing_returns_none(sqlite: SQLiteClient):
     assert await sqlite.get_chat_session("does-not-exist") is None
+
+
+@pytest.mark.asyncio
+async def test_get_chat_message_returns_none_when_missing(sqlite: SQLiteClient):
+    assert await sqlite.get_chat_message("nope") is None
+
+
+@pytest.mark.asyncio
+async def test_update_chat_message_changes_content_and_returns_row(sqlite: SQLiteClient):
+    session = await sqlite.create_chat_session()
+    msg = await sqlite.add_chat_message(
+        session_id=session["id"], role="user", content="old"
+    )
+    updated = await sqlite.update_chat_message(msg["id"], "new content")
+    assert updated is not None
+    assert updated["id"] == msg["id"]
+    assert updated["content"] == "new content"
+    assert updated["role"] == "user"
+    refetched = await sqlite.get_chat_message(msg["id"])
+    assert refetched["content"] == "new content"
+
+
+@pytest.mark.asyncio
+async def test_update_chat_message_returns_none_when_missing(sqlite: SQLiteClient):
+    assert await sqlite.update_chat_message("nope", "x") is None
+
+
+@pytest.mark.asyncio
+async def test_delete_chat_message_returns_true_then_false(sqlite: SQLiteClient):
+    session = await sqlite.create_chat_session()
+    msg = await sqlite.add_chat_message(
+        session_id=session["id"], role="user", content="hi"
+    )
+    assert await sqlite.delete_chat_message(msg["id"]) is True
+    assert await sqlite.delete_chat_message(msg["id"]) is False
+    assert await sqlite.get_chat_message(msg["id"]) is None
+
+
+@pytest.mark.asyncio
+async def test_delete_messages_after_excludes_target_and_only_session(sqlite: SQLiteClient):
+    s1 = await sqlite.create_chat_session()
+    s2 = await sqlite.create_chat_session()
+    u1 = await sqlite.add_chat_message(session_id=s1["id"], role="user", content="u1")
+    a1 = await sqlite.add_chat_message(session_id=s1["id"], role="assistant", content="a1")
+    u2 = await sqlite.add_chat_message(session_id=s1["id"], role="user", content="u2")
+    a2 = await sqlite.add_chat_message(session_id=s1["id"], role="assistant", content="a2")
+    other = await sqlite.add_chat_message(session_id=s2["id"], role="user", content="other")
+
+    await sqlite.update_chat_message(u1["id"], "u1-edited")
+    deleted = await sqlite.delete_messages_after(s1["id"], u1["id"])
+    assert deleted == 3  # a1, u2, a2 gone; u1 kept
+
+    remaining_s1 = await sqlite.list_chat_messages(s1["id"])
+    assert [m["id"] for m in remaining_s1] == [u1["id"]]
+    assert remaining_s1[0]["content"] == "u1-edited"
+
+    remaining_s2 = await sqlite.list_chat_messages(s2["id"])
+    assert [m["id"] for m in remaining_s2] == [other["id"]]
+
+
+@pytest.mark.asyncio
+async def test_delete_messages_after_unknown_target_returns_zero(sqlite: SQLiteClient):
+    session = await sqlite.create_chat_session()
+    await sqlite.add_chat_message(session_id=session["id"], role="user", content="x")
+    assert await sqlite.delete_messages_after(session["id"], "nope") == 0

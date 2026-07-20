@@ -629,6 +629,69 @@ class SQLiteClient:
         rows = await cursor.fetchall()
         return [(row["role"], row["content"]) for row in rows]
 
+    async def get_chat_message(self, message_id: str) -> dict | None:
+        """Return a chat message by ID, or None when missing."""
+        conn = self._require_conn()
+        cursor = await conn.execute(
+            """
+            SELECT id, session_id, role, content, created_at
+            FROM chat_messages
+            WHERE id = ?
+            """,
+            (message_id,),
+        )
+        row = await cursor.fetchone()
+        return self._row_to_dict(row) if row else None
+
+    async def update_chat_message(
+        self, message_id: str, content: str
+    ) -> dict | None:
+        """Update a chat message's content; return the updated row or None."""
+        conn = self._require_conn()
+        cursor = await conn.execute(
+            "UPDATE chat_messages SET content = ? WHERE id = ?",
+            (content, message_id),
+        )
+        await conn.commit()
+        if cursor.rowcount == 0:
+            return None
+        return await self.get_chat_message(message_id)
+
+    async def delete_chat_message(self, message_id: str) -> bool:
+        """Delete a single chat message; return True when a row was removed."""
+        conn = self._require_conn()
+        cursor = await conn.execute(
+            "DELETE FROM chat_messages WHERE id = ?", (message_id,)
+        )
+        await conn.commit()
+        return cursor.rowcount == 1
+
+    async def delete_messages_after(
+        self, session_id: str, message_id: str
+    ) -> int:
+        """Delete every message in `session_id` whose rowid is strictly greater
+        than the target message's rowid (target excluded). Returns the number
+        of rows deleted. Returns 0 when the target does not exist in this
+        session."""
+        conn = self._require_conn()
+        cursor = await conn.execute(
+            "SELECT rowid FROM chat_messages WHERE id = ? AND session_id = ?",
+            (message_id, session_id),
+        )
+        row = await cursor.fetchone()
+        if row is None:
+            return 0
+        target_rowid = row["rowid"]
+        del_cursor = await conn.execute(
+            """
+            DELETE FROM chat_messages
+            WHERE session_id = ? AND rowid > ?
+            """,
+            (session_id, target_rowid),
+        )
+        await conn.commit()
+        return del_cursor.rowcount
+
     # ===== App Config =====
 
     async def set_app_config(self, key: str, value: str | None) -> None:

@@ -1,5 +1,6 @@
 """Tests for the SSE chat API (TestModel, no real LLM)."""
 
+import asyncio
 import json
 from pathlib import Path
 
@@ -62,7 +63,10 @@ def _parse_sse(body: str) -> list[dict]:
 
 
 def test_chat_streams_text_and_done(client: TestClient):
-    response = client.post("/api/chat", json={"message": "你好"})
+    session_id = client.post("/api/sessions", json={"title": "t"}).json()["id"]
+    response = client.post(
+        "/api/chat", json={"message": "你好", "session_id": session_id}
+    )
 
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/event-stream")
@@ -76,8 +80,14 @@ def test_chat_streams_text_and_done(client: TestClient):
 
 def test_chat_session_persists_history(client: TestClient):
     """Conversation persists to SQLite; two turns leave four messages."""
-    first = _parse_sse(client.post("/api/chat", json={"message": "第一句"}).text)
-    session_id = next(e for e in first if e["type"] == "done")["session_id"]
+    session_id = client.post("/api/sessions", json={"title": "t"}).json()["id"]
+    first = _parse_sse(
+        client.post(
+            "/api/chat", json={"message": "第一句", "session_id": session_id}
+        ).text
+    )
+    done = next(e for e in first if e["type"] == "done")
+    assert done["session_id"] == session_id
 
     client.post("/api/chat", json={"message": "第二句", "session_id": session_id})
 
@@ -88,11 +98,6 @@ def test_chat_session_persists_history(client: TestClient):
     roles = [m["role"] for m in messages]
     assert roles.count("user") >= 2
     assert roles.count("assistant") >= 2
-
-    # Session title = first user message (set at create time, truncated).
-    sessions = client.get("/api/sessions").json()
-    target = next(s for s in sessions if s["id"] == session_id)
-    assert target["title"] == "第一句"
 
 
 def test_chat_404_on_unknown_session(client: TestClient):
@@ -116,7 +121,10 @@ def test_chat_continues_when_embedding_client_build_fails(
 
     monkeypatch.setattr(chat_api, "build_embedding_client", raise_embedding_error)
 
-    response = client.post("/api/chat", json={"message": "你好"})
+    session_id = client.post("/api/sessions", json={"title": "t"}).json()["id"]
+    response = client.post(
+        "/api/chat", json={"message": "你好", "session_id": session_id}
+    )
 
     assert response.status_code == 200
     events = _parse_sse(response.text)
@@ -266,7 +274,12 @@ def test_chat_emits_error_after_partial_stream_without_retry(
             events=events_seq, exc=RuntimeError("mid-stream boom"),
         ),
     )
-    events = _parse_sse(client.post("/api/chat", json={"message": "hi"}).text)
+    session_id = client.post("/api/sessions", json={"title": "t"}).json()["id"]
+    events = _parse_sse(
+        client.post(
+            "/api/chat", json={"message": "hi", "session_id": session_id}
+        ).text
+    )
     text_events = [e for e in events if e["type"] == "text"]
     assert len(text_events) == 1, "partial delta must reach client exactly once (no retry)"
     assert text_events[0]["delta"] == "部分"
@@ -311,7 +324,12 @@ def test_chat_never_calls_non_streaming_agent_run(
         return spy
 
     monkeypatch.setattr(chat_api, "build_agent", build_spy)
-    events = _parse_sse(client.post("/api/chat", json={"message": "hi"}).text)
+    session_id = client.post("/api/sessions", json={"title": "t"}).json()["id"]
+    events = _parse_sse(
+        client.post(
+            "/api/chat", json={"message": "hi", "session_id": session_id}
+        ).text
+    )
     assert any(e["type"] == "done" for e in events), "turn must complete via streaming"
     assert not spy_holder["spy"].run_called, "agent.run() must not be called"
 
@@ -331,7 +349,12 @@ def test_chat_streams_multiple_text_deltas(client: TestClient, monkeypatch):
             events=events_seq, final_output="第一第二第三",
         ),
     )
-    events = _parse_sse(client.post("/api/chat", json={"message": "hi"}).text)
+    session_id = client.post("/api/sessions", json={"title": "t"}).json()["id"]
+    events = _parse_sse(
+        client.post(
+            "/api/chat", json={"message": "hi", "session_id": session_id}
+        ).text
+    )
     text_events = [e for e in events if e["type"] == "text"]
     assert len(text_events) == 3, "expected one text event per delta"
     assert "".join(e["delta"] for e in text_events) == "第一第二第三"
@@ -355,7 +378,12 @@ def test_chat_emits_status_event_on_tool_call(client: TestClient, monkeypatch):
             events=events_seq, final_output="答案",
         ),
     )
-    events = _parse_sse(client.post("/api/chat", json={"message": "找一下"}).text)
+    session_id = client.post("/api/sessions", json={"title": "t"}).json()["id"]
+    events = _parse_sse(
+        client.post(
+            "/api/chat", json={"message": "找一下", "session_id": session_id}
+        ).text
+    )
     status_events = [e for e in events if e["type"] == "status"]
     assert status_events, "expected a status event when a tool is called"
     assert all(s["state"] == "tool_call" for s in status_events)
@@ -376,7 +404,140 @@ def test_chat_emits_text_replace_when_streamed_text_incomplete(
             events=events_seq, final_output="部分回答完整版",
         ),
     )
-    events = _parse_sse(client.post("/api/chat", json={"message": "hi"}).text)
+    session_id = client.post("/api/sessions", json={"title": "t"}).json()["id"]
+    events = _parse_sse(
+        client.post(
+            "/api/chat", json={"message": "hi", "session_id": session_id}
+        ).text
+    )
     replace = [e for e in events if e["type"] == "text_replace"]
     assert replace, "expected text_replace when deltas != final output"
     assert replace[-1]["content"] == "部分回答完整版"
+
+
+def test_chat_request_defaults_regenerate_false():
+    from schemas.chat import ChatRequest
+    payload = ChatRequest(message="hi", session_id="abc")
+    assert payload.regenerate is False
+
+
+def test_chat_request_accepts_regenerate_true():
+    from schemas.chat import ChatRequest
+    payload = ChatRequest(message="hi", session_id="abc", regenerate=True)
+    assert payload.regenerate is True
+
+
+def test_chat_rejects_missing_session_id(client: TestClient):
+    """POST /api/chat without session_id is a contract error (422), not an
+    implicit session creation."""
+    response = client.post("/api/chat", json={"message": "hi"})
+    assert response.status_code == 422
+
+
+def test_chat_regenerate_true_skips_user_persist(client: TestClient):
+    """When regenerate=True, the user message must NOT be persisted again
+    (the PATCH edit already stored it)."""
+    session = client.post("/api/sessions", json={"title": "t"}).json()
+    sid = session["id"]
+    import asyncio
+    async def pre_seed():
+        return await client.app.state.sqlite.add_chat_message(
+            session_id=sid, role="user", content="edited q"
+        )
+    u = asyncio.run(pre_seed())
+
+    response = client.post(
+        "/api/chat",
+        json={"message": "edited q", "session_id": sid, "regenerate": True},
+    )
+    assert response.status_code == 200
+    events = _parse_sse(response.text)
+    assert any(e["type"] == "done" for e in events)
+
+    messages = client.get(f"/api/sessions/{sid}/messages").json()
+    user_msgs = [m for m in messages if m["role"] == "user"]
+    assert len(user_msgs) == 1
+    assert user_msgs[0]["id"] == u["id"]
+    assert any(m["role"] == "assistant" for m in messages)
+
+
+def test_chat_regenerate_false_still_persists_user(client: TestClient):
+    """Default (regenerate omitted/false) keeps existing behaviour: user is
+    persisted by /api/chat."""
+    session = client.post("/api/sessions", json={"title": "t"}).json()
+    sid = session["id"]
+    client.post("/api/chat", json={"message": "first", "session_id": sid})
+
+    messages = client.get(f"/api/sessions/{sid}/messages").json()
+    user_msgs = [m for m in messages if m["role"] == "user"]
+    assert len(user_msgs) == 1
+    assert user_msgs[0]["content"] == "first"
+
+
+@pytest.mark.asyncio
+async def test_chat_cancelled_does_not_persist_assistant(client, monkeypatch, caplog):
+    """When the client aborts mid-stream (asyncio.CancelledError injected),
+    no assistant message is persisted; log is INFO, not an exception."""
+    import logging
+    from api import chat as chat_api
+
+    # If _RETRY_BACKOFF_S exists in chat_api, zero it for speed. If it does NOT
+    # exist, delete this monkeypatch line (see note below on retry structure).
+    try:
+        monkeypatch.setattr(chat_api, "_RETRY_BACKOFF_S", 0)
+    except AttributeError:
+        pass
+
+    class _CancellingStream:
+        def __init__(self):
+            self._yielded = False
+        async def __aenter__(self):
+            return self
+        async def __aexit__(self, *exc):
+            return False
+        def __aiter__(self):
+            return self
+        async def __anext__(self):
+            if not self._yielded:
+                self._yielded = True
+                return PartDeltaEvent(
+                    index=0, delta=TextPartDelta(content_delta="部分")
+                )
+            raise asyncio.CancelledError()
+
+    class _CancellingAgent:
+        def run_stream_events(self, message, *, deps=None, message_history=None):
+            return _CancellingStream()
+
+    monkeypatch.setattr(
+        chat_api, "build_agent",
+        lambda model, system_prompt=None: _CancellingAgent(),
+    )
+
+    session = client.post("/api/sessions", json={"title": "t"}).json()
+    sid = session["id"]
+
+    caplog.set_level(logging.INFO, logger="api.chat")
+    try:
+        response = client.post(
+            "/api/chat",
+            json={"message": "hi", "session_id": sid},
+        )
+        body = response.text
+    except asyncio.CancelledError:
+        body = ""
+
+    messages = client.get(f"/api/sessions/{sid}/messages").json()
+    roles = [m["role"] for m in messages]
+    assert roles == ["user"], "user persisted, assistant must not be"
+
+    events = _parse_sse(body) if body else []
+    assert not any(e["type"] == "error" for e in events)
+
+    info_records = [
+        r for r in caplog.records
+        if r.name == "api.chat" and r.levelno == logging.INFO
+    ]
+    assert any(
+        "cancel" in (r.getMessage().lower()) for r in info_records
+    ), f"expected an INFO log about cancellation, got: {[r.getMessage() for r in info_records]}"

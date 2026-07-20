@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { MessageSquare, Plus, SendHorizontal } from "lucide-react";
+import { Check, MessageSquare, Pencil, Plus, SendHorizontal, Square, Trash2, X } from "lucide-react";
 import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -25,12 +25,19 @@ export function ChatPanel() {
     selectSession,
     handleNew,
     sendMessage,
+    editMessage,
+    deleteMessage,
+    retractLast,
+    setComposerInput,
     rememberCommand,
     acceptProposal,
     rejectProposal,
     requestDelete,
   } = useChatStore();
   const [input, setInput] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState("");
+  const [pendingDeleteMessageId, setPendingDeleteMessageId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<typeof state.sessions[number] | null>(null);
   const [deletingSession, setDeletingSession] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -38,6 +45,37 @@ export function ChatPanel() {
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [activeMessages, state.generating]);
+
+  // When RETRACT_LAST sets composerInput, reflect it in the local input box once.
+  useEffect(() => {
+    if (state.composerInput) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync store composerInput into local input once
+      setInput(state.composerInput);
+      setComposerInput("");
+    }
+  }, [state.composerInput, setComposerInput]);
+
+  useEffect(() => {
+    if (pendingDeleteMessageId === null) return;
+    const ok = window.confirm(t("Delete this message and its reply?"));
+    if (ok) {
+      void deleteMessage(pendingDeleteMessageId);
+    }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- clear one-shot confirm trigger after handling
+    setPendingDeleteMessageId(null);
+  }, [pendingDeleteMessageId, deleteMessage, t]);
+
+  // ESC stops + retracts the in-flight turn (only while generating).
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      if (!state.generating) return;
+      event.preventDefault();
+      retractLast();
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [state.generating, retractLast]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -110,42 +148,130 @@ export function ChatPanel() {
               className="flex-1"
             />
           ) : (
-            activeMessages.map((message, index) => (
-              <div
-                key={index}
-                className={
-                  message.role === "user"
-                    ? "ml-auto max-w-[85%] break-words rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground [overflow-wrap:anywhere]"
-                    : "mr-auto max-w-full overflow-hidden rounded-md bg-muted px-3 py-2 text-sm"
-                }
-              >
-                {message.role === "assistant" ? (
-                  <div className="prose prose-sm max-w-none break-words dark:prose-invert prose-pre:overflow-x-auto prose-pre:whitespace-pre-wrap prose-code:break-words prose-table:block prose-table:overflow-x-auto [overflow-wrap:anywhere]">
-                    <ReactMarkdown
-                      remarkPlugins={[remarkGfm]}
-                      urlTransform={(value) =>
-                        value.startsWith("memento://") ? value : defaultUrlTransform(value)
-                      }
-                      components={{
-                        a: ({ href, children }) => {
-                          if (href?.startsWith("memento://")) {
-                            return <VideoTimestampLink href={href}>{children}</VideoTimestampLink>;
-                          }
-                          return <a className="break-words" href={href}>{children}</a>;
-                        },
-                      }}
-                    >
-                      {message.content}
-                    </ReactMarkdown>
-                  </div>
-                ) : (
-                  message.content
-                )}
-              </div>
-            ))
+            activeMessages.map((message) => {
+              const isUser = message.role === "user";
+              const isEditing = editingId === message.id;
+              return (
+                <div
+                  key={message.id}
+                  className={
+                    isUser
+                      ? "group ml-auto max-w-[85%] break-words rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground [overflow-wrap:anywhere]"
+                      : "group mr-auto max-w-full overflow-hidden rounded-md bg-muted px-3 py-2 text-sm"
+                  }
+                >
+                  {isUser && isEditing ? (
+                    <div className="flex flex-col gap-2">
+                      <textarea
+                        className="min-h-[60px] w-full resize-y rounded-md border border-input bg-background px-2 py-1 text-sm text-foreground"
+                        value={editDraft}
+                        onChange={(e) => setEditDraft(e.target.value)}
+                        aria-label={t("Edit message")}
+                      />
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          aria-label={t("Cancel")}
+                          onClick={() => {
+                            setEditingId(null);
+                            setEditDraft("");
+                          }}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          aria-label={t("Confirm")}
+                          disabled={!editDraft.trim() || isStreaming}
+                          onClick={() => {
+                            const trimmed = editDraft.trim();
+                            if (!trimmed) return;
+                            setEditingId(null);
+                            setEditDraft("");
+                            void editMessage(message.id, trimmed);
+                          }}
+                        >
+                          <Check className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ) : isUser ? (
+                    <div className="flex items-end gap-2">
+                      <div className="min-w-0 flex-1 whitespace-pre-wrap break-words">
+                        {message.content}
+                      </div>
+                      <div className="flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-primary-foreground/80 hover:text-primary-foreground"
+                          disabled={isStreaming}
+                          aria-label={t("Edit")}
+                          title={t("Edit")}
+                          onClick={() => {
+                            setEditingId(message.id);
+                            setEditDraft(message.content);
+                          }}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-primary-foreground/80 hover:text-primary-foreground"
+                          disabled={isStreaming}
+                          aria-label={t("Delete")}
+                          title={t("Delete")}
+                          onClick={() => setPendingDeleteMessageId(message.id)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="prose prose-sm max-w-none break-words dark:prose-invert prose-pre:overflow-x-auto prose-pre:whitespace-pre-wrap prose-code:break-words prose-table:block prose-table:overflow-x-auto [overflow-wrap:anywhere]">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        urlTransform={(value) =>
+                          value.startsWith("memento://") ? value : defaultUrlTransform(value)
+                        }
+                        components={{
+                          a: ({ href, children }) => {
+                            if (href?.startsWith("memento://")) {
+                              return <VideoTimestampLink href={href}>{children}</VideoTimestampLink>;
+                            }
+                            return <a className="break-words" href={href}>{children}</a>;
+                          },
+                        }}
+                      >
+                        {message.content}
+                      </ReactMarkdown>
+                    </div>
+                  )}
+                </div>
+              );
+            })
           )}
           {state.generating ? (
-            <StatusIndicator status={state.generating.status} tool={state.generating.tool} />
+            <div className="mr-auto flex items-center gap-2">
+              <StatusIndicator status={state.generating.status} tool={state.generating.tool} />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={retractLast}
+                aria-label={t("Stop generating")}
+                title={t("Stop generating")}
+              >
+                <Square className="h-3.5 w-3.5" />
+                {t("Stop generating")}
+              </Button>
+            </div>
           ) : null}
           {state.pendingProposal ? (
             <MemoryProposalBubble

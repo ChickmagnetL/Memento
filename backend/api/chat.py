@@ -38,7 +38,6 @@ logger = logging.getLogger(__name__)
 # Streaming retry heuristics (full regeneration of run_stream_events()).
 _MAX_RETRIES = 2
 _RETRY_BACKOFF_S = 1.0
-_TITLE_MAX_LEN = 48
 
 
 class _UnavailableEmbeddingClient:
@@ -83,11 +82,6 @@ def _get_sqlite(request: Request):
     if sqlite is None:
         raise HTTPException(status_code=500, detail="App state is not initialized")
     return sqlite
-
-
-def _truncate_title(message: str) -> str:
-    title = message.strip().replace("\n", " ")
-    return title[:_TITLE_MAX_LEN] + ("…" if len(title) > _TITLE_MAX_LEN else "")
 
 
 def _extract_memory_proposals(result) -> list[str]:
@@ -143,16 +137,17 @@ async def chat(payload: ChatRequest, request: Request) -> StreamingResponse:
     system_prompt = build_system_prompt(memories=memories)
     agent = build_agent(build_chat_model(), system_prompt=system_prompt)
 
-    # Resolve or create the session.
+    # Resolve session: caller must supply an existing session_id (created via
+    # POST /api/sessions). Auto-creation was removed so new sessions appear in
+    # the sidebar the instant the first message is sent.
     session_id = payload.session_id
-    if session_id:
-        if await sqlite.get_chat_session(session_id) is None:
-            raise HTTPException(status_code=404, detail="Session not found")
-    else:
-        session = await sqlite.create_chat_session(
-            title=_truncate_title(payload.message)
+    if not session_id:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="session_id is required",
         )
-        session_id = session["id"]
+    if await sqlite.get_chat_session(session_id) is None:
+        raise HTTPException(status_code=404, detail="Session not found")
 
     # Rebuild prior history from SQLite. Only PRIOR turns belong here — this
     # turn's user message is supplied separately via the `message` arg to
@@ -172,9 +167,12 @@ async def chat(payload: ChatRequest, request: Request) -> StreamingResponse:
     else:
         history = [ModelRequest(parts=[SystemPromptPart(content=system_prompt)])]
     # Persist the user message up-front so it survives a mid-stream crash.
-    await sqlite.add_chat_message(
-        session_id=session_id, role="user", content=payload.message
-    )
+    # On regenerate, the edited user message was already persisted by the
+    # edit endpoint that triggered regeneration — don't double-persist.
+    if not payload.regenerate:
+        await sqlite.add_chat_message(
+            session_id=session_id, role="user", content=payload.message
+        )
 
     async def event_stream():
         try:
@@ -190,6 +188,15 @@ async def chat(payload: ChatRequest, request: Request) -> StreamingResponse:
                         yield _sse({"type": etype, **epayload})
                         sent_any = True
                     break  # streamed successfully
+                except asyncio.CancelledError:
+                    # Client disconnected (ESC/stop): do NOT retry, persist, or
+                    # emit an error event. Log at INFO and re-raise so Starlette
+                    # tears the request down cleanly.
+                    logger.info(
+                        "Chat stream cancelled by client for session %s",
+                        session_id,
+                    )
+                    raise
                 except Exception as exc:  # noqa: BLE001 - any failure mid-run
                     if sent_any:
                         # Already showed content to the client — retrying would
@@ -220,6 +227,15 @@ async def chat(payload: ChatRequest, request: Request) -> StreamingResponse:
                 session_id=session_id, role="assistant", content=final_output
             )
             yield _sse({"type": "done", "session_id": session_id})
+        except asyncio.CancelledError:
+            # Outer guard: a CancelledError that bypassed the inner try (e.g.
+            # injected mid-await outside _run_stream) must still be re-raised
+            # silently — no error SSE, no partial assistant persist.
+            logger.info(
+                "Chat stream cancelled by client for session %s",
+                session_id,
+            )
+            raise
         except Exception as exc:  # noqa: BLE001 - stream errors must reach the client
             logger.exception("Chat stream failed for session %s", session_id)
             yield _sse({"type": "error", "message": _format_chat_error(exc)})

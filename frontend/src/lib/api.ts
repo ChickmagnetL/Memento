@@ -237,14 +237,21 @@ export interface ChatStreamHandlers {
 export async function sendChatMessage(
   message: string,
   sessionId: string | null,
-  handlers: ChatStreamHandlers
+  handlers: ChatStreamHandlers,
+  options?: { signal?: AbortSignal; regenerate?: boolean }
 ): Promise<void> {
+  const regenerate = options?.regenerate === true;
+  const bodyPayload: Record<string, unknown> = sessionId
+    ? { message, session_id: sessionId }
+    : { message };
+  if (regenerate) {
+    bodyPayload.regenerate = true;
+  }
   const res = await fetch(`${API_BASE_URL}/api/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(
-      sessionId ? { message, session_id: sessionId } : { message }
-    ),
+    body: JSON.stringify(bodyPayload),
+    signal: options?.signal,
   });
   if (!res.ok || !res.body) {
     let detail: string | null = null;
@@ -304,7 +311,16 @@ export async function sendChatMessage(
       }
     }
   } catch {
-    handlers.onError("Chat request failed: connection lost");
+    // Aborted fetch throws AbortError here; real connection errors too.
+    if (!options?.signal?.aborted) {
+      handlers.onError("Chat request failed: connection lost");
+    }
+  } finally {
+    try {
+      await reader.cancel();
+    } catch {
+      // reader already released — ignore
+    }
   }
 }
 
@@ -357,6 +373,46 @@ export async function deleteSession(sessionId: string): Promise<void> {
   });
   await assertOk(res, "Delete session");
   // 204 No Content — no body to parse.
+}
+
+// ===== Chat message edit / delete =====
+
+export async function editMessage(
+  sessionId: string,
+  messageId: string,
+  content: string
+): Promise<ChatSessionMessage> {
+  const res = await fetch(`${API_BASE_URL}/api/sessions/${sessionId}/messages/${messageId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content }),
+  });
+  await assertOk(res, "Edit message");
+  return res.json();
+}
+
+export async function deleteMessage(
+  sessionId: string,
+  messageId: string
+): Promise<{ deleted: string[] }> {
+  const res = await fetch(`${API_BASE_URL}/api/sessions/${sessionId}/messages/${messageId}`, {
+    method: "DELETE",
+  });
+  await assertOk(res, "Delete message");
+  return res.json();
+}
+
+export async function updateSession(
+  sessionId: string,
+  title: string
+): Promise<ChatSession> {
+  const res = await fetch(`${API_BASE_URL}/api/sessions/${sessionId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title }),
+  });
+  await assertOk(res, "Update session");
+  return res.json();
 }
 
 export interface ModelConfig {
