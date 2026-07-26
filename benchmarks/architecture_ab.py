@@ -54,7 +54,9 @@ EVAL_SET = ROOT / "benchmarks" / "eval_set.jsonl"
 OUT_MD = ROOT / "benchmarks" / "results" / "02_architecture.md"
 OUT_JSON = ROOT / "benchmarks" / "results" / "02_architecture.json"
 
-# 3 docs known to lack L2/L3 summaries in this bench corpus
+# Vestigial: tags from an earlier eval set. No current summary question maps
+# to these video_ids. Kept for the lacks_l2_l3 column in the report; will tag
+# 0 questions. Safe to delete in a later cleanup.
 DOCS_LACKING_L2_L3 = frozenset({"BV1ev411w7bs", "P-NmMX9rlYQ", "oYxTTirKY8M"})
 
 FLAT_SYSTEM_PROMPT = (
@@ -145,16 +147,26 @@ def build_flat_agent(model, system_prompt: str | None = None) -> Agent:
     return agent
 
 
-def load_summary_questions(path: Path) -> list[dict[str, Any]]:
+def load_summary_questions(path: Path) -> tuple[list[dict[str, Any]], int]:
+    """Return (eligible_rows, n_skipped_ineligible).
+
+    Per EVAL_SPEC §8: only summary rows with summary_eligible=True enter the
+    layered-vs-flat scoring pool. Ineligible rows are counted but skipped.
+    """
     rows: list[dict[str, Any]] = []
+    n_skipped_ineligible = 0
     for line in path.read_text(encoding="utf-8").splitlines():
         line = line.strip()
         if not line:
             continue
         row = json.loads(line)
-        if row.get("type") == "summary":
-            rows.append(row)
-    return rows
+        if row.get("type") != "summary":
+            continue
+        if not row.get("summary_eligible"):
+            n_skipped_ineligible += 1
+            continue
+        rows.append(row)
+    return rows, n_skipped_ineligible
 
 
 def extract_tool_names(result) -> list[str]:
@@ -474,9 +486,14 @@ async def main_async(
 ) -> int:
     settings = get_settings()
     data_dir = Path(settings.storage.data_dir).expanduser()
-    questions = load_summary_questions(EVAL_SET)
+    questions, n_skipped_ineligible = load_summary_questions(EVAL_SET)
+    if n_skipped_ineligible:
+        print(
+            f"NOTE: skipped {n_skipped_ineligible} summary question(s) with "
+            f"summary_eligible=false (not entered into scoring pool per EVAL_SPEC §8)"
+        )
     if not questions:
-        print("ERROR: no summary questions in", EVAL_SET)
+        print("ERROR: no eligible summary questions in", EVAL_SET)
         return 1
     if limit is not None:
         questions = questions[:limit]
@@ -559,6 +576,10 @@ async def main_async(
         )
         notes.append(
             "Flat agent has only search_knowledge; Layered has search + lookup + summarize + propose_memory."
+        )
+        notes.append(
+            f"Summary eligibility: scored {len(questions)} eligible, "
+            f"skipped {n_skipped_ineligible} ineligible (summary_eligible=false)."
         )
         notes.append(
             f"Docs lacking L2/L3 tags: {sorted(DOCS_LACKING_L2_L3)}"

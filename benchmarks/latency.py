@@ -33,8 +33,8 @@ OUT_JSON = ROOT / "benchmarks" / "results" / "03_latency.json"
 SCALE = {"videos": 50, "chunks": 2040, "vector_dim": 1024}
 
 EVAL_NOTE = (
-    "评测说明: eval_set detail 题仅覆盖前 10 个视频；"
-    "当前语料为 50 视频（额外 40 为干扰噪声）"
+    "评测说明: detail 题（非空 relevant_chunks）覆盖全 50 个视频的语料范围，"
+    "用于测量各 retriever 配置在当前库规模下的检索延迟分布。"
 )
 
 TOP_K = 5

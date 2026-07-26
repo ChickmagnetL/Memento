@@ -1,8 +1,14 @@
 """Phase 1: retrieval A/B — hybrid vs pure vector vs pure BM25.
 
-Loads detail questions with non-empty relevant_chunks from eval_set.jsonl,
-runs each retriever config (top_k=10), computes Recall/Precision@5/10 and MRR,
-writes benchmarks/results/01_retrieval_ab.{md,json}.
+Loads single-video retrieval questions (detail + multi_evidence) plus the
+cross-doc multi_hop slice from eval_set.jsonl, runs each retriever config
+(top_k=10), computes Recall/Precision@5/10 and MRR, writes
+benchmarks/results/01_retrieval_ab.{md,json}.
+
+Per EVAL_SPEC §8: detail + multi_evidence are macro-averaged together as
+single-video retrieval; multi_hop is reported as a separate slice (its
+gold chunks span ≥2 documents and are scored by each chunk's own
+document_id, which the existing gt_keys computation already handles).
 """
 
 from __future__ import annotations
@@ -37,8 +43,8 @@ SCALE = {
 }
 
 EVAL_NOTE = (
-    "评测说明: eval_set detail 题仅覆盖前 10 个视频；"
-    "当前语料为 50 视频（额外 40 为干扰噪声）"
+    "评测说明: 单视频检索题（detail + multi_evidence）覆盖全 50 个视频；"
+    "multi_hop 单独切片报告（金标跨 ≥2 个文档）。"
 )
 
 TOP_K = 10
@@ -61,20 +67,39 @@ _CJK_ENTITY = re.compile(
 )
 
 
-def load_detail_questions(path: Path) -> list[dict[str, Any]]:
-    rows: list[dict[str, Any]] = []
+# Single-video retrieval types (macro-averaged together).
+SINGLE_VIDEO_TYPES = ("detail", "multi_evidence")
+# Cross-doc retrieval reported as its own slice (EVAL_SPEC §8).
+MULTI_HOP_TYPE = "multi_hop"
+
+
+def load_retrieval_questions(
+    path: Path,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Load (single_video, multi_hop) question lists.
+
+    Single-video slice: type ∈ {detail, multi_evidence} with non-empty
+    relevant_chunks (per EVAL_SPEC §8).
+    Multi-hop slice: type == multi_hop with non-empty relevant_chunks.
+    Other types (summary / unanswerable / memory) have empty relevant_chunks
+    and are skipped.
+    """
+    single: list[dict[str, Any]] = []
+    hop: list[dict[str, Any]] = []
     for line in path.read_text(encoding="utf-8").splitlines():
         line = line.strip()
         if not line:
             continue
         obj = json.loads(line)
-        if obj.get("type") != "detail":
-            continue
         chunks = obj.get("relevant_chunks") or []
         if not chunks:
             continue
-        rows.append(obj)
-    return rows
+        t = obj.get("type")
+        if t in SINGLE_VIDEO_TYPES:
+            single.append(obj)
+        elif t == MULTI_HOP_TYPE:
+            hop.append(obj)
+    return single, hop
 
 
 def gt_keys(relevant_chunks: list[dict]) -> set[tuple[str, int]]:
@@ -215,8 +240,11 @@ def write_md(payload: dict[str, Any]) -> str:
     if payload.get("eval_note"):
         lines.append(payload["eval_note"])
     lines.append(
-        f"评测题: detail + non-empty relevant_chunks = **{payload['n_questions']}** "
-        f"（跳过 summary/self；chunk 级 Recall/Precision/MRR 仅对 detail）"
+        f"单视频检索题 (detail + multi_evidence, 非空 relevant_chunks): "
+        f"**{payload['n_questions']}**（chunk 级 Recall/Precision/MRR）"
+    )
+    lines.append(
+        f"multi_hop 切片题 (跨文档金标): **{payload.get('n_multi_hop', 0)}**（单独报告）"
     )
     lines.append(f"top_k 检索: {payload['top_k']}；指标 k ∈ {list(payload['k_values'])}")
     lines.append("")
@@ -283,6 +311,22 @@ def write_md(payload: dict[str, Any]) -> str:
                 f"{fmt_f(m['precision@5'])} | {fmt_f(m['precision@10'])} | {fmt_f(m['mrr'])} |"
             )
     lines.append("")
+    lines.append("## multi_hop 切片（跨文档金标，单独报告，不计入上面的单视频 macro）")
+    lines.append("")
+    hop_configs = payload.get("multi_hop_configs") or []
+    if not hop_configs:
+        lines.append("（无 multi_hop 题）")
+    else:
+        lines.append("| config | n | Recall@5 | Recall@10 | MRR |")
+        lines.append("|--------|---|----------|-----------|-----|")
+        for c in hop_configs:
+            m = c["macro"]
+            lines.append(
+                f"| `{c['name']}` | {c['n_questions']} | "
+                f"{fmt_f(m['recall@5'])} | {fmt_f(m['recall@10'])} | "
+                f"{fmt_f(m['mrr'])} |"
+            )
+    lines.append("")
     lines.append("## 说明")
     lines.append("")
     lines.append(
@@ -293,6 +337,10 @@ def write_md(payload: dict[str, Any]) -> str:
     )
     lines.append(
         "- pure_bm25 仍走 HybridRetriever（vector weight=0），实现上仍会 embed 查询，属实现细节。"
+    )
+    lines.append(
+        "- 单视频 macro = detail + multi_evidence 的题级宏平均；multi_hop 因跨 ≥2 文档，"
+        "单独切片报告（金标按各 chunk 自身 document_id 计 key，单侧命中也能正确计分）。"
     )
     lines.append(
         f"- smoke embed dim 抽样: {payload.get('smoke_embed_dim')}；Qdrant points: {payload.get('qdrant_point_count')}"
@@ -323,10 +371,18 @@ def _sqlite_document_count(data_dir: Path) -> int | None:
 async def main_async() -> int:
     settings = get_settings()
     data_dir = Path(settings.storage.data_dir).expanduser()
-    questions = load_detail_questions(EVAL_SET)
+    single_questions, hop_questions = load_retrieval_questions(EVAL_SET)
+    questions = single_questions  # main macro = single-video retrieval
     if not questions:
-        print("ERROR: no detail questions with relevant_chunks in", EVAL_SET)
+        print(
+            "ERROR: no single-video retrieval questions (detail/multi_evidence) "
+            "with relevant_chunks in",
+            EVAL_SET,
+        )
         return 1
+    print(
+        f"loaded: single_video={len(single_questions)} multi_hop={len(hop_questions)}"
+    )
 
     embedding = build_embedding_client(settings)
     smoke = embedding.embed(["retrieval_ab smoke"])
@@ -391,15 +447,27 @@ async def main_async() -> int:
         }
 
         results_configs: list[dict[str, Any]] = []
+        results_hop_configs: list[dict[str, Any]] = []
         for name in ("hybrid", "pure_vector", "pure_bm25"):
-            print(f"running config={name} n={len(questions)} ...")
+            print(f"running config={name} n_single={len(questions)} ...")
             cfg_result = await run_config(name, retrievers[name], questions)
             results_configs.append(cfg_result)
             m = cfg_result["macro"]
             print(
-                f"  Recall@5={m['recall@5']:.4f} Recall@10={m['recall@10']:.4f} "
-                f"P@5={m['precision@5']:.4f} P@10={m['precision@10']:.4f} MRR={m['mrr']:.4f}"
+                f"  [single-video] Recall@5={m['recall@5']:.4f} "
+                f"Recall@10={m['recall@10']:.4f} "
+                f"P@5={m['precision@5']:.4f} P@10={m['precision@10']:.4f} "
+                f"MRR={m['mrr']:.4f}"
             )
+            if hop_questions:
+                print(f"  running multi_hop slice config={name} n={len(hop_questions)}")
+                hop_cfg = await run_config(name, retrievers[name], hop_questions)
+                results_hop_configs.append(hop_cfg)
+                hm = hop_cfg["macro"]
+                print(
+                    f"  [multi_hop] Recall@5={hm['recall@5']:.4f} "
+                    f"Recall@10={hm['recall@10']:.4f} MRR={hm['mrr']:.4f}"
+                )
 
         by_name = {c["name"]: c for c in results_configs}
         hybrid_r5 = by_name["hybrid"]["macro"]["recall@5"]
@@ -422,7 +490,14 @@ async def main_async() -> int:
             "n_eval_set_total": sum(
                 1 for line in EVAL_SET.read_text(encoding="utf-8").splitlines() if line.strip()
             ),
-            "question_filter": "type=detail AND non-empty relevant_chunks",
+            "question_filter": (
+                "single-video slice: type ∈ {detail, multi_evidence} AND "
+                "non-empty relevant_chunks"
+            ),
+            "n_multi_hop": len(hop_questions),
+            "multi_hop_question_filter": (
+                "multi_hop slice: type == multi_hop AND non-empty relevant_chunks"
+            ),
             "top_k": TOP_K,
             "k_values": list(K_VALUES),
             "config_defs": config_defs,
@@ -443,6 +518,15 @@ async def main_async() -> int:
                     "per_question": c["per_question"],
                 }
                 for c in results_configs
+            ],
+            "multi_hop_configs": [
+                {
+                    "name": c["name"],
+                    "n_questions": c["n_questions"],
+                    "macro": c["macro"],
+                    "per_question": c["per_question"],
+                }
+                for c in results_hop_configs
             ],
         }
 

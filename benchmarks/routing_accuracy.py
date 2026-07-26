@@ -1,10 +1,12 @@
 """Phase 4: Agent routing accuracy.
 
-Runs Layered Agent (build_agent) on eval_set questions (42 total:
-detail 28, summary 10, self 4), maps tool calls to routes
-(search / lookup+summarize / memory), computes overall accuracy,
-3×3 confusion matrix, per-class P/R, and writes
+Runs Layered Agent (build_agent) on eval_set questions, maps tool calls to
+routes (search / lookup+summarize / memory / refuse), computes overall
+accuracy, confusion matrix, per-class P/R, and writes
 benchmarks/results/04_routing.{md,json}.
+
+Question counts and per-type breakdown are read at runtime from
+eval_set.jsonl (no hardcoded totals).
 
 Questions run with bounded concurrency (default 5) via asyncio.Semaphore.
 """
@@ -44,7 +46,7 @@ EVAL_SET = ROOT / "benchmarks" / "eval_set.jsonl"
 OUT_MD = ROOT / "benchmarks" / "results" / "04_routing.md"
 OUT_JSON = ROOT / "benchmarks" / "results" / "04_routing.json"
 
-ROUTE_LABELS = ("search", "lookup+summarize", "memory")
+ROUTE_LABELS = ("search", "lookup+summarize", "memory", "refuse")
 RETRIEVAL_TOOLS = frozenset(
     {"search_knowledge", "lookup_documents", "summarize_document"}
 )
@@ -55,13 +57,38 @@ MAX_RETRIES = 3
 BACKOFF_S = (30, 60, 120)
 INTER_QUESTION_SLEEP_S = 1.5
 
-# Seed memories for self questions (q045–q048) when memories table is empty.
-SEED_MEMORIES = [
-    "我最近在学习 AI/大模型工程，关注 MCP 协议、Agent 与 Harness Engineering",
-    "除了 AI 和软件开发，我也关注生活与经济话题（如 GDP 核算、瑞士经济）",
-    "数据库方面我学过 PostgreSQL 高级特性（索引、查询优化等）",
-    "我的主要学习兴趣：系统架构、数据库、AI 工程、健身训练理论",
-]
+# Refusal signal keywords for predicting the `refuse` route (no retrieval tool
+# called AND agent reply contains one of these). Used to distinguish refuse vs
+# memory when the agent made no retrieval tool call.
+REFUSE_KEYWORDS_ZH = (
+    "无法回答",
+    "不在资料",
+    "没有相关",
+    "不清楚",
+    "无法确定",
+    "未涵盖",
+    "未覆盖",
+    "没有提到",
+    "没有讲",
+    "我没有",
+    "知识库中没",
+    "视频里没",
+    "无法提供",
+)
+REFUSE_KEYWORDS_EN = (
+    "not covered",
+    "don't have",
+    "do not have",
+    "insufficient",
+    "i cannot answer",
+    "i can't answer",
+    "no information",
+    "not enough information",
+    "i'm not sure",
+    "i am not sure",
+    "no relevant",
+    "out of scope",
+)
 
 
 def _status_code(exc: BaseException) -> int | None:
@@ -205,19 +232,38 @@ def tools_unique(tools: list[str]) -> list[str]:
     return out
 
 
-def predict_route(tools: list[str]) -> str:
-    """Map tool calls → route with priority:
+def _is_refusal_reply(reply: str) -> bool:
+    """Heuristic: agent reply indicates it could not answer from the corpus."""
+    if not reply:
+        return False
+    text = reply.lower()
+    for kw in REFUSE_KEYWORDS_EN:
+        if kw in text:
+            return True
+    # ZH keywords are case-insensitive-irrelevant; check against original text.
+    for kw in REFUSE_KEYWORDS_ZH:
+        if kw in reply:
+            return True
+    return False
+
+
+def predict_route(tools: list[str], reply: str = "") -> str:
+    """Map tool calls (+ reply text) → route with priority:
     1. any lookup_documents / summarize_document → lookup+summarize
     2. else only search_knowledge among retrieval tools → search
-    3. else (no search/lookup/summarize) → memory
+    3. else (no retrieval tool called): inspect reply text — if refusal
+       signal present → `refuse`; otherwise → `memory`.
     propose_memory is ignored for classification.
+
+    `reply` is the agent's final output string; needed only to distinguish
+    refuse vs memory in the no-retrieval-tool branch.
     """
     retrieval = [t for t in tools if t in RETRIEVAL_TOOLS]
     if any(t in LOOKUP_SUMMARIZE_TOOLS for t in retrieval):
         return "lookup+summarize"
     if any(t == "search_knowledge" for t in retrieval):
         return "search"
-    return "memory"
+    return "refuse" if _is_refusal_reply(reply) else "memory"
 
 
 def empty_confusion() -> dict[str, dict[str, int]]:
@@ -329,16 +375,41 @@ def write_md(payload: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-async def seed_memories_if_empty(sqlite: SQLiteClient) -> list[str]:
-    """If memories table empty, seed profile facts for self questions. Returns contents used."""
+def collect_seed_memories(questions: list[dict[str, Any]]) -> list[str]:
+    """Union of seed_memories across all `memory`-type rows. EVAL_SPEC §8
+    guarantees seeds across memory questions are mutually consistent."""
+    seen: dict[str, None] = {}
+    for q in questions:
+        if q.get("type") != "memory":
+            continue
+        for s in q.get("seed_memories") or []:
+            if isinstance(s, str) and s not in seen:
+                seen[s] = None
+    return list(seen.keys())
+
+
+async def seed_memories_if_empty(
+    sqlite: SQLiteClient, seeds: list[str]
+) -> list[str]:
+    """Ensure all `memory`-type seed_memories are present in the memories
+    table before predicting routes. Idempotent: inserts only seeds not already
+    present (matched by content), so re-runs don't duplicate. Returns current
+    contents of the table after seeding."""
     existing = await sqlite.list_memories()
+    existing_contents = {m.get("content") for m in existing}
+    missing = [s for s in seeds if s not in existing_contents]
     if existing:
-        print(f"memories already present: n={len(existing)} (skip seed)")
-        return [m["content"] for m in existing]
-    print("memories empty → seeding profile facts for self route")
-    for content in SEED_MEMORIES:
-        await sqlite.add_memory(content=content, category="profile")
-        print(f"  seeded: {content[:40]}...")
+        print(
+            f"memories already present: n={len(existing)} "
+            f"(need {len(seeds)}, missing {len(missing)})"
+        )
+    if missing:
+        print(f"inserting {len(missing)} missing seed memories for memory route")
+        for content in missing:
+            await sqlite.add_memory(content=content, category="profile")
+            print(f"  seeded: {content[:40]}...")
+    else:
+        print("all required seed memories already present (skip seed)")
     after = await sqlite.list_memories()
     return [m["content"] for m in after]
 
@@ -379,15 +450,13 @@ async def main_async(
         point_count = len(qdrant.scroll_all_points())
         print(f"Qdrant open ok, points={point_count}")
 
-        memory_contents = await seed_memories_if_empty(sqlite)
-        if len(memory_contents) >= len(SEED_MEMORIES) and any(
-            "MCP" in c or "PostgreSQL" in c for c in memory_contents
-        ):
-            notes.append(
-                "Seeded or reused profile memories for self questions (q045–q048)."
-            )
-        else:
-            notes.append(f"Memories in DB: n={len(memory_contents)}")
+        seed_memories = collect_seed_memories(questions)
+        print(f"collected {len(seed_memories)} seed memories from memory-type rows")
+        memory_contents = await seed_memories_if_empty(sqlite, seed_memories)
+        notes.append(
+            f"Memory route: {len(seed_memories)} seed_memories from memory-type rows "
+            f"ensured in DB (idempotent insert); DB now has n={len(memory_contents)}."
+        )
 
         embedding_client = build_embedding_client(settings)
         smoke_vec = embedding_client.embed(["routing_accuracy smoke"])
@@ -439,19 +508,16 @@ async def main_async(
             return 0
 
         notes.append(
-            "3 docs may lack L2/L3 (增肌饮食 BV1ev411w7bs, GDP P-NmMX9rlYQ, "
-            "系统设计 oYxTTirKY8M); summary route still counts if lookup/summarize tools called."
-        )
-        notes.append(
             "Route mapping: lookup_documents|summarize_document → lookup+summarize; "
-            "else search_knowledge → search; else → memory. propose_memory ignored."
+            "else search_knowledge → search; else inspect reply text — refusal "
+            "signal → refuse, otherwise memory. propose_memory ignored."
         )
         notes.append(
-            "Accuracy denominator = n_total (42: detail 28, summary 10, self 4); "
+            "Accuracy denominator = n_total (counts read live from eval_set.jsonl); "
             "agent errors count as incorrect (predicted=error)."
         )
         notes.append(
-            "Corpus is 50-video with noise docs; eval questions target first-10 videos only."
+            "Corpus is 50-video; eval questions span all videos (per EVAL_SPEC §2)."
         )
         notes.append(
             f"Bounded concurrency={concurrency} via asyncio.Semaphore; "
@@ -491,7 +557,8 @@ async def main_async(
                     result = await agent_run_with_retry(agent, question, deps, qid=qid)
                     latency_ms = (time.perf_counter() - t0) * 1000.0
                     tools = extract_tool_names(result)
-                    predicted = predict_route(tools)
+                    reply = str(getattr(result, "output", "") or "")
+                    predicted = predict_route(tools, reply=reply)
                 except Exception as exc:
                     err = f"{type(exc).__name__}: {exc}"
                     predicted = "error"
