@@ -1,0 +1,949 @@
+{
+  "timestamp": "2026-07-24 04:32:37 UTC",
+  "chat_model": "gemini-3.5-flash",
+  "chat_endpoint": "https://api.42w.shop/v1",
+  "embedding_model": "Qwen/Qwen3-Embedding-0.6B",
+  "embedding_endpoint": "http://localhost:8003/v1",
+  "n_total": 48,
+  "n_correct": 38,
+  "n_errors": 0,
+  "n_error_predictions": 0,
+  "overall_accuracy": 0.7916666666666666,
+  "expected_distribution": {
+    "search": 34,
+    "lookup+summarize": 10,
+    "memory": 4
+  },
+  "confusion_matrix": {
+    "search": {
+      "search": 27,
+      "lookup+summarize": 0,
+      "memory": 7
+    },
+    "lookup+summarize": {
+      "search": 1,
+      "lookup+summarize": 9,
+      "memory": 0
+    },
+    "memory": {
+      "search": 0,
+      "lookup+summarize": 2,
+      "memory": 2
+    }
+  },
+  "per_class": {
+    "search": {
+      "precision": 0.9642857142857143,
+      "recall": 0.7941176470588235,
+      "support": 34,
+      "tp": 27,
+      "predicted": 28
+    },
+    "lookup+summarize": {
+      "precision": 0.8181818181818182,
+      "recall": 0.9,
+      "support": 10,
+      "tp": 9,
+      "predicted": 11
+    },
+    "memory": {
+      "precision": 0.2222222222222222,
+      "recall": 0.5,
+      "support": 4,
+      "tp": 2,
+      "predicted": 9
+    }
+  },
+  "failures": [
+    {
+      "id": "q001",
+      "question": "如果在GDP核算中采用支出法，其计算GDP的核心公式包含哪四个部分？",
+      "expected": "search",
+      "predicted": "memory",
+      "tools": [],
+      "error": null
+    },
+    {
+      "id": "q002",
+      "question": "根据世界银行估算，2024年中国按购买力平价（PPP）计算的GDP是多少万亿美元？",
+      "expected": "search",
+      "predicted": "memory",
+      "tools": [],
+      "error": null
+    },
+    {
+      "id": "q003",
+      "question": "为什么二手商品（如闲鱼上买卖二手自行车或二手房）的交易额不能算进GDP里？",
+      "expected": "search",
+      "predicted": "memory",
+      "tools": [],
+      "error": null
+    },
+    {
+      "id": "q007",
+      "question": "瑞士市值最高的三家公司中，属于医药行业的两家公司是哪两家？",
+      "expected": "search",
+      "predicted": "memory",
+      "tools": [],
+      "error": null
+    },
+    {
+      "id": "q013",
+      "question": "What major shift does MCP introduce compared to traditional APIs for AI models and agents?",
+      "expected": "lookup+summarize",
+      "predicted": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "error": null
+    },
+    {
+      "id": "q021",
+      "question": "What are the four core properties that define SQL transactions according to the ACID acronym?",
+      "expected": "search",
+      "predicted": "memory",
+      "tools": [],
+      "error": null
+    },
+    {
+      "id": "q022",
+      "question": "What load balancing algorithm routes incoming traffic based on sequential rotation across servers?",
+      "expected": "search",
+      "predicted": "memory",
+      "tools": [],
+      "error": null
+    },
+    {
+      "id": "q041",
+      "question": "Transformer 架构最早是由哪个团队在 2017 年提出的？",
+      "expected": "search",
+      "predicted": "memory",
+      "tools": [],
+      "error": null
+    },
+    {
+      "id": "q046",
+      "question": "我最近在 AI 与大模型工程（如 MCP 协议、Agent 和 Harness Engineering）方面学习了哪些内容？",
+      "expected": "memory",
+      "predicted": "lookup+summarize",
+      "tools": [
+        "lookup_documents",
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge"
+      ],
+      "error": null
+    },
+    {
+      "id": "q048",
+      "question": "根据我学习过的数据库相关视频，我对 PostgreSQL 的哪些高级特性进行了了解？",
+      "expected": "memory",
+      "predicted": "lookup+summarize",
+      "tools": [
+        "lookup_documents",
+        "lookup_documents",
+        "summarize_document",
+        "search_knowledge",
+        "summarize_document",
+        "search_knowledge"
+      ],
+      "error": null
+    }
+  ],
+  "per_question": [
+    {
+      "id": "q001",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "memory",
+      "tools": [],
+      "tools_unique": [],
+      "correct": false,
+      "error": null,
+      "latency_ms": 6786.5
+    },
+    {
+      "id": "q002",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "memory",
+      "tools": [],
+      "tools_unique": [],
+      "correct": false,
+      "error": null,
+      "latency_ms": 9250.4
+    },
+    {
+      "id": "q003",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "memory",
+      "tools": [],
+      "tools_unique": [],
+      "correct": false,
+      "error": null,
+      "latency_ms": 7301.3
+    },
+    {
+      "id": "q004",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "lookup_documents",
+        "lookup_documents",
+        "lookup_documents",
+        "lookup_documents",
+        "summarize_document",
+        "summarize_document",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "lookup_documents",
+        "summarize_document",
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 34289.3
+    },
+    {
+      "id": "q005",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 10097.0
+    },
+    {
+      "id": "q006",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 10120.8
+    },
+    {
+      "id": "q007",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "memory",
+      "tools": [],
+      "tools_unique": [],
+      "correct": false,
+      "error": null,
+      "latency_ms": 7469.4
+    },
+    {
+      "id": "q008",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 11037.5
+    },
+    {
+      "id": "q009",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "lookup_documents",
+        "lookup_documents",
+        "summarize_document",
+        "summarize_document",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "lookup_documents",
+        "summarize_document",
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 22570.7
+    },
+    {
+      "id": "q010",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 11522.7
+    },
+    {
+      "id": "q011",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 13610.5
+    },
+    {
+      "id": "q012",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 17271.2
+    },
+    {
+      "id": "q013",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": false,
+      "error": null,
+      "latency_ms": 13133.4
+    },
+    {
+      "id": "q014",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 9874.0
+    },
+    {
+      "id": "q015",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 8615.5
+    },
+    {
+      "id": "q016",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 10958.6
+    },
+    {
+      "id": "q017",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 10191.4
+    },
+    {
+      "id": "q018",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "lookup_documents",
+        "lookup_documents",
+        "summarize_document",
+        "summarize_document"
+      ],
+      "tools_unique": [
+        "lookup_documents",
+        "summarize_document"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 14124.3
+    },
+    {
+      "id": "q019",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "lookup_documents",
+        "lookup_documents",
+        "lookup_documents",
+        "lookup_documents",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "lookup_documents",
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 20999.6
+    },
+    {
+      "id": "q020",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 20406.2
+    },
+    {
+      "id": "q021",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "memory",
+      "tools": [],
+      "tools_unique": [],
+      "correct": false,
+      "error": null,
+      "latency_ms": 6354.1
+    },
+    {
+      "id": "q022",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "memory",
+      "tools": [],
+      "tools_unique": [],
+      "correct": false,
+      "error": null,
+      "latency_ms": 6019.4
+    },
+    {
+      "id": "q023",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 10272.3
+    },
+    {
+      "id": "q024",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 13783.9
+    },
+    {
+      "id": "q025",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 11370.5
+    },
+    {
+      "id": "q026",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "lookup_documents",
+        "lookup_documents",
+        "summarize_document",
+        "summarize_document"
+      ],
+      "tools_unique": [
+        "lookup_documents",
+        "summarize_document"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 16264.2
+    },
+    {
+      "id": "q027",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 12185.5
+    },
+    {
+      "id": "q028",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 12904.7
+    },
+    {
+      "id": "q029",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 16894.1
+    },
+    {
+      "id": "q030",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "lookup_documents",
+        "lookup_documents",
+        "summarize_document",
+        "summarize_document",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "lookup_documents",
+        "summarize_document",
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 24994.4
+    },
+    {
+      "id": "q031",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 12029.3
+    },
+    {
+      "id": "q032",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 12896.1
+    },
+    {
+      "id": "q033",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 14171.2
+    },
+    {
+      "id": "q034",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 10797.0
+    },
+    {
+      "id": "q035",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "lookup_documents",
+        "lookup_documents",
+        "summarize_document",
+        "summarize_document"
+      ],
+      "tools_unique": [
+        "lookup_documents",
+        "summarize_document"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 16280.1
+    },
+    {
+      "id": "q036",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 18082.4
+    },
+    {
+      "id": "q037",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 11017.4
+    },
+    {
+      "id": "q038",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 12576.6
+    },
+    {
+      "id": "q039",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 11129.3
+    },
+    {
+      "id": "q040",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "lookup_documents",
+        "lookup_documents",
+        "summarize_document",
+        "summarize_document"
+      ],
+      "tools_unique": [
+        "lookup_documents",
+        "summarize_document"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 15766.8
+    },
+    {
+      "id": "q041",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "memory",
+      "tools": [],
+      "tools_unique": [],
+      "correct": false,
+      "error": null,
+      "latency_ms": 4960.8
+    },
+    {
+      "id": "q042",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 10914.6
+    },
+    {
+      "id": "q043",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 10547.3
+    },
+    {
+      "id": "q044",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "lookup_documents",
+        "lookup_documents",
+        "summarize_document",
+        "summarize_document"
+      ],
+      "tools_unique": [
+        "lookup_documents",
+        "summarize_document"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 16191.2
+    },
+    {
+      "id": "q045",
+      "type": "self",
+      "expected_route": "memory",
+      "predicted_route": "memory",
+      "tools": [],
+      "tools_unique": [],
+      "correct": true,
+      "error": null,
+      "latency_ms": 5735.3
+    },
+    {
+      "id": "q046",
+      "type": "self",
+      "expected_route": "memory",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "lookup_documents",
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "lookup_documents",
+        "search_knowledge"
+      ],
+      "correct": false,
+      "error": null,
+      "latency_ms": 15207.2
+    },
+    {
+      "id": "q047",
+      "type": "self",
+      "expected_route": "memory",
+      "predicted_route": "memory",
+      "tools": [],
+      "tools_unique": [],
+      "correct": true,
+      "error": null,
+      "latency_ms": 4103.2
+    },
+    {
+      "id": "q048",
+      "type": "self",
+      "expected_route": "memory",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "lookup_documents",
+        "lookup_documents",
+        "summarize_document",
+        "search_knowledge",
+        "summarize_document",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "lookup_documents",
+        "summarize_document",
+        "search_knowledge"
+      ],
+      "correct": false,
+      "error": null,
+      "latency_ms": 20730.6
+    }
+  ],
+  "notes": [
+    "Seeded or reused profile memories for self questions (q045–q048).",
+    "3 docs may lack L2/L3 (增肌饮食 BV1ev411w7bs, GDP P-NmMX9rlYQ, 系统设计 oYxTTirKY8M); summary route still counts if lookup/summarize tools called.",
+    "Route mapping: lookup_documents|summarize_document → lookup+summarize; else search_knowledge → search; else → memory. propose_memory ignored.",
+    "Accuracy denominator = n_total (48); agent errors count as incorrect (predicted=error)."
+  ],
+  "qdrant_point_count": 323,
+  "smoke_embed_dim": 1024,
+  "route_labels": [
+    "search",
+    "lookup+summarize",
+    "memory"
+  ],
+  "seeded_memories": [
+    "我的主要学习兴趣：系统架构、数据库、AI 工程、健身训练理论",
+    "我最近在学习 AI/大模型工程，关注 MCP 协议、Agent 与 Harness Engineering",
+    "数据库方面我学过 PostgreSQL 高级特性（索引、查询优化等）",
+    "除了 AI 和软件开发，我也关注生活与经济话题（如 GDP 核算、瑞士经济）"
+  ]
+}

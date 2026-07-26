@@ -1,0 +1,173 @@
+[
+  {
+    "video_id": "BV1M2421T7qk",
+    "document_id": "59380011d41f448f9e55653e67182b49",
+    "status": "indexed",
+    "chunk_count": 25,
+    "secs": null,
+    "outcome": "skipped_already_indexed",
+    "error": null
+  },
+  {
+    "video_id": "BV1ub421J7jv",
+    "document_id": "06f4abbb549844a788757fe10c98d6c9",
+    "status": "indexed",
+    "chunk_count": 28,
+    "secs": null,
+    "outcome": "skipped_already_indexed",
+    "error": null
+  },
+  {
+    "video_id": "cfXTQmFRjWU",
+    "document_id": "ebb04accd832482f8597d0ab7c18f5c2",
+    "status": "indexed",
+    "chunk_count": 44,
+    "secs": 3.0,
+    "outcome": "indexed",
+    "error": null
+  },
+  {
+    "video_id": "2qf6ry-YjwU",
+    "document_id": "acf4e85089bd4989bb26d761bf008123",
+    "status": "indexed",
+    "chunk_count": 68,
+    "secs": 3.1,
+    "outcome": "indexed",
+    "error": null
+  },
+  {
+    "video_id": "BV1QGXABxEbq",
+    "document_id": "5fd698d82dc94839a98e3a9b64321fa8",
+    "status": "indexed",
+    "chunk_count": 18,
+    "secs": 8.8,
+    "outcome": "indexed",
+    "error": null
+  },
+  {
+    "video_id": "64Zp3tzNbpE",
+    "document_id": "c72da92dfc8e4375bd056c5ad82423c0",
+    "status": "indexed",
+    "chunk_count": 101,
+    "secs": 6.0,
+    "outcome": "indexed",
+    "error": null
+  },
+  {
+    "video_id": "BV1hN596zEas",
+    "document_id": "6d0acacb84924ed9a3f6bbc1f3714cff",
+    "status": "indexed",
+    "chunk_count": 24,
+    "secs": null,
+    "outcome": "skipped_already_indexed",
+    "error": null
+  },
+  {
+    "video_id": "EpIgvowZr00",
+    "document_id": "31282017576140cd8231eca72f90849f",
+    "status": "indexed",
+    "chunk_count": 104,
+    "secs": 6.0,
+    "outcome": "indexed",
+    "error": null
+  },
+  {
+    "video_id": "BV11o4y1s7VY",
+    "document_id": "b199b0778031446384eaaecb0d6680a6",
+    "status": "indexed",
+    "chunk_count": 15,
+    "secs": null,
+    "outcome": "skipped_already_indexed",
+    "error": null
+  },
+  {
+    "video_id": "BV1dMGm6xET9",
+    "document_id": "f667f8fa51be489b9cddc69e4daf580d",
+    "status": "indexed",
+    "chunk_count": 21,
+    "secs": null,
+    "outcome": "skipped_already_indexed",
+    "error": null
+  },
+  {
+    "video_id": "BV1LAVh6UEQz",
+    "document_id": "30bd49876f5f4632a24ece6cc69b3b26",
+    "status": "indexed",
+    "chunk_count": 18,
+    "secs": 3.0,
+    "outcome": "indexed",
+    "error": null
+  },
+  {
+    "video_id": "Cl0QYkez-BE",
+    "document_id": "b4309e724a594f8f94621245f955358b",
+    "status": "indexed",
+    "chunk_count": 107,
+    "secs": 6.0,
+    "outcome": "indexed",
+    "error": null
+  },
+  {
+    "video_id": "BV1Dm7J6XEEh",
+    "document_id": "17888c4cf23c48bf8ac2bbd263384e6e",
+    "status": "indexed",
+    "chunk_count": 25,
+    "secs": null,
+    "outcome": "skipped_already_indexed",
+    "error": null
+  },
+  {
+    "video_id": "BV1z8zPYjE4j",
+    "document_id": "b5e0b56b48c74aec8d0fa551261f65cb",
+    "status": "indexed",
+    "chunk_count": 20,
+    "secs": 3.0,
+    "outcome": "indexed",
+    "error": null
+  },
+  {
+    "video_id": "BV1HR7o6CE8q",
+    "document_id": "f02984e6ca05481d806123e59d4c372a",
+    "status": "indexed",
+    "chunk_count": 35,
+    "secs": 80.9,
+    "outcome": "indexed",
+    "error": null
+  },
+  {
+    "video_id": "BV1hA7K6jER9",
+    "document_id": "9b2d8b5ea83749849b1a003c3de79cda",
+    "status": "indexed",
+    "chunk_count": 21,
+    "secs": null,
+    "outcome": "skipped_already_indexed",
+    "error": null
+  },
+  {
+    "video_id": "ej6cygeB2X0",
+    "document_id": "418e8370da6c4e43a5a6d864914ddcc5",
+    "status": "indexed",
+    "chunk_count": 125,
+    "secs": 166.3,
+    "outcome": "indexed",
+    "error": null
+  },
+  {
+    "video_id": "3ub8RBE7BC8",
+    "document_id": "f21f689cb37443c685d4100709b4bb19",
+    "status": "indexed",
+    "chunk_count": 61,
+    "secs": 69.6,
+    "outcome": "indexed",
+    "error": null
+  },
+  {
+    "video_id": "cQP8WApzIQQ",
+    "document_id": "18599259b34241d8ac872db3983b3174",
+    "status": "indexed",
+    "chunk_count": 116,
+    "secs": 240.3,
+    "outcome": "indexed",
+    "error": null
+  }
+]

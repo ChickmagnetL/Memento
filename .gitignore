@@ -71,3 +71,6 @@ backend/build/
 
 # Desktop packaging artifacts
 desktop/resources/
+
+# Benchmark corpus (rebuildable via ingest_videos.py)
+bench_data/

@@ -1,0 +1,116 @@
+{
+  "timestamp": "2026-07-24 05:54:13 UTC",
+  "data_dir": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data",
+  "sqlite_source": "metadata.db",
+  "video_count": 10,
+  "document_count": 10,
+  "l2_coverage": 10,
+  "l3_coverage": 10,
+  "l2_coverage_pct": 100.0,
+  "l3_coverage_pct": 100.0,
+  "chunk_count_min": 8,
+  "chunk_count_mean": 32.3,
+  "chunk_count_max": 189,
+  "qdrant": {
+    "source": "qdrant_local",
+    "point_count": 323,
+    "vector_size": 1024,
+    "distance": "COSINE",
+    "avg_chunk_chars": 905.2786377708978,
+    "min_chunk_chars": 263,
+    "max_chunk_chars": 1761,
+    "chunk_char_samples": 323
+  },
+  "documents": [
+    {
+      "id": "f78e77740180456381e76204b57dfdb8",
+      "video_id": "P-NmMX9rlYQ",
+      "status": "indexed",
+      "chunk_count": 21,
+      "summary": "该视频详细介绍了国内生产总值（GDP）的概念、计算方式及其局限性。GDP是指在一定时期内一个国家或地区所生产的所有最终产品和服务的市场价值，通常采用生产法、收入法和支出法三种方法进行核算。然而，在跨国或跨时期的对比中，GDP会受到汇率调整、通货膨胀以及购买力平价（PPP）等多种调整因子的影响，从而展现出截然不同的数据走势。此外，GDP在衡量经济体量时也存在无法准确反映贫富差距、环境破坏及虚假繁荣等局限，但因其具备极高的可量化性和稳定性，依然是目前全球最核心且可信的宏观经济指标。",
+      "brief": "本文阐述了GDP的定义、三种核算方法以及在不同调整标准下的走势差异，并分析了其作为核心经济指标的局限性与不可替代性。",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/youtube/raw/P-NmMX9rlYQ.md"
+    },
+    {
+      "id": "ebc78c155d43433e9f417bbf36ddecf9",
+      "video_id": "-HOzOBmQ5ro",
+      "status": "indexed",
+      "chunk_count": 21,
+      "summary": "本视频深入剖析了瑞士高人均GDP背后的独特经济模式与历史成因。瑞士依靠险要地形与“对自己狠辣、对外部圆滑”的策略确立并维持了200多年的永久中立地位，进而孕育出以保密和财富管理闻名的离岸金融业以及日内瓦自由港。随着近年来国际保密协议破裂，瑞士银行业优势削弱，但其经济依托医药化工（罗氏、诺华）、精密制造与顶尖制表业（斯沃琪集团）依然极其坚挺。加上去中心化的政治体制、实用主义的双轨制学徒教育以及瑞郎作为硬通货的避险属性，共同塑造了高附加值的“瑞士制造”品牌，使其在面对去全球化等外部挑战时仍具备强劲的经济韧性。",
+      "brief": "深入解析瑞士高GDP背后的中立历史、金融与制造产业及经济模式。",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/youtube/cleaned/-HOzOBmQ5ro.md"
+    },
+    {
+      "id": "ec3ce6678c7f4467ab867d8a548295cf",
+      "video_id": "185XGEMefgc",
+      "status": "indexed",
+      "chunk_count": 9,
+      "summary": "本视频深入对比了模型上下文协议（MCP）与传统 API 的区别及其对 AI 开发的影响。传统 API 适用于程序间确定性的交互，而 MCP 是一种专为大语言模型设计的语义协议，赋予模型通过上下文自发探索与调用工具的能力。MCP 并非要替代 API，而是作为 API 之上的中间层，将静态接口转换为模型可理解的动态地图。虽然目前仍面临生态普及和权限安全等挑战，但 MCP 正在推动模型原生软件架构的发展，实现 AI 工具的即插即用与跨平台互操作。",
+      "brief": "解析 MCP 协议如何重塑大模型与工具和 API 的连接方式。",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/youtube/cleaned/185XGEMefgc.md"
+    },
+    {
+      "id": "22a2c7c7da0c438ea6cd1c1ef7b2d633",
+      "video_id": "vkpS7WztTMc",
+      "status": "indexed",
+      "chunk_count": 15,
+      "summary": "本视频为AMD CEO苏姿丰（Lisa Su）在麻省理工学院（MIT）毕业典礼上的演讲。她回顾了自己在MIT从本科到博士的求学历程，分享了“手脑并用（Mens et Manus）”校训对她工程师直觉与职业生涯的深远影响。她结合在IBM和AMD的经历，鼓励毕业生勇敢应对最艰难的挑战，并阐述了AI在医疗等领域的巨大潜能，强调技术无法决定未来，只有兼具使命感与责任感的人才能引领时代发展。",
+      "brief": "AMD CEO苏姿丰在MIT毕业典礼演讲，分享求学经历并寄语毕业生迎难而上。",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/youtube/cleaned/vkpS7WztTMc.md"
+    },
+    {
+      "id": "d903d515ad124b8999552c522aee0cd7",
+      "video_id": "oYxTTirKY8M",
+      "status": "indexed",
+      "chunk_count": 189,
+      "summary": "This document section covers essential web security concepts, specifically focusing on how systems protect against common vulnerabilities like Cross-Site Request Forgery (CSRF) and Cross-Site Scripting (XSS). It explains that CSRF attacks are prevented using CSRF tokens combined with session cookies to block unauthorized requests from external domains. Additionally, it details how XSS attacks occur when malicious JavaScript is injected into user inputs and executed in other users' browsers. The passage concludes with an invitation for viewers to join the System Design Mastery mentorship program to learn full-stack system architecture and advance their engineering careers.",
+      "brief": "The text explains CSRF and XSS security vulnerabilities and concludes with a promotion for a system design mentorship program.",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/youtube/raw/oYxTTirKY8M.md"
+    },
+    {
+      "id": "1661a6ae3c5949dfb420de3690f673f5",
+      "video_id": "BV1FUYQz7E4H",
+      "status": "indexed",
+      "chunk_count": 12,
+      "summary": "本视频深入介绍了开源关系型数据库 PostgreSQL 的强大功能与其作为全能后端平台的潜力。视频涵盖了 Postgres 在 Ubuntu 上的快速安装配置、基于 schema 的权限控制，以及对网络网段、几何运算、自定义类型和表继承等面向对象特性的原生支持。此外，视频重点演示了如何使用 JSONB 替代 NoSQL，利用原生及 PGroonga 插件实现中英文全文检索，结合 pgvector 与 LangChain 构建大模型 RAG 向量检索系统，并借助 pg_cron 执行定时任务。最后，视频探讨了通过 UNLOGGED 临时表替代 Redis 缓存，以及利用 PostgREST、pg_graphql、Apache AGE 和 TimescaleDB 扩展将 PostgreSQL 转化为 REST/GraphQL API、图数据库及时序数据库的实践方案。",
+      "brief": "本视频系统介绍了 PostgreSQL 的安装配置、高级数据类型、表继承，以及其在 JSON 存储、向量检索、全文搜索和 API 扩展方面的强大应用。",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/bilibili/cleaned/BV1FUYQz7E4H.md"
+    },
+    {
+      "id": "6912e2f626554fddb0b07fd5d0c45149",
+      "video_id": "BV14v4y1G7A3",
+      "status": "indexed",
+      "chunk_count": 8,
+      "summary": "本视频是凯小王针对健身新手打造的健身房入门指南与一分化训练计划。视频首先梳理了新手入门的五大核心认知：先通过中低强度有氧提升心肺功能；筛查并改善关节活动度与体态问题；通过高频重复积累动作模式与肌肉记忆；采用高频中等强度的训练节奏；以及结合BMI与体脂率精准评估自身身材类型。随后，视频详细演示并讲解了一套适合新手执行1-2个月的一分化全身训练计划，涵盖卧推、坐姿划船、倒蹬、史密斯推肩、弯杠弯举及龙门架下压等动作，明确了各动作的发力要领与安全避坑指南，助力新手高效、安全地开启健身之旅。",
+      "brief": "健身小白进健身房避坑指南及新手一分化全身训练计划。",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/bilibili/cleaned/BV14v4y1G7A3.md"
+    },
+    {
+      "id": "ef6d166a52274710bc3472332c916664",
+      "video_id": "BV1ev411w7bs",
+      "status": "indexed",
+      "chunk_count": 18,
+      "summary": "In this Bilibili video, content creator Kai Shengwang (凯圣王) details a practical guide to muscle-building nutrition and macro ratios. He emphasizes that dirty bulking and excessively low body fat levels are counterproductive, recommending an optimal body fat range of 12%–18% (12%–15% for ectomorphs and 15%–18% for endomorphs) to protect immune function and maintain healthy testosterone levels. For meal planning, he presents both total-calorie target models (a 6:2:2 or 5:2:3 carbohydrate-protein-fat ratio based on 25–35 kcal per kg of target body weight) and bodyweight-based macro calculations (2–3.5g/kg carbs, 1.2–1.5g/kg protein, and 1–1.2g/kg fats). Furthermore, he stresses the importance of all seven nutrient categories, advocating for fast and slow-digesting carbohydrates, frequent moderate protein portions rather than huge single meals, balanced fatty acids, sufficient hydration (2–3.5+ liters per day), and plenty of colorful vegetables for micronutrients and antioxidant support. Finally, he outlines a structured daily timeline, mapping out carbohydrate and protein timing before, during, and after workouts, as well as a pre-bed casein/protein and healthy fat snack to optimize recovery.",
+      "brief": "Fitness creator Kai Shengwang outlines a comprehensive muscle-building nutrition guide featuring target body-fat ranges, total calorie and macro calculation formulas, and a daily meal-timing schedule.",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/bilibili/raw/BV1ev411w7bs.md"
+    },
+    {
+      "id": "5b0275d76ecd40d8a8a515bec5e535ae",
+      "video_id": "BV1Zk9FBwELs",
+      "status": "indexed",
+      "chunk_count": 12,
+      "summary": "本视频深入探讨了 AI Agent 落地中的关键概念 Harness Engineering（马具/束缚工程）。视频分析了 AI 工程从 Prompt Engineering（解决表达问题）到 Context Engineering（解决信息供给），再到 Harness Engineering（解决稳定执行与纠偏）的三阶段演进。一个成熟的 Harness 系统包含 Context 控制、工具集成、执行编排、状态管理、评估观测及容错恢复六大模块。视频还结合了 OpenAI 与 Anthropic 的最新实践，强调真正决定 AI 系统能否稳定交付的是外围的环境约束与治理体系，而非单纯的模型能力。",
+      "brief": "详解 AI 应用落地的核心机制 Harness Engineering 的概念与实践。",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/bilibili/cleaned/BV1Zk9FBwELs.md"
+    },
+    {
+      "id": "4eddb0234a6846c69bc2ca2e9bb427e5",
+      "video_id": "BV1E7wtzaEdq",
+      "status": "indexed",
+      "chunk_count": 18,
+      "summary": "本视频从工程视角出发，系统且通俗地拆解了当前AI领域的核心概念与底层架构。内容涵盖LLM的运行逻辑（基于Transformer的文字接龙机制）、Tokenizer对文本的编码解码及Token计算原理、Context与Context Window构成的临时记忆机制，以及Prompt（User与System Prompt）对模型输出的约束。进一步地，视频延伸至模型与外部环境交互的Tool和统一接入标准MCP，最后深入讲解了具备自主规划与工具调用能力的Agent，以及通过说明文档控制Agent行为与规则的Agent Skill，帮助观众构建完整清晰的AI技术认知体系。",
+      "brief": "视频从工程视角全面拆解了LLM、Token、Context、MCP及Agent等核心AI概念。",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/bilibili/cleaned/BV1E7wtzaEdq.md"
+    }
+  ]
+}

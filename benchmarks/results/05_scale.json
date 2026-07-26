@@ -1,0 +1,476 @@
+{
+  "timestamp": "2026-07-26 04:25:29 UTC",
+  "data_dir": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data",
+  "sqlite_source": "metadata.db",
+  "video_count": 51,
+  "document_count": 50,
+  "l2_coverage": 50,
+  "l3_coverage": 50,
+  "l2_coverage_pct": 100.0,
+  "l3_coverage_pct": 100.0,
+  "chunk_count_min": 8,
+  "chunk_count_mean": 40.8,
+  "chunk_count_max": 189,
+  "qdrant": {
+    "source": "qdrant_local",
+    "point_count": 2040,
+    "vector_size": 1024,
+    "distance": "COSINE",
+    "avg_chunk_chars": 908.3024509803921,
+    "min_chunk_chars": 190,
+    "max_chunk_chars": 1761,
+    "chunk_char_samples": 2040
+  },
+  "documents": [
+    {
+      "id": "f78e77740180456381e76204b57dfdb8",
+      "video_id": "P-NmMX9rlYQ",
+      "status": "indexed",
+      "chunk_count": 21,
+      "summary": "该视频详细介绍了国内生产总值（GDP）的概念、计算方式及其局限性。GDP是指在一定时期内一个国家或地区所生产的所有最终产品和服务的市场价值，通常采用生产法、收入法和支出法三种方法进行核算。然而，在跨国或跨时期的对比中，GDP会受到汇率调整、通货膨胀以及购买力平价（PPP）等多种调整因子的影响，从而展现出截然不同的数据走势。此外，GDP在衡量经济体量时也存在无法准确反映贫富差距、环境破坏及虚假繁荣等局限，但因其具备极高的可量化性和稳定性，依然是目前全球最核心且可信的宏观经济指标。",
+      "brief": "本文阐述了GDP的定义、三种核算方法以及在不同调整标准下的走势差异，并分析了其作为核心经济指标的局限性与不可替代性。",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/youtube/raw/P-NmMX9rlYQ.md"
+    },
+    {
+      "id": "ebc78c155d43433e9f417bbf36ddecf9",
+      "video_id": "-HOzOBmQ5ro",
+      "status": "indexed",
+      "chunk_count": 21,
+      "summary": "本视频深入剖析了瑞士高人均GDP背后的独特经济模式与历史成因。瑞士依靠险要地形与“对自己狠辣、对外部圆滑”的策略确立并维持了200多年的永久中立地位，进而孕育出以保密和财富管理闻名的离岸金融业以及日内瓦自由港。随着近年来国际保密协议破裂，瑞士银行业优势削弱，但其经济依托医药化工（罗氏、诺华）、精密制造与顶尖制表业（斯沃琪集团）依然极其坚挺。加上去中心化的政治体制、实用主义的双轨制学徒教育以及瑞郎作为硬通货的避险属性，共同塑造了高附加值的“瑞士制造”品牌，使其在面对去全球化等外部挑战时仍具备强劲的经济韧性。",
+      "brief": "深入解析瑞士高GDP背后的中立历史、金融与制造产业及经济模式。",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/youtube/cleaned/-HOzOBmQ5ro.md"
+    },
+    {
+      "id": "ec3ce6678c7f4467ab867d8a548295cf",
+      "video_id": "185XGEMefgc",
+      "status": "indexed",
+      "chunk_count": 9,
+      "summary": "本视频深入对比了模型上下文协议（MCP）与传统 API 的区别及其对 AI 开发的影响。传统 API 适用于程序间确定性的交互，而 MCP 是一种专为大语言模型设计的语义协议，赋予模型通过上下文自发探索与调用工具的能力。MCP 并非要替代 API，而是作为 API 之上的中间层，将静态接口转换为模型可理解的动态地图。虽然目前仍面临生态普及和权限安全等挑战，但 MCP 正在推动模型原生软件架构的发展，实现 AI 工具的即插即用与跨平台互操作。",
+      "brief": "解析 MCP 协议如何重塑大模型与工具和 API 的连接方式。",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/youtube/cleaned/185XGEMefgc.md"
+    },
+    {
+      "id": "22a2c7c7da0c438ea6cd1c1ef7b2d633",
+      "video_id": "vkpS7WztTMc",
+      "status": "indexed",
+      "chunk_count": 15,
+      "summary": "本视频为AMD CEO苏姿丰（Lisa Su）在麻省理工学院（MIT）毕业典礼上的演讲。她回顾了自己在MIT从本科到博士的求学历程，分享了“手脑并用（Mens et Manus）”校训对她工程师直觉与职业生涯的深远影响。她结合在IBM和AMD的经历，鼓励毕业生勇敢应对最艰难的挑战，并阐述了AI在医疗等领域的巨大潜能，强调技术无法决定未来，只有兼具使命感与责任感的人才能引领时代发展。",
+      "brief": "AMD CEO苏姿丰在MIT毕业典礼演讲，分享求学经历并寄语毕业生迎难而上。",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/youtube/cleaned/vkpS7WztTMc.md"
+    },
+    {
+      "id": "d903d515ad124b8999552c522aee0cd7",
+      "video_id": "oYxTTirKY8M",
+      "status": "indexed",
+      "chunk_count": 189,
+      "summary": "This document section covers essential web security concepts, specifically focusing on how systems protect against common vulnerabilities like Cross-Site Request Forgery (CSRF) and Cross-Site Scripting (XSS). It explains that CSRF attacks are prevented using CSRF tokens combined with session cookies to block unauthorized requests from external domains. Additionally, it details how XSS attacks occur when malicious JavaScript is injected into user inputs and executed in other users' browsers. The passage concludes with an invitation for viewers to join the System Design Mastery mentorship program to learn full-stack system architecture and advance their engineering careers.",
+      "brief": "The text explains CSRF and XSS security vulnerabilities and concludes with a promotion for a system design mentorship program.",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/youtube/raw/oYxTTirKY8M.md"
+    },
+    {
+      "id": "1661a6ae3c5949dfb420de3690f673f5",
+      "video_id": "BV1FUYQz7E4H",
+      "status": "indexed",
+      "chunk_count": 12,
+      "summary": "本视频深入介绍了开源关系型数据库 PostgreSQL 的强大功能与其作为全能后端平台的潜力。视频涵盖了 Postgres 在 Ubuntu 上的快速安装配置、基于 schema 的权限控制，以及对网络网段、几何运算、自定义类型和表继承等面向对象特性的原生支持。此外，视频重点演示了如何使用 JSONB 替代 NoSQL，利用原生及 PGroonga 插件实现中英文全文检索，结合 pgvector 与 LangChain 构建大模型 RAG 向量检索系统，并借助 pg_cron 执行定时任务。最后，视频探讨了通过 UNLOGGED 临时表替代 Redis 缓存，以及利用 PostgREST、pg_graphql、Apache AGE 和 TimescaleDB 扩展将 PostgreSQL 转化为 REST/GraphQL API、图数据库及时序数据库的实践方案。",
+      "brief": "本视频系统介绍了 PostgreSQL 的安装配置、高级数据类型、表继承，以及其在 JSON 存储、向量检索、全文搜索和 API 扩展方面的强大应用。",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/bilibili/cleaned/BV1FUYQz7E4H.md"
+    },
+    {
+      "id": "6912e2f626554fddb0b07fd5d0c45149",
+      "video_id": "BV14v4y1G7A3",
+      "status": "indexed",
+      "chunk_count": 8,
+      "summary": "本视频是凯小王针对健身新手打造的健身房入门指南与一分化训练计划。视频首先梳理了新手入门的五大核心认知：先通过中低强度有氧提升心肺功能；筛查并改善关节活动度与体态问题；通过高频重复积累动作模式与肌肉记忆；采用高频中等强度的训练节奏；以及结合BMI与体脂率精准评估自身身材类型。随后，视频详细演示并讲解了一套适合新手执行1-2个月的一分化全身训练计划，涵盖卧推、坐姿划船、倒蹬、史密斯推肩、弯杠弯举及龙门架下压等动作，明确了各动作的发力要领与安全避坑指南，助力新手高效、安全地开启健身之旅。",
+      "brief": "健身小白进健身房避坑指南及新手一分化全身训练计划。",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/bilibili/cleaned/BV14v4y1G7A3.md"
+    },
+    {
+      "id": "ef6d166a52274710bc3472332c916664",
+      "video_id": "BV1ev411w7bs",
+      "status": "indexed",
+      "chunk_count": 18,
+      "summary": "In this Bilibili video, content creator Kai Shengwang (凯圣王) details a practical guide to muscle-building nutrition and macro ratios. He emphasizes that dirty bulking and excessively low body fat levels are counterproductive, recommending an optimal body fat range of 12%–18% (12%–15% for ectomorphs and 15%–18% for endomorphs) to protect immune function and maintain healthy testosterone levels. For meal planning, he presents both total-calorie target models (a 6:2:2 or 5:2:3 carbohydrate-protein-fat ratio based on 25–35 kcal per kg of target body weight) and bodyweight-based macro calculations (2–3.5g/kg carbs, 1.2–1.5g/kg protein, and 1–1.2g/kg fats). Furthermore, he stresses the importance of all seven nutrient categories, advocating for fast and slow-digesting carbohydrates, frequent moderate protein portions rather than huge single meals, balanced fatty acids, sufficient hydration (2–3.5+ liters per day), and plenty of colorful vegetables for micronutrients and antioxidant support. Finally, he outlines a structured daily timeline, mapping out carbohydrate and protein timing before, during, and after workouts, as well as a pre-bed casein/protein and healthy fat snack to optimize recovery.",
+      "brief": "Fitness creator Kai Shengwang outlines a comprehensive muscle-building nutrition guide featuring target body-fat ranges, total calorie and macro calculation formulas, and a daily meal-timing schedule.",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/bilibili/raw/BV1ev411w7bs.md"
+    },
+    {
+      "id": "5b0275d76ecd40d8a8a515bec5e535ae",
+      "video_id": "BV1Zk9FBwELs",
+      "status": "indexed",
+      "chunk_count": 12,
+      "summary": "本视频深入探讨了 AI Agent 落地中的关键概念 Harness Engineering（马具/束缚工程）。视频分析了 AI 工程从 Prompt Engineering（解决表达问题）到 Context Engineering（解决信息供给），再到 Harness Engineering（解决稳定执行与纠偏）的三阶段演进。一个成熟的 Harness 系统包含 Context 控制、工具集成、执行编排、状态管理、评估观测及容错恢复六大模块。视频还结合了 OpenAI 与 Anthropic 的最新实践，强调真正决定 AI 系统能否稳定交付的是外围的环境约束与治理体系，而非单纯的模型能力。",
+      "brief": "详解 AI 应用落地的核心机制 Harness Engineering 的概念与实践。",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/bilibili/cleaned/BV1Zk9FBwELs.md"
+    },
+    {
+      "id": "4eddb0234a6846c69bc2ca2e9bb427e5",
+      "video_id": "BV1E7wtzaEdq",
+      "status": "indexed",
+      "chunk_count": 18,
+      "summary": "本视频从工程视角出发，系统且通俗地拆解了当前AI领域的核心概念与底层架构。内容涵盖LLM的运行逻辑（基于Transformer的文字接龙机制）、Tokenizer对文本的编码解码及Token计算原理、Context与Context Window构成的临时记忆机制，以及Prompt（User与System Prompt）对模型输出的约束。进一步地，视频延伸至模型与外部环境交互的Tool和统一接入标准MCP，最后深入讲解了具备自主规划与工具调用能力的Agent，以及通过说明文档控制Agent行为与规则的Agent Skill，帮助观众构建完整清晰的AI技术认知体系。",
+      "brief": "视频从工程视角全面拆解了LLM、Token、Context、MCP及Agent等核心AI概念。",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/bilibili/cleaned/BV1E7wtzaEdq.md"
+    },
+    {
+      "id": "64cc7a9e88c7458192f5cdd598931d77",
+      "video_id": "h1RkSuAs03Q",
+      "status": "indexed",
+      "chunk_count": 12,
+      "summary": "本视频为2018年诺贝尔经济学奖得主威廉·诺德豪斯（William Nordhaus）的获奖演讲。他详细阐述了气候变化与经济增长之间的紧密联系，指出气候变化是因能源市场未对二氧化碳定价而导致的巨大“市场失灵”。诺德豪斯介绍了其开发的DICE综合评估模型，强调解决气候问题的核心在于通过实施碳税或碳定价来提高碳排放成本。此外，为解决国际公约中普遍存在的“搭便车”难题，他提出了“气候俱乐部”模式，主张通过对非成员国征收惩罚性关税来推动全球范围内的减排合作与低碳技术创新。",
+      "brief": "威廉·诺德豪斯阐述气候变化经济学、碳定价及气候俱乐部方案。",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/youtube/cleaned/h1RkSuAs03Q.md"
+    },
+    {
+      "id": "eb9a6f2647e84e1a988cba8cc9a38602",
+      "video_id": "lu_BObG6dj8",
+      "status": "indexed",
+      "chunk_count": 42,
+      "summary": "In this video, Jeff Nippard breaks down the science of muscle hypertrophy across five levels of increasing complexity. Starting with the fundamentals of lifting weights and consuming protein, he progresses to discussing training variables such as progressive overload, effort, volume, and rep ranges. The discussion then moves into the physiological drivers of growth, emphasizing mechanical tension as the primary mechanism over muscle damage and metabolic stress. Finally, Nippard examines the cellular processes involved, exploring pathways like mTOR activation, muscle protein synthesis, essential amino acids, and emerging theories around sarcoplasmic hypertrophy and satellite cell donation.",
+      "brief": "Jeff Nippard explains the mechanisms and principles of muscle growth across five levels of physiological and practical complexity.",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/youtube/raw/lu_BObG6dj8.md"
+    },
+    {
+      "id": "09e282f47b0b4d529d7cb9aa40e2165c",
+      "video_id": "D3aHciiVdvQ",
+      "status": "indexed",
+      "chunk_count": 16,
+      "summary": "In this introductory lecture for Economics 252 (Financial Markets), Professor Robert Shiller introduces his international team of teaching assistants, outlines the course structure, and explains the fundamental importance of finance as a broad societal technology rather than merely a vocational field. He details the required reading materials—including texts by Fabozzi, Siegel, and his own book *Irrational Exuberance*—and details grading criteria based on problem sets, midterms, and a final exam. Throughout the syllabus overview, Shiller introduces key concepts such as behavioral finance, risk management, real estate, and financial regulation, while addressing the subprime mortgage crisis, the ethical considerations of wealth, and upcoming guest lectures from prominent financial figures like David Swensen and Andrew Redleaf.",
+      "brief": "Professor Robert Shiller introduces Yale's Economics 252 course, detailing its syllabus, grading structure, teaching staff, and core themes, including risk management, behavioral finance, and the broader societal impacts of financial institutions.",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/youtube/cleaned/D3aHciiVdvQ.md"
+    },
+    {
+      "id": "bd948d077f0c46fd9aa2594139a0ac8a",
+      "video_id": "ZlVBSZYaVF0",
+      "status": "indexed",
+      "chunk_count": 43,
+      "summary": "This educational material references Renaissance Periodization's video guidance on determining individualized hypertrophy training volume. It focuses on evaluating personal recovery capacity and exercise response to systematically adjust resistance-training volume for optimal muscle growth.",
+      "brief": "The content outlines methods for customizing resistance-training volume based on individual recovery and hypertrophic response.",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/youtube/raw/ZlVBSZYaVF0.md"
+    },
+    {
+      "id": "04d701f5fdd440bdb8f6ab371578c202",
+      "video_id": "heBErnN3ZPk",
+      "status": "indexed",
+      "chunk_count": 46,
+      "summary": "In this introductory lecture for MIT's 14.02 Principles of Macroeconomics, the instructor outlines the course structure and core concepts, emphasizing that macroeconomics analyzes aggregate economy-wide phenomena—such as inflation, unemployment, interest rates, and global supply chains—rather than individual households or firms. Unlike high-level academic research, the course focuses on conceptual, non-math-heavy models designed to help students critically digest real-world economic publications like the *Wall Street Journal* or the IMF's *World Economic Outlook*. Through examples including post-COVID-19 inflation spikes, central bank interest rate policies, equity market reactions, and China's economic reopening, the instructor demonstrates how macroeconomic factors interact and sets expectations for using simplified models throughout the semester.",
+      "brief": "This introductory lecture outlines the scope and goals of MIT's 14.02 Principles of Macroeconomics course, using recent global economic events to demonstrate how central bank policies, inflation, and market dynamics shape macroeconomics.",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/youtube/raw/heBErnN3ZPk.md"
+    },
+    {
+      "id": "e96cd2d68242418da984160c08cf0619",
+      "video_id": "8BKbu_s8p1Q",
+      "status": "indexed",
+      "chunk_count": 30,
+      "summary": "In this video transcript, fitness creator Jeff Nippard demonstrates a full day of eating tailored for a lean bulk and body recomposition while aiming for 2,800 total calories, broken down into 225g protein, 75g fat, and 300g carbs. Throughout five meals—including breakfast, a high-carbohydrate pre-workout sandwich with fruit, intra-workout fuzzy peaches candy, a post-workout whey-casein protein oatmeal, a fiber-rich home-cooked chili dinner, and a pre-bed cottage cheese snack—he explains the scientific rationales behind high protein intakes, carbohydrate timing for exercise performance, and nutrient timing to optimize muscle growth and recovery. Additionally, Nippard uses the video to promote his pre-order body recomposition nutrition guide co-authored with researcher Chris Barakat.",
+      "brief": "Jeff Nippard details his full day of eating and scientific nutrient timing strategies to build muscle while minimizing fat gain on a lean bulk.",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/youtube/raw/8BKbu_s8p1Q.md"
+    },
+    {
+      "id": "1147b03ff8f04e11850d0f6b2c98fa7a",
+      "video_id": "b5H8D_wD2AY",
+      "status": "indexed",
+      "chunk_count": 19,
+      "summary": "本讲座深入探讨了中央银行如何通过金融市场制定与调节利率。首先，讲座对比了货币（用于交易但无利息）与债券（有利息但不可直接交易）的特性，解释了公众在两者之间的资产组合抉择，以及名义收入和利率对货币需求的影响。接着，讲座分析了中央银行如何通过公开市场操作（买卖债券）影响债券价格与利率，并介绍了商业银行与准备金制度对高能货币及货币创造机制的作用。最后，讲座说明了美联储如何通过调节银行间准备金市场来控制联邦基金利率，进而传导至整个金融体系与实体经济。",
+      "brief": "本讲座系统讲解了中央银行通过公开市场操作与准备金市场决定及调节利率的传导机制。",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/youtube/cleaned/b5H8D_wD2AY.md"
+    },
+    {
+      "id": "df5a632a41204b2fbf21ab2a4acab065",
+      "video_id": "NS_GeXoboo4",
+      "status": "indexed",
+      "chunk_count": 29,
+      "summary": "Fitness creator Jeff Nippard conducts a two-day experiment comparing a strict $10 daily budget against an extravagant $10,000 budget to test if expensive protocols yield better fitness gains. On the $10 day, he utilizes budget-friendly staples like oats, milk, chicken breast, frozen vegetables, and basic supplements (creatine and coffee), paired with a low-cost gym membership. On the $10,000 day, he hires a celebrity chef, works out with elite hypertrophy coach Joe Bennett, visits a sensory deprivation tank and luxury spa, and gifts the remaining $4,000 budget to a subscriber. Nippard concludes that while luxury options offer convenience, better flavor, and expert guidance, essential fitness fundamentals—such as hard training, proper protein and calorie intake, walking, and adequate sleep—are either low-cost or free, proving that an expensive budget is not required to build muscle effectively.",
+      "brief": "Jeff Nippard tests a $10 budget versus a $10,000 budget for fitness, concluding that high spending provides luxury and convenience, but low-cost fundamentals are fully sufficient for achieving top results.",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/youtube/raw/NS_GeXoboo4.md"
+    },
+    {
+      "id": "48b2c69261c84596bffde9472f52369e",
+      "video_id": "W-Q9AOp2FW8",
+      "status": "indexed",
+      "chunk_count": 67,
+      "summary": "This document details the origins, systemic expansion, and catastrophic fallout of the 2008 global financial crisis as featured in FRONTLINE's \"Money, Power and Wall Street.\" Beginning with JPMorgan's creation of credit default swaps to manage risk, the financial sector rapidly transformed these instruments into complex synthetic CDOs and bundled subprime mortgage products. Despite warnings and regulatory efforts from figures like Brooksley Born, resistance from deregulatory leaders and aggressive banking lobby efforts left the multi-trillion-dollar derivatives market largely unmonitored. When the U.S. housing bubble collapsed, the interconnected webs of toxic assets triggered widespread bank failures, massive taxpayer bailouts, and severe, lasting devastation for local communities across Main Street.",
+      "brief": "This document examines how financial deregulation, complex derivatives like credit default swaps, and predatory subprime mortgage practices culminated in the catastrophic 2008 global financial crisis and its widespread impact on Main Street.",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/youtube/raw/W-Q9AOp2FW8.md"
+    },
+    {
+      "id": "18599259b34241d8ac872db3983b3174",
+      "video_id": "cQP8WApzIQQ",
+      "status": "indexed",
+      "chunk_count": 116,
+      "summary": "This document details the introductory lecture for MIT's 6.824 Distributed Systems course taught by Robert Morris. It outlines the core motivations for building distributed systems—including high performance, fault tolerance, and physical distribution—while addressing key technical challenges like concurrency, partial failures, and performance scaling. The text outlines course logistics, required programming labs, and essential abstractions, while exploring fundamental concepts such as replication, consistency models, and non-volatile storage. Finally, it examines Google's MapReduce framework as an illustrative case study, explaining its map and reduce mechanics, master-worker execution, Google File System (GFS) integration, and network bandwidth optimizations.",
+      "brief": "This document provides an overview of MIT's 6.824 Distributed Systems introductory lecture, covering foundational course concepts, fault tolerance mechanisms, consistency models, and the MapReduce architecture.",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/youtube/raw/cQP8WApzIQQ.md"
+    },
+    {
+      "id": "e5f985bb67ec4d49b096cc033eff821b",
+      "video_id": "RmVL30sS2yU",
+      "status": "indexed",
+      "chunk_count": 54,
+      "summary": "In his 2024 Nobel Prize lecture in Economic Sciences, Daron Acemoglu explores how societal institutions fundamentally drive global economic disparities. He outlines how European colonial history demonstrates a causal relationship between institutions and prosperity, where inclusive institutions fostered long-term wealth while extractive institutions concentrated power among elites and locked nations into persistent poverty. Introducing the Utility Technology Possibilities Frontier framework, Acemoglu illustrates the political mechanisms—such as the fear of becoming economic or political losers—that cause elites to resist beneficial institutional and technological change. Ultimately, he applies these historical insights to modern technological shifts, emphasizing that choices surrounding artificial intelligence can either empower workers and promote shared prosperity or exacerbate inequality through excessive automation.",
+      "brief": "Economist Daron Acemoglu delivers his 2024 Nobel lecture explaining how inclusive versus extractive institutions shape national prosperity, institutional persistence, and the economic impacts of emerging technologies like AI.",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/youtube/raw/RmVL30sS2yU.md"
+    },
+    {
+      "id": "d4dd99cebe3d4f31b41a03040c7fe4c4",
+      "video_id": "PHe0bXAIuk0",
+      "status": "indexed",
+      "chunk_count": 40,
+      "summary": "Ray Dalio presents a simplified framework explaining that the economy functions like a machine driven by individual transactions and three primary forces: productivity growth, the short-term debt cycle, and the long-term debt cycle. While productivity growth drives long-term living standards, credit expansion drives short-term fluctuations by allowing spending to exceed income, creating predictable cycles of expansion and contraction. When long-term debt accumulates to sustainable limits, economies undergo deleveraging, which requires policy makers to carefully balance deflationary measures (austerity, debt restructuring, and wealth redistribution) with inflationary ones (printing money) to achieve a stable economic recovery. Ultimately, individuals and governments must keep debt growth below income growth and ensure income growth aligns with productivity to avoid severe economic distress.",
+      "brief": "Ray Dalio explains how the economy works as a machine driven by transactions, productivity growth, and short- and long-term debt cycles.",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/youtube/raw/PHe0bXAIuk0.md"
+    },
+    {
+      "id": "ea22e952388244c1a86edefafb7b412b",
+      "video_id": "-lcgyCG-olg",
+      "status": "indexed",
+      "chunk_count": 31,
+      "summary": "In her 2023 Nobel Prize lecture, economic historian and labor economist Claudia Goldin outlines the historical evolution and persistent challenges regarding women's participation in the labor market. She explains how female employment historically followed a U-shaped pattern, initially declining as work shifted away from the home before rising significantly alongside increased educational attainment, reduced social stigma, and institutional milestones like access to the birth control pill. This evolution culminated in a \"quiet revolution\" where young women shifted from merely seeking paid jobs to pursuing long-term careers and higher education. However, Goldin notes that despite narrowing gaps in education and experience, a persistent wage gap remains—largely driven by \"greedy occupations\" that disproportionately reward long, inflexible hours. Because couples with caregiving responsibilities often divide labor so that one parent takes the higher-paying, less flexible job, gender inequality persists, highlighting the need for workplace structures that make flexibility less costly.",
+      "brief": "Claudia Goldin's 2023 Nobel lecture details the historical evolution of women's labor force participation and demonstrates how \"greedy occupations\" requiring long, inflexible hours continue to drive the modern gender pay gap.",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/youtube/raw/-lcgyCG-olg.md"
+    },
+    {
+      "id": "8d1f68f5224f4e9d98707073cd14f2b5",
+      "video_id": "BBCp28YF-hg",
+      "status": "indexed",
+      "chunk_count": 45,
+      "summary": "In his 2022 Nobel Prize lecture, Ben Bernanke explains how stress in banking and credit markets elevates the external finance premium, severely restricting credit availability and causing broad macroeconomic downturns. Drawing on case studies of the Great Depression and the 2007–2009 global financial crisis, he demonstrates that banking panics and borrower insolvencies exacerbate recessions far more than traditional models once predicted. Furthermore, Bernanke shows how these credit market dynamics amplify normal business cycles through the financial accelerator and monetary policy channels, underscoring the critical need for strong regulatory oversight and effective crisis intervention tools.",
+      "brief": "Ben Bernanke illustrates how banking and credit market stress amplifies economic downturns during historical financial crises and routine business cycles, emphasizing the necessity of robust financial regulation.",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/youtube/raw/BBCp28YF-hg.md"
+    },
+    {
+      "id": "87bd295fabe943e9a73e9ce9b9344a61",
+      "video_id": "31YTH1ywbS8",
+      "status": "indexed",
+      "chunk_count": 57,
+      "summary": "In his Nobel Prize lecture, Douglas Diamond outlines his foundational research on financial intermediation, banking mechanisms, and system stability. He details how banks act as delegated monitors to mitigate conflicts of interest through asset diversification (pooling and tranching), while also explaining how banks create liquidity by issuing short-term debt backed by long-term illiquid assets. Furthermore, Diamond discusses how this structural reliance on short-term funding inherent to financial institutions leaves the system inherently susceptible to self-fulfilling bank runs and panics, emphasizing the role of government interventions like deposit insurance in mitigating systemic risks.",
+      "brief": "Douglas Diamond explains the mechanisms of financial intermediation, detailing how banks perform delegated monitoring, create liquidity through short-term debt, and become vulnerable to bank runs.",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/youtube/raw/31YTH1ywbS8.md"
+    },
+    {
+      "id": "f21f689cb37443c685d4100709b4bb19",
+      "video_id": "3ub8RBE7BC8",
+      "status": "indexed",
+      "chunk_count": 61,
+      "summary": "Renaissance Periodization's muscle hypertrophy framework centers on mechanical tension, progressive overload, and adherence to the Stimulus-Recovery-Adaptation (SRA) principle. Effective muscle growth requires training target muscles near failure using strict technique, supported by a slight caloric surplus, sufficient protein intake, and managed systemic recovery. To optimize the session-rest-session cycle, training volume and frequency must be tailored to individual recovery rates, ensuring muscle groups are re-trained once fully recovered without waiting too long between sessions.",
+      "brief": "Muscle hypertrophy relies on balancing progressive resistance training near failure with properly timed recovery and nutritional support to optimize the Stimulus-Recovery-Adaptation cycle.",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/youtube/raw/3ub8RBE7BC8.md"
+    },
+    {
+      "id": "0ddd4bde369944638ca3464b3d0eb1a4",
+      "video_id": "XvyMO7CmFlk",
+      "status": "indexed",
+      "chunk_count": 46,
+      "summary": "In his 2019 Nobel Prize lecture, Abhijit Banerjee addresses common criticisms of using randomized controlled trials (RCTs) and field experiments in economics. He refutes the claims that RCTs lack generalizability, tackle only minor issues, and produce piecemeal data by demonstrating how experimental research uncovers non-standard human behaviors (such as the key role of \"gossips\" in spreading social information) and offers compelling evidence for major economic phenomena like poverty traps. Ultimately, Banerjee contends that RCTs have fundamentally reshaped economic practice by enabling researchers to systematically test behavioral hypotheses, liberate economic thought from rigid theoretical premises, and build robust, evidence-backed frameworks to help alleviate global poverty.",
+      "brief": "Abhijit Banerjee demonstrates how field experiments and randomized controlled trials have transformed economics by providing nuanced empirical evidence to address major questions surrounding global poverty and human behavior.",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/youtube/raw/XvyMO7CmFlk.md"
+    },
+    {
+      "id": "d032f5309e2d44c7ac18f120ee0d89b3",
+      "video_id": "wD48p6m8U-8",
+      "status": "indexed",
+      "chunk_count": 35,
+      "summary": "In his Nobel Prize lecture, David Card discusses the evolution and impact of design-based empirical approaches in labor economics. Addressing the historical credibility gap caused by unreliable macro models and flawed econometric methods, Card highlights how natural and quasi-experiments—such as his studies on the Mariel boatlift and minimum wage increases—provided clear, causal insights that challenged conventional economic assumptions. He outlines the core strengths of research design, including transparent causality, direct policy relevance, and portability across different contexts, while addressing common criticisms regarding specificity and model complexity. Ultimately, Card argues that robust research designs have pushed mainstream economics to accept alternative market frameworks, such as employer wage-setting power, and encourages young researchers to continue pursuing transparent empirical methodologies.",
+      "brief": "David Card reviews the rise of design-based empirical methods and natural experiments in labor economics, demonstrating how transparent research designs challenge conventional economic models and provide reliable causal insights.",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/youtube/raw/wD48p6m8U-8.md"
+    },
+    {
+      "id": "b9d49ee5172a4bbbb806f061ed2c613a",
+      "video_id": "BV1mMHyz3Erk",
+      "status": "indexed",
+      "chunk_count": 10,
+      "summary": "本文介绍了程序与进程的核心区别，以及操作系统如何通过进程控制块（PCB）和上下文切换来管理CPU与内存资源。程序是存储在磁盘上的被动静态文件，而进程是程序加载到内存并运行时的动态实体，拥有独立的地址空间。在多任务并发环境下，操作系统通过上下文切换在不同进程间交替分配CPU资源，即在切换前将当前进程的寄存器、程序计数器等CPU状态保存至内存，并恢复目标进程的状态，从而确保系统执行的安全性和数据正确性。最后，文章详细解析了进程控制块（PCB）的作用，指出它包含了进程ID、CPU状态、内存限制及资源列表等关键信息，使操作系统能够高效地对进程进行队列调度与管理。",
+      "brief": "本文讲解了程序与进程的区别，并阐述了操作系统如何利用上下文切换和进程控制块（PCB）来管理CPU资源与内存空间。",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/bilibili/raw/BV1mMHyz3Erk.md"
+    },
+    {
+      "id": "20ad9a85530e4c508504bf3dd3ad8a30",
+      "video_id": "BV1654y1F7fZ",
+      "status": "indexed",
+      "chunk_count": 9,
+      "summary": "视频作者结合自身多年的健身经验，为新手第一年训练提出了六条避免走弯路的忠告。在饮食方面，他建议不要长时间空腹（按时进食三餐）以维持稳定的肌肉合成环境，掌握基础的食物热量与三大营养素知识，并且坚持以营养均衡的日常基础饮食为主、补剂为辅；在训练方面，他强调新手应优先练好复合基础动作，坚持做好训练记录以直观追踪进步，并采用两分化或三分化的训练循环。",
+      "brief": "本文是针对健身新手第一年训练的六条干货忠告，涵盖饮食与训练的核心要点及实用建议。",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/bilibili/raw/BV1654y1F7fZ.md"
+    },
+    {
+      "id": "418e8370da6c4e43a5a6d864914ddcc5",
+      "video_id": "ej6cygeB2X0",
+      "status": "indexed",
+      "chunk_count": 125,
+      "summary": "This document summarizes Richard Thaler's 2017 Nobel Prize lecture, detailing the evolution and application of behavioral economics. It explores how psychological factors—such as loss aversion, mental accounting, status quo bias, and \"supposedly irrelevant factors\" (SIFs)—cause real human behavior to deviate systematically from the fully rational models of traditional economics. The summary highlights key empirical experiments, such as the Cornell mug study, and demonstrates how choice architecture and libertarian paternalism led to practical real-world solutions like automatic pension enrollment and the \"Save More Tomorrow\" program. Finally, using long-term data from sources like the Swedish pension system, the text emphasizes how behavioral nudges remain highly effective over time to improve public policy and financial decision-making.",
+      "brief": "This document outlines Richard Thaler's Nobel lecture on behavioral economics, explaining how psychological insights and choice architecture drive practical policy tools like nudges to improve real-world decision-making.",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/youtube/raw/ej6cygeB2X0.md"
+    },
+    {
+      "id": "9b2d8b5ea83749849b1a003c3de79cda",
+      "video_id": "BV1hA7K6jER9",
+      "status": "indexed",
+      "chunk_count": 21,
+      "summary": "该视频详细拆解了电力板块的运行逻辑、四大细分赛道（水电、火电、风光、核电）、行业核心龙头以及未来发展趋势。电力行业兼具周期性、强政策性和公用事业属性，其中水电资产稀缺且盈利稳定，火电受煤价波动影响并向兜底保供及容量电价转型，核电具备高利用小时数与政策护城河，风光赛道则由规模扩张转向算电协同与提质增效。结合电价止跌信号、煤价反弹、高温用电需求以及AI算力带来的长期增量，电力板块在中长期展现出较强的防御价值与结构性成长机会。",
+      "brief": "本文深入解析了电力板块四大赛道的商业逻辑与龙头特征，并结合电价、供需及AI算力趋势探讨了行业的防御与成长价值。",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/bilibili/raw/BV1hA7K6jER9.md"
+    },
+    {
+      "id": "f02984e6ca05481d806123e59d4c372a",
+      "video_id": "BV1HR7o6CE8q",
+      "status": "indexed",
+      "chunk_count": 35,
+      "summary": "In this video, creator Tan Chengyi introduces a personal trainer-perspective fitness series centered on back training, using a model demonstrator to highlight common movement errors and optimal form. The session begins with warm-up and activation exercises using a foam roller to stabilize the scapula, engage the serratus anterior, and brace the core. Subsequent exercises—including seated cable rows, single-arm cable lat pulldowns, and chest-supported mid-back rows—focus heavily on targeting the latissimus dorsi, teres major, and rhomboids. Throughout the demonstration, the coach emphasizes prioritizing trunk stability, controlled scapular alignment, proper breathing, and appropriate weight selection over heavy lifting to avoid physical compensations and maximize training efficiency.",
+      "brief": "Fitness creator Tan Chengyi demonstrates effective back training techniques from a personal trainer's perspective, emphasizing proper form, weight control, and scapular stability.",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/bilibili/raw/BV1HR7o6CE8q.md"
+    },
+    {
+      "id": "b5e0b56b48c74aec8d0fa551261f65cb",
+      "video_id": "BV1z8zPYjE4j",
+      "status": "indexed",
+      "chunk_count": 20,
+      "summary": "该视频详细介绍了健身过程中针对“三分化”训练计划的科学饮食策略与营养搭配原则。作者强调健康健身需兼顾热量与均衡营养，提出了训练日热量适度盈余（200–300大卡）与休息日合理亏空（500–700大卡）的动态调整方法，并指出基础代谢是不可越过的底线。在宏量营养素方面，推荐碳水、蛋白质与脂肪按5:2.5:2.5的传统分餐比例搭配，强调不要盲目追求高蛋白，同时提倡“碳水后置”技巧，将大部分碳水化合物集中在训练后摄入以加速糖原恢复，此外还提醒大家不可忽略充足饮水、摄入多色蔬菜及保证健康脂肪对身体代谢与激素平衡的重要性。",
+      "brief": "本视频讲解了健身人群在三分化训练下如何通过动态热量控制、营养素均衡搭配及“碳水后置”等技巧进行科学饮食。",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/bilibili/raw/BV1z8zPYjE4j.md"
+    },
+    {
+      "id": "17888c4cf23c48bf8ac2bbd263384e6e",
+      "video_id": "BV1Dm7J6XEEh",
+      "status": "indexed",
+      "chunk_count": 25,
+      "summary": "本视频为哔哩哔哩UP主“青蛙刀圣1993”制作的伊斯兰简史第一章，深入探讨了伊斯兰教的起源与发展。内容首先回顾了犹太教与基督教的经典框架及普世性转变，接着分别从穆斯林宗教视角与非宗教历史文化视角梳理了阿拉伯半岛的改革历程。视频讲述了穆罕默德通过天启启示与社会改革，打破部落割据与陋习，建立以五大支柱为核心、集宗教信仰、政治治理与文化习俗于一体的新型社会体系（乌玛），并探讨了古兰经的集结过程及其对后世中东文明与各民族身份重构的深远影响。",
+      "brief": "本视频从宗教与非宗教双重视角，深度追溯并解构了伊斯兰教在阿拉伯半岛的起源、历史背景及古兰经与五大支柱形成的综合社会体系。",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/bilibili/raw/BV1Dm7J6XEEh.md"
+    },
+    {
+      "id": "b4309e724a594f8f94621245f955358b",
+      "video_id": "Cl0QYkez-BE",
+      "status": "indexed",
+      "chunk_count": 107,
+      "summary": "The 2011 Nobel Memorial Prize Lectures by economists Thomas Sargent and Christopher Sims explore empirical and theoretical frameworks for understanding cause and effect in macroeconomics, focusing on the interplay between public expectations and economic policy. Sargent applies structural econometrics and rational expectations theory to historical U.S. fiscal case studies from 1780 to 1840, illustrating how institutional frameworks, default probabilities, and budget constraints shape sovereign debt values and offer insights for modern debt crises. In parallel, Sims traces the evolution of econometric modeling from early Keynesian systems to modern Bayesian inference and structural vector autoregressions (SVARs), demonstrating how policy choices can be systematically evaluated without relying on arbitrary statistical assumptions. Together, their contributions provide foundational tools for analyzing monetary adjustments, fiscal governance, and macroeconomic stability.",
+      "brief": "This document summarizes the 2011 Nobel Memorial Prize lectures by Thomas Sargent and Christopher Sims on macroeconomic policy, rational expectations, and econometric modeling.",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/youtube/raw/Cl0QYkez-BE.md"
+    },
+    {
+      "id": "30bd49876f5f4632a24ece6cc69b3b26",
+      "video_id": "BV1LAVh6UEQz",
+      "status": "indexed",
+      "chunk_count": 18,
+      "summary": "本文系统拆解了蛋白质的营养机制、消化吸收过程及其在健身增肌与减脂中的应用。蛋白质是生命的基础，由氨基酸构成，人体通过消化将食物蛋白分解为氨基酸并进入氨基酸池，以供自身蛋白质合成。在实际饮食中，动物蛋白相比植物蛋白具有更高的生物价和利用率，且吸收速度各异（如乳清蛋白快于肉类）。针对运动人群，减脂期需摄入较高比例的蛋白质并结合力量训练以防止肌肉流失；增肌期则应重点补充碳水化合物并保证训练强度，蛋白质按需摄入即可。",
+      "brief": "本文详细解析了蛋白质的结构、消化代谢机制，并针对增肌与减脂场景提供了科学的蛋白质摄入与运动搭配指南。",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/bilibili/raw/BV1LAVh6UEQz.md"
+    },
+    {
+      "id": "f667f8fa51be489b9cddc69e4daf580d",
+      "video_id": "BV1dMGm6xET9",
+      "status": "indexed",
+      "chunk_count": 21,
+      "summary": "该视频回顾了新中国成立75年来（1949年至2026年）中国家庭居住环境与家装风格的演变历程。内容从建国初期的危房棚户区与六七十年代的福利分房“筒子楼”切入，梳理了九十年代单元楼普及、千禧年代欧式“大豪华”风潮，再到2010年以后北欧风、新中式以及现代注重环保与全屋智能的多元发展。通过几代人居住变迁的对比，展现了中国普通人生活品质的提升以及国家经济与科技的巨大跨越。",
+      "brief": "本文总结了新中国成立75年来中国家庭居住环境与家装风格从物资匮乏到现代智能化的演变历程。",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/bilibili/raw/BV1dMGm6xET9.md"
+    },
+    {
+      "id": "b199b0778031446384eaaecb0d6680a6",
+      "video_id": "BV11o4y1s7VY",
+      "status": "indexed",
+      "chunk_count": 15,
+      "summary": "在视频中，博主“小Lin说”分享了自己快速学习一个新领域并建立知识体系的核心套路——结构化思维。她指出，面对庞杂信息时，最关键的是先建立清晰的“知识树”或框架，而非沉溺于细节或小道消息。建立框架的具体方法包括参考已有教材与权威综述、通过连续追问“为什么”深入本质、按时间线和客观数据（如GDP、股价）梳理事件发展脉络，以及按流程步骤拆解问题。此外，她还建议通过精读大纲、从一手数据源获取信息以及“闭卷输出”复盘等习惯来巩固知识，最终让各领域的框架相互连接，形成系统化的知识网络。",
+      "brief": "本文分享了利用结构化思维（建立“知识树”框架）、连续追问、时间线梳理及主动输出等方法快速掌握新领域知识的技术与实用习惯。",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/bilibili/raw/BV11o4y1s7VY.md"
+    },
+    {
+      "id": "31282017576140cd8231eca72f90849f",
+      "video_id": "EpIgvowZr00",
+      "status": "indexed",
+      "chunk_count": 104,
+      "summary": "This document provides a comprehensive overview of the Google File System (GFS) based on a lecture segment from MIT 6.824. It details the architecture of GFS, which features a single master node managing metadata in memory and multiple chunkservers storing large files split into 64 MB chunks across low-cost hardware. The text explains the operational workflows for client reads, writes, and record appends, emphasizing lease assignments, version numbers, and client-side caching. Furthermore, it addresses the system's design trade-offs—such as prioritizing high sequential throughput and automated failure recovery over strict consistency and low latency—and outlines real-world limitations including master RAM exhaustion, potential duplicate or inconsistent data, and single-master bottlenecks.",
+      "brief": "This text summarizes the architectural design, operational workflows, consistency model, and key trade-offs of the Google File System as presented in an MIT distributed systems lecture.",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/youtube/raw/EpIgvowZr00.md"
+    },
+    {
+      "id": "6d0acacb84924ed9a3f6bbc1f3714cff",
+      "video_id": "BV1hN596zEas",
+      "status": "indexed",
+      "chunk_count": 24,
+      "summary": "该视频详细梳理了20世纪90年代中后期（1994—1998年）席卷墨西哥、东南亚、韩国、香港和俄罗斯等多个国家和地区的连环金融危机。视频指出，危机背后的共同主线是“华盛顿共识”推动的金融自由化浪潮，使得国际热钱在追求高回报时大量涌入金融监管尚不健全的新兴市场，并吹大资产泡沫；而当美联储加息、本国信贷风险暴露或外部环境恶化时，热钱迅速撤离并遭索罗斯等投机资本空头联合袭击，最终引爆了多米诺骨牌式的汇率崩盘与债务危机。",
+      "brief": "本视频讲述了20世纪90年代国际资本利用新兴市场金融自由化漏洞肆意流转与做空，接连引发多国金融危机的底层逻辑与历史过程。",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/bilibili/raw/BV1hN596zEas.md"
+    },
+    {
+      "id": "c72da92dfc8e4375bd056c5ad82423c0",
+      "video_id": "64Zp3tzNbpE",
+      "status": "indexed",
+      "chunk_count": 101,
+      "summary": "This transcript covers the design of fault-tolerant replicated systems using the Raft consensus algorithm to maintain consistency and prevent split-brain scenarios. It details how distributed systems use majority voting (quorum systems requiring $2F + 1$ servers to tolerate $F$ failures) as an improvement over single points of failure like MapReduce or GFS. The text outlines Raft's technical implementation, including log replication via `AppendEntries` RPCs, term numbers, election timers, and randomized timeouts to handle network partitions and prevent split votes. Furthermore, it addresses edge cases such as leader crashes, log divergence, reboot recovery, and the necessity of treating potentially committed entries as permanent to guarantee overall system correctness.",
+      "brief": "This text summarizes a lecture on the Raft consensus algorithm, detailing how majority voting, leader elections, and log replication enable fault-tolerant distributed systems while preventing split-brain scenarios.",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/youtube/raw/64Zp3tzNbpE.md"
+    },
+    {
+      "id": "5fd698d82dc94839a98e3a9b64321fa8",
+      "video_id": "BV1QGXABxEbq",
+      "status": "indexed",
+      "chunk_count": 18,
+      "summary": "本视频围绕伊朗战争引发的霍尔木兹海峡封锁事件展开，深入探讨了全球能源格局的现状与未来趋势。霍尔木兹海峡作为全球最重要的能源关卡，其封锁导致国际油价暴涨，直接戳中了对通胀及选情极度敏感的美国政府的软肋，迫使特朗普政府紧急出台包括提供海上再保险、释放三分之一石油储备在内的多项应对措施；同时，该事件引发的市场预期也导致了美元上涨、黄金下跌的反直觉金融现象。从宏观能源格局来看，全球能源消耗仍由石油、天然气和煤炭三分天下，虽然中国和印度在石油进口绝对量上最大，但日韩和新加坡对中东石油的整体能源依赖度更高。天然气市场则受制于管道和液化天然气（LNG）的运输限制，相较于高度金融化和全球化的石油市场，表现出更强的区域化特征。展望未来，化石能源在未来数十年内仍将占据主导地位，而围绕新能源的竞争也将逐步转移到有色金属和稀土等矿产资源领域。",
+      "brief": "视频以伊朗封锁霍尔木兹海峡导致油价暴涨为切入点，分析了美国政府对高油价与通胀的脆弱性，并宏观梳理了全球石油、天然气、煤炭的供需格局及未来新能源产业链的竞争趋势。",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/bilibili/raw/BV1QGXABxEbq.md"
+    },
+    {
+      "id": "acf4e85089bd4989bb26d761bf008123",
+      "video_id": "2qf6ry-YjwU",
+      "status": "indexed",
+      "chunk_count": 68,
+      "summary": "The provided material outlines evidence-based protocols for peaking natural bodybuilders prior to competition, emphasizing the importance of achieving stage-ready conditioning several weeks in advance. The strategy avoids extreme last-minute depletion tactics, relying instead on maintaining consistent sodium and fluid intake while strategically adjusting carbohydrate consumption to optimize muscle fullness. Additionally, training volume is systematically tapered during peak week to reduce accumulated fatigue while preserving muscle size and hardness.",
+      "brief": "Natural bodybuilding peaking strategies prioritize early conditioning, stable fluid and sodium levels, strategic carbohydrate adjustment, and tapered training volume to minimize fatigue and maximize stage presentation.",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/youtube/raw/2qf6ry-YjwU.md"
+    },
+    {
+      "id": "ebb04accd832482f8597d0ab7c18f5c2",
+      "video_id": "cfXTQmFRjWU",
+      "status": "indexed",
+      "chunk_count": 44,
+      "summary": "In this video, Dr. Mike Israetel discusses how to identify if you are performing too much training volume and provides a structured strategy to fix it. Common signs of excessive volume include plateaued performance every few weeks, chronic soreness, poor pumps during workouts, and an inability to progress on lower-rep sets. To resensitize the body and drop accumulated fatigue, he recommends a \"volume reset\"—a period consisting of an active rest phase followed by two to four weeks of maintenance training at roughly one-third of normal volume. After resetting, trainees should restart training at half their former starting set volume, keeping sets low and only making gradual, single-set increases when progress or recovery clearly demands it. Over multiple mesocycles, this process allows lifters to auto-regulate and find their optimal long-term training volume for maximal hypertrophy with minimal fatigue.",
+      "brief": "Dr. Mike Israetel explains how to recognize when high training volume is hindering muscle growth and outlines a step-by-step \"volume reset\" strategy to resensitize muscles and optimize long-term progress.",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/youtube/raw/cfXTQmFRjWU.md"
+    },
+    {
+      "id": "06f4abbb549844a788757fe10c98d6c9",
+      "video_id": "BV1ub421J7jv",
+      "status": "indexed",
+      "chunk_count": 28,
+      "summary": "The provided text details the structural factors and historical events that shape foreign exchange rate fluctuations, focusing on macroeconomic theories and central bank policies. It uses real-world cases, such as the evolution of the Purchasing Power Parity (PPP) theory and Turkey's sharp monetary policy shifts, to illustrate how interest rate differentials, inflation, capital controls, and market sentiment impact relative currency strength. Furthermore, it tracks major foreign exchange developments over the past 50 years, highlighting key historical milestones like the breakdown of the Bretton Woods system, the 1985 Plaza Accord, and federal interest rate adjustments that continue to drive global currency movements.",
+      "brief": "The document outlines how economic theories, central bank interventions, and historical policy shifts drive foreign exchange rate fluctuations over time.",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/bilibili/raw/BV1ub421J7jv.md"
+    },
+    {
+      "id": "59380011d41f448f9e55653e67182b49",
+      "video_id": "BV1M2421T7qk",
+      "status": "indexed",
+      "chunk_count": 25,
+      "summary": "本视频 transcript 总结了 2022 至 2023 年全球宏观经济的整体走势，并对日本与印度的经济现状进行了深入剖析。2022 年全球经济深受高通胀、加息及能源危机困扰，而 2023 年整体呈超出预期的复苏态势，预计 2024 年将走向“正常化”。在具体经济体中，日本面临日元贬值、输入型通胀、消费疲软及央行货币政策调整的双重困局，但企业结构改革与外资注入推动了其股市创下近 30 年新高；印度则凭借强劲的内需和政府主导的大规模基建投资实现高速增长，但在制造转化、债务成本及 AI 浪潮对其传统 IT 服务业的冲击方面仍面临诸多挑战。",
+      "brief": "本文梳理了全球宏观经济的整体复苏态势，并重点分析了日本经济的拧巴现状与股市反弹，以及印度依托基建投资和内需实现强劲增长的底层逻辑。",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/bilibili/raw/BV1M2421T7qk.md"
+    },
+    {
+      "id": "5987245377f94d3fbca9ab0929483ef3",
+      "video_id": "iQyg-KypKAA",
+      "status": "indexed",
+      "chunk_count": 71,
+      "summary": "Former principal engineer Kun presents an advanced agent engineering workflow designed for building production software efficiently using terminal-based tools like WezTerm, tmux, and Neovim. The walkthrough evaluates various AI agent harnesses and details methods for onboarding AI \"crewmates\" using project-level memory files, symbolic links, and modular skills to improve reliability and reduce model bias. Additionally, Kun highlights custom open-source tools such as Lavish Editor for visual decision-making, No Mistakes for automated adversarial code reviews, Goodnight Have Fun for long-running autonomous tasks, and First Mate for orchestrating multi-agent environments via Git worktrees.",
+      "brief": "Former principal engineer Kun demonstrates an advanced terminal-based agent engineering workflow using custom tools to automate, orchestrate, and manage multiple AI agents for production software development.",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/youtube/raw/iQyg-KypKAA.md"
+    },
+    {
+      "id": "ecc2f0d7430a491ea27f6a5330073542",
+      "video_id": "oKM-L_WiOhg",
+      "status": "indexed",
+      "chunk_count": 15,
+      "summary": "本影片深入解讀特斯拉最新一季的財報，指出營收雖大幅超出預期，但 EPS 和盈利能力卻因研發與營運成本劇增、能源及汽車業務毛利率下滑，以及監管信用收入減少而下降。創作者分析，特斯拉財務狀況依然穩健，資本支出（CapEx）創新高反映出公司戰略轉向激進，全速投入 AI、無人計程車（RoboTaxi）與 Optimus 等項目。此外，財報細節也驗證了整個 AI 產業鏈對記憶體（如美光）的強勁需求，而特斯拉未來的長期價值與股價走勢，將高度取決於 FSD 的技術進展與無人駕駛車隊的推廣速度。",
+      "brief": "本影片深度解析特斯拉最新財報，說明其因大幅擴增 AI 與研發資本支出導致盈利下降，並揭示 AI 記憶體市場的強勁需求與特斯拉未來的核心發展指標。",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/youtube/raw/oKM-L_WiOhg.md"
+    },
+    {
+      "id": "8b9a55c2d97b45058f7e19875630386e",
+      "video_id": "BV1vtT46WEoW",
+      "status": "indexed",
+      "chunk_count": 24,
+      "summary": "视频记录了博主“神奇当行在哪里”的曼谷之旅，重点探索了当地真实的物价与风土人情。在行程中，博主体验了四面佛、暹罗百丽宫等热门景点，也搭乘了摩托车、复古火车与老旧公交，深入美功铁道市场、安帕瓦水上市场及本地夜市体验当地生活。通过对比高价商圈、公共交通与接地气的菜市场、盲人按摩，博主深刻感悟到曼谷极大的贫富差距与物价分化，同时也展现了当地松弛且多元的城市氛围。",
+      "brief": "博主通过打卡热门景点与体验本地风土人情，深入探索了曼谷真实的物价水平与巨大的城市贫富差距。",
+      "file_path": "/Users/leo/development/memento/.claude/worktrees/rag-benchmarks/bench_data/knowledge/bilibili/raw/BV1vtT46WEoW.md"
+    }
+  ]
+}

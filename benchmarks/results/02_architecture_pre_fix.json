@@ -1,0 +1,516 @@
+{
+  "timestamp": "2026-07-24 04:58:00 UTC",
+  "chat_model": "gemini-3.5-flash",
+  "chat_endpoint": "https://api.42w.shop/v1",
+  "judge_model": "gemini-3.5-flash",
+  "judge_endpoint": "https://api.42w.shop/v1",
+  "embedding_model": "Qwen/Qwen3-Embedding-0.6B",
+  "embedding_endpoint": "http://localhost:8003/v1",
+  "n_total": 10,
+  "n_scored": 10,
+  "n_agent_errors": 0,
+  "n_judge_errors": 0,
+  "n_lacking_l2_l3": 3,
+  "layered_mean": 3.7,
+  "flat_mean": 3.5,
+  "delta": 0.20000000000000018,
+  "n_layered_win": 3,
+  "n_flat_win": 3,
+  "n_tie": 4,
+  "layered_win_rate": 0.3,
+  "flat_win_rate": 0.3,
+  "tie_rate": 0.4,
+  "layered_score_dist": {
+    "1": 3,
+    "2": 0,
+    "3": 0,
+    "4": 1,
+    "5": 6
+  },
+  "flat_score_dist": {
+    "1": 0,
+    "2": 3,
+    "3": 2,
+    "4": 2,
+    "5": 3
+  },
+  "docs_lacking_l2_l3": [
+    "BV1ev411w7bs",
+    "P-NmMX9rlYQ",
+    "oYxTTirKY8M"
+  ],
+  "rubric": "Score 1–5 for answer completeness on a summary/overview question:\n5 = Covers nearly all key points from the source topic; accurate; well structured overview\n4 = Covers most key points; minor gaps or slight inaccuracy\n3 = Partial coverage; several important points missing or vague\n2 = Thin or mostly off-topic; major gaps\n1 = Empty, refusal, hallucination-heavy, or fails to answer\nAlso consider: factual accuracy relative to provided key points (notes); do not reward inventing content not grounded in the answer's claims about the video.",
+  "per_question": [
+    {
+      "id": "q004",
+      "video_id": "P-NmMX9rlYQ",
+      "document_id": "f78e77740180456381e76204b57dfdb8",
+      "question": "这期视频主要讲解了什么主题？",
+      "notes": "GDP的定义、三种核算方法、不同调整指标的差异及GDP的局限性",
+      "lacks_l2_l3": true,
+      "layered_answer": "这期视频（《从 LLM 到 Agent Skill，一期视频带你打通底层逻辑！》）主要从**工程视角**出发，系统性地拆解了当前 AI 领域核心概念与底层架构的逐层演进过程。\n\n视频以“自底向上”的逻辑，依次讲解了以下核心主题与概念：\n\n* **LLM（大语言模型）与底层机制**：介绍 LLM 的基础（如 Transformer 架构）以及基于 Transformer 的文字接龙本质 [[00:30 点此查看 LLM 介绍](memento://play?platform=bilibili&video_id=BV1E7wtzaEdq&t=30)]。\n* **Token 与 Context Window**：拆解文本编解码的基本单元 Token，以及 Context（上下文临时记忆体）与 Context Window（上下文窗口限制）的运作逻辑 [[30:47 点此查看 Context 与 Token 总结](memento://play?platform=bilibili&video_id=BV1E7wtzaEdq&t=1847)]。\n* **Prompt 约束**：区分 User Prompt（用户输入）与 System Prompt（系统人设与做事规则）[[31:17 点此查看 Prompt 概念](memento://play?platform=bilibili&video_id=BV1E7wtzaEdq&t=1877)]。\n* **Tool（工具调用）**：阐明大模型如何通过输出结构化文本来请求平台执行外部函数，从而感知和影响外部环境 [[17:54 点此查看 Tool 角色分工](memento://play?platform=bilibili&video_id=BV1E7wtzaEdq&t=1074)]。\n* **MCP（模型上下文协议）**：分析传统 API 接入平台的痛点，讲解 MCP 作为统一工具接入标准的价值 [[20:23 点此查看 MCP 协议原理](memento://play?platform=bilibili&video_id=BV1E7wtzaEdq&t=1223)]。\n* **Agent 与 Agent Skill**：剖析具备自主规划和工具调用能力的 Agent，以及作为“说明文档/规则指引”控制 Agent 行为流程的 Agent Skill（包括其渐进式披露机制）[[29:40 点此查看 Agent Skill 演示](memento://play?platform=bilibili&video_id=BV1E7wtzaEdq&t=1780)]。\n\n整体而言，视频旨在帮助观众建立起一个完整清晰的 AI 技术认知框架，厘清现代 AI 应用（如 Cursor、Claude Code 等）背后的底层运作逻辑 [[31:52 点此查看 总结回顾](memento://play?platform=bilibili&video_id=BV1E7wtzaEdq&t=1912)]。",
+      "flat_answer": "知识库中包含了多期不同领域的视频内容。由于您未指定具体的视频名称，以下为您整理的知识库中主要视频的主题概述：\n\n---\n\n## 1. 人工智能 / Prompt 工程\n* **主题**：[从 LLM 到 Agent Skill，一期视频带你打通底层逻辑！](memento://play?platform=bilibili&video_id=BV1E7wtzaEdq&t=705)\n* **核心内容**：讲解大模型（LLM）中 **Prompt（提示词）** 的基本概念与提示词工程（Prompt Engineering）。视频区分了用于明确具体任务的 `user prompt` 与设置人设/规则的 `system prompt` [13:15](memento://play?platform=bilibili&video_id=BV1E7wtzaEdq&t=795)。\n\n---\n\n## 2. 健身训练理论\n* **主题**：[【新手入门】帮你省去50节私教费！一分化训练 理论+计划+讲解](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=393)\n* **核心内容**：为健身新手讲解训练逻辑，强调熟练动作模式需要大量重复 [06:33](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=393)，并主张新手应采用**高频、中等强度的一分化训练**，而非盲目套用高强度、低频的分化计划 [08:03](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=483)。\n\n---\n\n## 3. 经济学基础\n* **主题**：[GDP是会骗人的 | 一口气了解GDP](memento://play?platform=youtube&video_id=P-NmMX9rlYQ&t=57)\n* **核心内容**：科普 **GDP（国内生产总值）** 的概念与计算细节。区分了 GDP 与 GNP 的差异，并解析了“地域生产”与“最终产品”的定义 [01:07](memento://play?platform=youtube&video_id=P-NmMX9rlYQ&t=67)。\n\n---\n\n## 4. 增肌与营养饮食\n* **主题**：[保姆式增肌饮食分享/比例/碳蛋脂算法](memento://play?platform=bilibili&video_id=BV1ev411w7bs&t=1398)\n* **核心内容**：分享增肌期间的综合营养补充，指出不能仅关注蛋白质，还需保障足量饮水 [23:18](memento://play?platform=bilibili&video_id=BV1ev411w7bs&t=1398) 以及通过多色蔬菜摄入充足的维生素、矿物质与抗氧化成分，以促进身体恢复 [24:18](memento://play?platform=bilibili&video_id=BV1ev411w7bs&t=1458)。\n\n---\n\n如果您想了解其中某一部特定视频的详细内容，请告诉我具体标题或主题！",
+      "layered_tools": [
+        "lookup_documents",
+        "lookup_documents",
+        "summarize_document",
+        "summarize_document",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "flat_tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "layered_tools_unique": [
+        "lookup_documents",
+        "summarize_document",
+        "search_knowledge"
+      ],
+      "flat_tools_unique": [
+        "search_knowledge"
+      ],
+      "layered_called_lookup": true,
+      "layered_called_summarize": true,
+      "layered_latency_ms": 23040.6,
+      "flat_latency_ms": 12808.9,
+      "layered_error": null,
+      "flat_error": null,
+      "layered_score": 1,
+      "flat_score": 3,
+      "winner": "flat",
+      "brief_reason": "Answer A completely misidentifies the video topic as AI/LLM, whereas Answer B correctly identifies the relevant GDP video among options and partially addresses its core concepts.",
+      "judge_error": null,
+      "assignment": {
+        "A": "layered",
+        "B": "flat"
+      }
+    },
+    {
+      "id": "q009",
+      "video_id": "-HOzOBmQ5ro",
+      "document_id": "ebc78c155d43433e9f417bbf36ddecf9",
+      "question": "这期视频主要从哪些方面全面介绍了瑞士这一独特经济体？",
+      "notes": "瑞士的中立国历史、银行业与保密机制、自由港、三大支柱产业、货币政策以及去中心化政治体制",
+      "lacks_l2_l3": false,
+      "layered_answer": "这期视频主要从以下几个核心维度全面且深入地介绍了瑞士这一独特经济体：\n\n---\n\n### 1. 地缘政治与“中立国”标签\n* **永久中立与立国之本**：视频探讨了瑞士如何在地形险要的夹缝中，凭借对自己狠辣、对外部圆滑的战略，维持了200多年的永久中立地位。\n* **中立与现实博弈**：虽然保持中立，但在现实中仍会受国际政治博弈影响（如俄乌冲突期间冻结资产），但整体上“中立国”形象极大地赋予了其政治稳定与制度信任，成为资本避风港，详见 [00:55 瑞士的中立标签](memento://play?platform=youtube&video_id=-HOzOBmQ5ro&t=55)。\n\n---\n\n### 2. 金融业的兴衰与避险货币\n* **离岸金融与保密传统**：凭借独特的保密协议与金融体系，瑞士曾长期作为全球财富管理和离岸金融的中心。\n* **保密协议破裂与转型**：随着国际保密协议破裂，瑞士银行业的传统优势有所消耗，经济重心向实体高附加值产业进一步转移。\n* **硬通货瑞郎**：凭借坚挺的经济与稳定的政治，瑞士法郎（瑞郎）具备极强的避险属性，常成为全球资本涌入的硬通货，详见 [25:03 瑞郎的避险属性](memento://play?platform=youtube&video_id=-HOzOBmQ5ro&t=1503)。\n\n---\n\n### 3. 高附加值的“三大支撑产业”\n瑞士不依赖廉价劳动力或资源，而是靠三大支柱产业维持高额的经常账户顺差：\n* **医药化工**：占据瑞士出口的半壁江山，代表企业包括罗氏（Roche）、诺华（Novartis），高薪且具备极强的全球人才吸引力，详见 [18:36 医药化工支柱](memento://play?platform=youtube&video_id=-HOzOBmQ5ro&t=1116)。\n* **精密制造**：机床、精密仪器全球领先，由早期纺织业机械化演变而来，强调高精度与技术积累，详见 [20:09 精密制造业](memento://play?platform=youtube&video_id=-HOzOBmQ5ro&t=1209)。\n* **顶尖制表与奢侈品**：以斯沃琪集团、劳力士等为代表，虽然GDP直接占比不高，但极大地拉升了“瑞士制造”的品牌溢价。\n\n---\n\n### 4. “瑞士制造（Swiss Made）”品牌效应与高物价模式\n* **高成本与高附加值**：瑞士人力成本与物价极高（苏黎世、日内瓦常年全球前十），但通过品控、稀缺性与营销，打造出顶级奢侈品溢价，使得即使高价仍能稳居出口强国，详见 [22:42 瑞士制造品牌与溢价](memento://play?platform=youtube&video_id=-HOzOBmQ5ro&t=1362)。\n\n---\n\n### 5. 教育体系与去中心化政治\n* **实用主义双轨制教育**：约 2/3 的学生在九年义务教育后进入“学徒制”（企业实习+学校学习），为精密制造与制表业输送了大量具备高技术熟练度的劳动人口，详见 [22:04 双轨制学徒教育](memento://play?platform=youtube&video_id=-HOzOBmQ5ro&t=1324)。\n* **去中心化治理**：去中心化的政治体制与直接民主，使其政策制定能站在国家长期利益的角度推进。\n\n---\n\n### 6. 当前面临的长期挑战与前景\n* 视频总结指出，面对**保密优势的消失**、**周边欧洲经济萎靡**以及**去全球化对供应链与出口需求的双重冲击**，“老钱”瑞士经济在未来转型中也将面临长期挑战，详见 [34:00 瑞士经济面临的未来挑战](memento://play?platform=youtube&video_id=-HOzOBmQ5ro&t=2040)。",
+      "flat_answer": "根据视频 [一口气了解瑞士经济](memento://play?platform=youtube&video_id=-HOzOBmQ5ro&t=0)，视频主要从以下几个核心维度全面剖析了瑞士这一独特经济体：\n\n---\n\n## 1. 政治中立与外交基石\n* **中立政策的利弊与代价：** 介绍瑞士作为中立国在欧洲核心位置维持了200多年的独立地位，以及中立地位对塑造国家形象、吸引资金的作用 [00:55](memento://play?platform=youtube&video_id=-HOzOBmQ5ro&t=55)。同时也提到了现实政治博弈中的挑战（例如冻结相关资产等） [01:10](memento://play?platform=youtube&video_id=-HOzOBmQ5ro&t=70)。\n\n## 2. 金融体系与避险货币\n* **银行业的兴衰与保密协议：** 探讨瑞士保密协议和金融业的演变 [33:37](memento://play?platform=youtube&video_id=-HOzOBmQ5ro&t=2017)。\n* **避险货币（瑞士法郎）：** 分析瑞郎如何因国家政治稳定、经济坚挺，成为全球著名的避险货币，以及全球资本涌入带来的强势升值影响 [25:03](memento://play?platform=youtube&video_id=-HOzOBmQ5ro&t=1503)。\n\n## 3. 明星产业与高端出口\n* **医药化工（第一大出口支柱）：** 占据瑞士出口的半壁江山，代表企业包括罗氏（Roche）、诺华（Novartis）以及食品巨头雀巢（Nestlé）。该行业极大地推高了瑞士的人均收入水平 [18:36](memento://play?platform=youtube&video_id=-HOzOBmQ5ro&t=1116)。\n* **精密制造与机械：** 从19世纪纺织业转型而来，在高端机床与精密仪器领域保持全球领先地位 [20:09](memento://play?platform=youtube&video_id=-HOzOBmQ5ro&t=1209)。\n* **奢侈品效应与“瑞士制造”（Swiss Made）：** 包括顶级制表业、军刀、巧克力及奶酪等。通过高品质、稀缺性与独特的国家形象营销，打造了极高的品牌溢价和高附加值，避开了低端劳动力成本竞争 [22:42](memento://play?platform=youtube&video_id=-HOzOBmQ5ro&t=1362)。\n\n## 4. 人才培养与职业教育体系\n* **独特的双轨制教育：** 大约 2/3 的学生在九年义务教育后进入**学徒制**，每周在企业实习与学校学习并行。这种提早分流的机制为精密制造和制表等行业输送了大量具备深厚经验的技术人才 [22:04](memento://play?platform=youtube&video_id=-HOzOBmQ5ro&t=1324)。\n\n## 5. 高物价、去中心化政治与底层机制\n* **高物价与经常账户顺差：** 瑞士的人力成本和物价极高（如苏黎世、日内瓦），但凭借高附加值产业依然保持庞大的经常账户顺差 [24:06](memento://play?platform=youtube&video_id=-HOzOBmQ5ro&t=1446)。\n* **去中心化政治与理性民意：** 政治体制去中心化，国民倾向于从国家长期利益角度进行投票决策 [33:37](memento://play?platform=youtube&video_id=-HOzOBmQ5ro&t=2017)。\n\n## 6. 面临的长期风险与时代挑战\n* **老钱经济的转型困境：** 分析了保密协议取消对银行业的冲击、周边欧洲国家经济萎靡的影响，以及去全球化趋势对医药和精密制造供应链带来的双重挑战 [34:00](memento://play?platform=youtube&video_id=-HOzOBmQ5ro&t=2040)。\n\n<ElicitationsGroup message=\"想要进一步深入了解哪个部分？\">\n  <Elicitation label=\"瑞士的双轨制教育与学徒制是如何运作的？\" query=\"详细讲讲瑞士的双轨制教育和学徒制是如何运作的，对它的精密制造业有什么影响？\"/>\n  <Elicitation label=\"瑞士法郎为什么会成为全球避险货币？\" query=\"瑞士法郎为什么能够成为全球闻名的避险货币？它带来了哪些利弊？\"/>\n  <Elicitation label=\"“瑞士制造”（Swiss Made）的溢价逻辑是什么？\" query=\"瑞士是如何将手表、军刀等打造出“瑞士制造”的奢侈品溢价效应的？\"/>\n</ElicitationsGroup>",
+      "layered_tools": [
+        "lookup_documents",
+        "lookup_documents",
+        "summarize_document",
+        "summarize_document",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "flat_tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "layered_tools_unique": [
+        "lookup_documents",
+        "summarize_document",
+        "search_knowledge"
+      ],
+      "flat_tools_unique": [
+        "search_knowledge"
+      ],
+      "layered_called_lookup": true,
+      "layered_called_summarize": true,
+      "layered_latency_ms": 24884.8,
+      "flat_latency_ms": 15788.6,
+      "layered_error": null,
+      "flat_error": null,
+      "layered_score": 4,
+      "flat_score": 4,
+      "winner": "tie",
+      "brief_reason": "Both answers cover almost all key points (neutrality, banking/secrecy, key industries, monetary policy, and decentralized politics) with clear structure and details, but both miss explicit mention of free ports.",
+      "judge_error": null,
+      "assignment": {
+        "A": "flat",
+        "B": "layered"
+      }
+    },
+    {
+      "id": "q013",
+      "video_id": "185XGEMefgc",
+      "document_id": "ec3ce6678c7f4467ab867d8a548295cf",
+      "question": "What major shift does MCP introduce compared to traditional APIs for AI models and agents?",
+      "notes": "MCP provides a standardized protocol sitting on top of APIs that allows AI models to autonomously discover and use tools through context rather than hardcoded integrations",
+      "lacks_l2_l3": false,
+      "layered_answer": "Based on the video content, the Model Context Protocol (MCP) introduces a fundamental paradigm shift from traditional APIs in several key ways:\n\n## 1. Shift from Code-Level Logic to Model Reasoning Layer\n* **Traditional APIs:** Traditional APIs act as code-level contracts between applications. The logic determining which endpoint to hit, how to format payloads, and how to handle response logic lives within your application code. Developers have to write custom integrations, handle auth, pagination, and error handling manually for each service.\n* **MCP:** As explained in [05:01 Model reasoning layer shift](memento://play?platform=youtube&video_id=185XGEMefgc&t=301), MCP shifts the integration logic into the **model's reasoning layer**. Instead of writing bespoke code for every integration, developers provide context, allowing the general-purpose model to dynamically reason about which tool to use and when.\n\n---\n\n## 2. Dynamic Discovery vs. Static Instruction Manuals\n* **Traditional APIs:** Expect rigid, pre-defined request formats and require prompt engineering to \"teach\" the model how each static endpoint works.\n* **MCP:** Acts as a [03:17 live, machine-readable map](memento://play?platform=youtube&video_id=185XGEMefgc&t=197) of your service. Through self-describing JSON schemas over standard interfaces (like HTTP or WebSockets), the model automatically discovers available tools, their expected inputs, and outputs at runtime without constant prompt engineering.\n\n---\n\n## 3. Standardization and Interoperability\n* **Traditional APIs:** Require custom, bespoke glue code for every new tool or service (e.g., separate custom setups for Gmail, Notion, Jira).\n* **MCP:** Serves as a unified semantic protocol—much like HTTP did for the web. As noted in [05:25 Universal interoperability](memento://play?platform=youtube&video_id=185XGEMefgc&t=325) and [06:35 One interface vs. custom integrations](memento://play?platform=youtube&video_id=185XGEMefgc&t=395), instead of building dozens of custom integrations, developers build **one MCP interface** per service that any compatible AI model can plug into.\n\n> **Summary:** Rather than replacing APIs, MCP changes how models interact with them—moving from a model where developers manually teach an AI how to use a static tool to one where tools present a [04:48 standardized toolbox](memento://play?platform=youtube&video_id=185XGEMefgc&t=288) that the AI can dynamically explore and utilize.",
+      "flat_answer": "Based on the video content, Model Context Protocol (MCP) introduces a fundamental paradigm shift away from traditional APIs across several key areas:\n\n### 1. From Code-Level Contracts to Semantic Discovery\n* **Traditional APIs:** Require hardcoded integrations, specific endpoints, custom application logic, and manual prompt engineering to teach the model how to construct requests for every tool ([03:38](memento://play?platform=youtube&video_id=185XGEMefgc&t=218)).\n* **MCP:** Shifts tool interaction from a static \"instruction manual\" to a \"live, machine-readable map\" ([03:25](memento://play?platform=youtube&video_id=185XGEMefgc&t=205)). Instead of hardcoding logic, MCP gives models a standardized way to dynamically discover available tools, their expected inputs, and their outputs through context ([02:58](memento://play?platform=youtube&video_id=185XGEMefgc&t=178)).\n\n### 2. Moving Logic from Application Code to the Model's Reasoning Layer\n* **Traditional APIs:** The decision-making logic of when and how to call an endpoint lives inside the developer's application code ([05:01](memento://play?platform=youtube&video_id=185XGEMefgc&t=301)).\n* **MCP:** The tool-selection and execution logic moves into the model's reasoning layer itself ([05:01](memento://play?platform=youtube&video_id=185XGEMefgc&t=301)). You provide the model with a structured description of available tools in its environment, allowing it to reason about which tool to use and when—like giving the model a toolbox rather than forcing it to memorize each tool's manual ([04:38](memento://play?platform=youtube&video_id=185XGEMefgc&t=278)).\n\n### 3. Interoperability and Reusability Across Systems\n* **Traditional APIs:** Designed for program-to-program communication with rigid input/output formats ([01:32](memento://play?platform=youtube&video_id=185XGEMefgc&t=92)). Integrating multiple tools requires writing unique, custom boilerplate for each system ([03:38](memento://play?platform=youtube&video_id=185XGEMefgc&t=218)).\n* **MCP:** Serves as an open semantic protocol between a model and its environment ([04:38](memento://play?platform=youtube&video_id=185XGEMefgc&t=278)). Much like HTTP created a universal protocol for the web, MCP allows general-purpose agents to plug into any tool supporting the protocol without rewriting integration code for every service ([05:12](memento://play?platform=youtube&video_id=185XGEMefgc&t=312)).",
+      "layered_tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "flat_tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "layered_tools_unique": [
+        "search_knowledge"
+      ],
+      "flat_tools_unique": [
+        "search_knowledge"
+      ],
+      "layered_called_lookup": false,
+      "layered_called_summarize": false,
+      "layered_latency_ms": 15736.9,
+      "flat_latency_ms": 12194.9,
+      "layered_error": null,
+      "flat_error": null,
+      "layered_score": 5,
+      "flat_score": 5,
+      "winner": "tie",
+      "brief_reason": "Both answers thoroughly cover the key points of the Model Context Protocol, accurately highlighting its role as a standardized protocol that enables dynamic context discovery and tool reasoning over hardcoded API integrations.",
+      "judge_error": null,
+      "assignment": {
+        "A": "flat",
+        "B": "layered"
+      }
+    },
+    {
+      "id": "q018",
+      "video_id": "vkpS7WztTMc",
+      "document_id": "22a2c7c7da0c438ea6cd1c1ef7b2d633",
+      "question": "这篇演讲的主要内容是什么？",
+      "notes": "苏姿丰结合在MIT的求学与个人职业经历，鼓励毕业生勇敢面对难题、发挥工程师本能并在AI时代创造属于自己的运气",
+      "lacks_l2_l3": false,
+      "layered_answer": "这篇演讲是 **AMD CEO 苏姿丰（Lisa Su）在麻省理工学院（MIT）毕业典礼上的演讲**，核心内容如下：\n\n* **求学与校训影响**：回顾了自己在 MIT 从本科到博士的求学历程，分享了 MIT “手脑并用（Mens et Manus）” 的校训如何塑造了她的工程师直觉，并在职业生涯中持续产生深远影响。\n* **职业经历与挑战**：结合在 IBM 和 AMD 的工作与领导经历，鼓励毕业生不要害怕困难，要勇敢迎难而上、应对最艰难的挑战，以此创造属于自己的机遇与运气。\n* **AI 的未来与使命**：阐述了 AI 在医疗等众多领域蕴藏的巨大潜力，并强调**技术本身无法决定未来**，只有兼具使命感与责任感的人才能引领时代的变革与发展。",
+      "flat_answer": "这篇演讲是 **AMD CEO 苏姿丰（Lisa Su）在麻省理工学院（MIT）2026届毕业典礼上的致辞**。\n\n演讲的主要内容围绕 **AI 技术变革、技术与人的关系、以及对毕业生的寄语** 展开，核心要点如下：\n\n---\n\n## 1. 技术与人的关系：AI 无法决定要解决什么问题\n苏姿丰指出，未来 10 年的技术发现将超越过去 30 年的总和，但**决定未来走向的并非技术本身，而是优秀的人**。\n> 无论 AI 多么强大，[00:05 AI 无法决定哪些问题值得去解决](memento://play?platform=youtube&video_id=vkpS7WztTMc&t=5)。世界不仅需要掌握强力工具的人，更需要有方向感、判断力和勇气、明确知道“工具该用于何处”的人。\n\n---\n\n## 2. 面对未知与困难的信念\n作为 MIT 校友，她鼓励 graduates 保持信心与面对未知的勇气：\n> 在未来的岁月里，你一定会走进某个自己完全摸不着头脑的房间或领域，但要记住：[14:42 你以前就经历过这种时刻，去弄懂它、解决它](memento://play?platform=youtube&video_id=vkpS7WztTMc&t=882)。\n\n---\n\n## 3. 祝福与表达感谢\n* **向亲友致谢：** 提醒毕业生感谢一路支持和陪伴他们的家人与爱人，[14:24 这份成就同样属于他们](memento://play?platform=youtube&video_id=vkpS7WztTMc&t=864)。\n* **对毕业生的祝贺：** [14:59 表达作为校友的自豪与深切祝福](memento://play?platform=youtube&video_id=vkpS7WztTMc&t=899)，祝贺 2026 届全体毕业生。",
+      "layered_tools": [
+        "lookup_documents",
+        "lookup_documents",
+        "summarize_document",
+        "summarize_document"
+      ],
+      "flat_tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "layered_tools_unique": [
+        "lookup_documents",
+        "summarize_document"
+      ],
+      "flat_tools_unique": [
+        "search_knowledge"
+      ],
+      "layered_called_lookup": true,
+      "layered_called_summarize": true,
+      "layered_latency_ms": 13293.2,
+      "flat_latency_ms": 16460.9,
+      "layered_error": null,
+      "flat_error": null,
+      "layered_score": 5,
+      "flat_score": 3,
+      "winner": "layered",
+      "brief_reason": "Answer B covers all key reference points including Lisa Su's MIT/career experiences, engineering instincts, facing challenges, and creating luck, whereas Answer A omits her personal background and specific key themes.",
+      "judge_error": null,
+      "assignment": {
+        "A": "flat",
+        "B": "layered"
+      }
+    },
+    {
+      "id": "q019",
+      "video_id": "oYxTTirKY8M",
+      "document_id": "d903d515ad124b8999552c522aee0cd7",
+      "question": "What is the primary topic covered in this system design course overview?",
+      "notes": "system design concepts, architecture, and scaling strategies",
+      "lacks_l2_l3": true,
+      "layered_answer": "Based on the course overview in the video **\"System Design Explained: APIs, Databases, Caching, CDNs, Load Balancing & Production Infra\"**, the primary topic is **high-level system design, architectural decision-making, and understanding component trade-offs at scale**—skills crucial for senior/staff engineers and tech interviews in an era of AI-driven agentic development ([00:00 AI and system design](memento://play?platform=youtube&video_id=oYxTTirKY8M&t=0), [00:36 interview focus](memento://play?platform=youtube&video_id=oYxTTirKY8M&t=36)).\n\n---\n\n## 📚 Core Topics & Course Structure\n\nThe course breaks down system design into **five foundational steps**, starting from a single-user setup and expanding to support millions of users ([02:13 single user to scale](memento://play?platform=youtube&video_id=oYxTTirKY8M&t=133)):\n\n1. **Foundations:** Core system design concepts every engineer needs to understand high-level architecture ([01:33 foundations](memento://play?platform=youtube&video_id=oYxTTirKY8M&t=93)).\n2. **API Design:** Designing APIs from scratch, API contracts, versioning, and communication patterns ([01:39 API design](memento://play?platform=youtube&video_id=oYxTTirKY8M&t=99)).\n3. **Databases & Storage:** Storage patterns, database selection (SQL vs. NoSQL), and data consistency ([01:46 databases](memento://play?platform=youtube&video_id=oYxTTirKY8M&t=106)).\n4. **Scaling & Infrastructure:** Performance, caching, CDNs, load balancing, reliability, and handling single points of failure ([01:53 scaling](memento://play?platform=youtube&video_id=oYxTTirKY8M&t=113)).\n5. **Interview Preparation:** Strategies and practical frameworks to pass system design rounds for senior and staff roles ([02:01 interviews](memento://play?platform=youtube&video_id=oYxTTirKY8M&t=121)).",
+      "flat_answer": "The primary topic covered in this system design course overview is **high-level system design, architectural decision-making, and understanding component trade-offs for scaling full-stack infrastructure**. \n\nAs highlighted in the overview, with AI increasingly handling code implementations, modern tech interviews and senior engineering roles heavily prioritize understanding how systems function at a high level and how components fit together ([00:00 High-level architecture and trade-offs](memento://play?platform=youtube&video_id=oYxTTirKY8M&t=0), [00:36 Interview & real-world relevance](memento://play?platform=youtube&video_id=oYxTTirKY8M&t=36)).\n\n---\n\n### Course Structure & Core Topics Covered\n\nThe course breaks down system design into **five key areas** ([01:13 Five steps overview](memento://play?platform=youtube&video_id=oYxTTirKY8M&t=73)):\n\n*   **Foundations:** Core concepts required for high-level software architecture ([01:13 Core concepts](memento://play?platform=youtube&video_id=oYxTTirKY8M&t=73)).\n*   **API Design:** Contracts, versioning, communication patterns, and designing APIs from scratch ([01:13 API design](memento://play?platform=youtube&video_id=oYxTTirKY8M&t=73)).\n*   **Databases & Storage:** Storage patterns, data consistency, and database selection criteria ([01:13 Databases](memento://play?platform=youtube&video_id=oYxTTirKY8M&t=73)).\n*   **Scaling & Infrastructure:** Performance optimization, caching, reliability, CDNs, load balancing, and managing points of failure ([01:53 Scaling & Caching](memento://play?platform=youtube&video_id=oYxTTirKY8M&t=113)).\n*   **Interview Preparation:** Guidance on passing senior and staff-level system design rounds ([01:53 Interview strategy](memento://play?platform=youtube&video_id=oYxTTirKY8M&t=113)).\n\nThe course uses an incremental teaching approach—starting with a simple setup for a single user and progressively scaling up to handle millions of users ([02:13 Incremental architecture setup](memento://play?platform=youtube&video_id=oYxTTirKY8M&t=133)).",
+      "layered_tools": [
+        "lookup_documents",
+        "lookup_documents",
+        "lookup_documents",
+        "lookup_documents",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "flat_tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "layered_tools_unique": [
+        "lookup_documents",
+        "search_knowledge"
+      ],
+      "flat_tools_unique": [
+        "search_knowledge"
+      ],
+      "layered_called_lookup": true,
+      "layered_called_summarize": false,
+      "layered_latency_ms": 19015.2,
+      "flat_latency_ms": 23375.8,
+      "layered_error": null,
+      "flat_error": null,
+      "layered_score": 5,
+      "flat_score": 5,
+      "winner": "tie",
+      "brief_reason": "Both answers thoroughly cover system design concepts, architecture, and scaling strategies, structured cleanly with accurate context from the key points.",
+      "judge_error": null,
+      "assignment": {
+        "A": "layered",
+        "B": "flat"
+      }
+    },
+    {
+      "id": "q026",
+      "video_id": "BV1FUYQz7E4H",
+      "document_id": "1661a6ae3c5949dfb420de3690f673f5",
+      "question": "本视频主要介绍了PostgreSQL数据库的哪些内容？",
+      "notes": "从安装入门开始，介绍了Postgres的多样数据类型、对象关系特性、JSON/向量存储、全文检索、定时任务及各类扩展插件等强大功能",
+      "lacks_l2_l3": false,
+      "layered_answer": "本视频（**《PostgreSQL能存万物！这还是你认识的数据库吗？》**）系统地介绍了 PostgreSQL 作为“全能后端平台”的强大功能与扩展能力，涵盖的主要内容包括：\n\n* **基础与高级特性**\n  * 在 Ubuntu 系统上的快速安装与配置\n  * 基于 schema 的权限控制\n  * 对网络网段（`inet`/`cidr`）、几何运算、自定义类型及表继承等面向对象特性的原生支持\n\n* **替代传统 NoSQL/Redis 方案**\n  * 使用 **JSONB** 替代传统 NoSQL 存储\n  * 利用 **UNLOGGED 临时表** 替代 Redis 缓存\n\n* **搜索与 AI 扩展能力**\n  * 原生全文检索及通过 **PGroonga** 插件实现中英文全文搜索\n  * 结合 **pgvector** 与 LangChain 构建大模型 RAG 向量检索系统\n\n* **定时任务与服务化扩展**\n  * 借助 **pg_cron** 扩展执行定时任务\n  * 通过 **PostgREST** 和 **pg_graphql** 直接将数据库暴露为 REST 或 GraphQL API\n  * 利用 **Apache AGE** 扩展为图数据库，以及利用 **TimescaleDB** 扩展为时序数据库",
+      "flat_answer": "Answering the user's question with the relevant details from the video content.本视频详细介绍了 **PostgreSQL** 数据库的定位、安装配置、数据类型与对象特性，以及丰富的扩展生态。具体内容涵盖以下几个方面：\n\n---\n\n### 一、 数据库定位与核心优势\n* **功能丰富与高兼容性**：PostgreSQL 致力于打造功能最丰富、最符合 SQL 标准的数据库，并具备高可用性、高扩展性和自定义能力 [[00:32](memento://play?platform=bilibili&video_id=BV1FUYQz7E4H&t=32)]。\n* **涵盖大部分后端需求**：其能力超越了传统关系型数据库，能覆盖大部分后端开发需求 [[00:00](memento://play?platform=bilibili&video_id=BV1FUYQz7E4H&t=0)]。\n* **事务管理与约束特性**：支持将表结构修改语句放入事务管理中，并支持部分索引（Partial Index）和可延迟约束等 [[00:32](memento://play?platform=bilibili&video_id=BV1FUYQz7E4H&t=32)]。\n\n---\n\n### 二、 安装与配置流程\n* **Ubuntu 系统快速安装**：演示了通过 APT 安装 PostgreSQL 及官方插件包 `postgresql-contrib`，并切换到 `postgres` 用户使用 `psql` [[01:14](memento://play?platform=bilibili&video_id=BV1FUYQz7E4H&t=74)]。\n* **开启远程连接**：修改配置文件中的 `listen_addresses`（设为 `*`）及 IPv4 允许连接网段（设为 `0.0.0.0/0`），重启服务后放开防火墙 5432 端口即可成功连接 [[01:14](memento://play?platform=bilibili&video_id=BV1FUYQz7E4H&t=74)]。\n* **三级结构（Schema）**：通过 DBeaver 工具演示了 PostgreSQL 相比 MySQL 多出的 `schema` 层级（PostgreSQL 为 **数据库 - Schema - 表** 三级，MySQL 仅有两级）[[02:44](memento://play?platform=bilibili&video_id=BV1FUYQz7E4H&t=164)]。\n\n---\n\n### 三、 面向对象与丰富的数据类型\n作为开源的对象关系型数据库（ORDBMS），它完美融合了关系与对象的能力 [[03:29](memento://play?platform=bilibili&video_id=BV1FUYQz7E4H&t=209)]：\n1. **网络相关类型**：内置 `CIDR`（网段）、IP 地址、MAC 地址等类型，并支持使用运算符（如 `>>` 包含关系）直接进行查询 [[03:29](memento://play?platform=bilibili&video_id=BV1FUYQz7E4H&t=209)]。\n2. **几何与数组类型**：支持点、线、矩形、圆形等几何类型和几何运算，原生支持一维及多维数组类型 [[03:29](memento://play?platform=bilibili&video_id=BV1FUYQz7E4H&t=209)]。\n3. **自定义类型与表继承**：\n   * 支持通过 SQL 语句自定义组合类型 [[03:29](memento://play?platform=bilibili&video_id=BV1FUYQz7E4H&t=209)]。\n   * 支持 **表继承（Table Inheritance）**，子表继承父表所有字段的同时可拥有自身特定字段，且子表新增数据同步显示在父表中，解决面向对象编程中的“阻抗不匹配”难题 [[03:29](memento://play?platform=bilibili&video_id=BV1FUYQz7E4H&t=209)]。\n\n---\n\n### 四、 强大的扩展生态（Extensions）\n视频还介绍了通过扩展插件将 PostgreSQL 变成“全能后端聚合平台”的能力 [[21:44](memento://play?platform=bilibili&video_id=BV1FUYQz7E4H&t=1304)]：\n* **Apache AGE**：使 PostgreSQL 具备图数据库能力，可使用 Cypher 语言处理好友社交网、电网等关系数据 [[21:09](memento://play?platform=bilibili&video_id=BV1FUYQz7E4H&t=1269)]。\n* **TimescaleDB**：赋予 PostgreSQL 时序数据库能力，适用于处理物联网、金融等对时间序列要求高的场景 [[21:09](memento://play?platform=bilibili&video_id=BV1FUYQz7E4H&t=1269)]。",
+      "layered_tools": [
+        "lookup_documents",
+        "lookup_documents",
+        "summarize_document",
+        "summarize_document"
+      ],
+      "flat_tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "layered_tools_unique": [
+        "lookup_documents",
+        "summarize_document"
+      ],
+      "flat_tools_unique": [
+        "search_knowledge"
+      ],
+      "layered_called_lookup": true,
+      "layered_called_summarize": true,
+      "layered_latency_ms": 13599.3,
+      "flat_latency_ms": 14103.7,
+      "layered_error": null,
+      "flat_error": null,
+      "layered_score": 5,
+      "flat_score": 5,
+      "winner": "tie",
+      "brief_reason": "Both answers thoroughly cover all the key points from the source notes, including installation, diverse data types, object-relational features, JSON, vectors, full-text search, scheduled tasks, and plugins.",
+      "judge_error": null,
+      "assignment": {
+        "A": "layered",
+        "B": "flat"
+      }
+    },
+    {
+      "id": "q030",
+      "video_id": "BV14v4y1G7A3",
+      "document_id": "6912e2f626554fddb0b07fd5d0c45149",
+      "question": "这篇视频主要为健身新手讲解了哪些核心理论与训练建议？",
+      "notes": "提高心肺、筛查问题、熟悉动作模式、高频中等强度一分化训练以及评估BMI与体脂率，并附带一套适合新手的训练计划",
+      "lacks_l2_l3": false,
+      "layered_answer": "基于视频内容，凯小王为健身新手梳理了 **五大核心认知理论**，并结合这些理论提供了一套具体可操作的 **训练建议与计划**，旨在帮助小白安全、高效地入门。\n\n---\n\n## 核心认知理论\n\n在正式开始力量训练前，新手需要明确以下 5 点核心认知：\n\n1. **心肺功能是运动的基石**：不论是增肌还是减脂，刚进健身房都应先从有氧运动开始提升心肺。良好的心肺功能不仅能提高运动表现，还能在力量训练中有效防止低血糖的发生 [[00:03] 心肺重要性](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=3).\n2. **筛查并改善身体问题**：大部分人由于长期久坐，普遍存在关节活动度受限（如髋关节、足背屈）和体态问题，盲目上重量极易受伤。\n3. **重视动作模式与肌肉记忆的积累**：健身动作需要像练习篮球投篮一样通过成千上万次的重复来建立肌肉记忆。新手不要心急，应沉浸于动作细节，通过重复来掌握正确的发力 [[06:33] 熟悉动作模式](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=393).\n4. **高频中等强度的“一分化训练”**：新手由于神经募集肌肉的能力较差，无法在单次训练中达到极高强度，因此不适用大神的低频力竭训练。相反，**高频率、中等强度的一分化全身训练**能积累更多重复次数，最适合新手快速进步 [[08:03] 一分化理论](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=483).\n5. **结合 BMI 与体脂率评估身材与方向**：通过“田字格”精准定位自己。例如，“高BMI、高体脂”的人完全可以同时进行增肌和减脂；而体重轻但体脂高的“瘦胖子”（低BMI、高体脂）不应盲目节食或大量有氧，而应通过力量训练来塑造肌肉形态 [[10:33] 增肌减脂与身材评估](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=633)。\n\n---\n\n## 新手训练建议与计划\n\n视频提供了一套适合新手执行 **1-2个月** 的一分化全身训练计划，频率为 **练二歇一** 或 **练一歇一**。每个动作做 **3组**（第一组15次，后两组各12次），**每组保留 2-3 次余量，切记不要推到绝对力竭** [[17:33] 计划概述与卧推](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=1053)。\n\n为了安全避坑，计划中特意用**稳定性高、轨迹固定的器械**代替了高难度的自由重量动作：\n\n* **胸部（卧推）**：作为上肢大复合动作以调动大肌肉群。注意不要含胸，肘关节不要超伸锁死，杠铃推到最后应垂直于肩部上方 [[17:33] 卧推要领](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=1053)。\n* **背部（坐姿龙门架划船）**：*替代俯身杠铃划船或硬拉*。因为新手后链稳定性不足，俯身极易导致腰酸。坐姿龙门架划船能减轻腰椎压力，高效募集背部肌肉，感受肩胛的内收与下回旋 [[22:03] 坐姿划船](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=1323)。\n* **腿部（倒蹬/腿举）**：*替代自由深蹲*。针对新手髋关节和足背屈活动度受限的问题，倒蹬器械安全性高、腰椎压力极低。**注意：** 蹬起时膝盖绝对不能完全锁死超伸，下放时腰部要紧贴靠背，不能为了追求过深而让腰部离开椅面 [[24:03] 倒蹬要领](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=1443)。\n* **肩部（史密斯推肩）**：*替代侧平举*。侧平举力臂长且需要极高的肩胛控制，新手容易斜方肌代偿。史密斯推肩轨迹固定，小臂应放在肩胛面（与身体呈约15度夹角），下放至鼻子高度即可，向上推至肘关节微屈 [[26:33] 史密斯推肩](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=1593)。\n* **手臂与核心**：计划还包含杠铃弯举、龙门架下压及核心综合训练 [[17:33] 计划概述](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=1053)。\n\n**关于减脂的额外建议：** \n如果以减脂为主要目标，可以在这套力量计划结束后加做有氧，或者在早上做有氧；但不建议新手刚开始就尝试“空腹有氧”，以防发生低血糖的危险 [[16:33] 减脂有氧建议](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=993)。",
+      "flat_answer": "根据视频讲解，新手健身的核心理论与训练建议主要包含以下 **4 个核心理论** 与具体的 **训练计划建议**：\n\n---\n\n## 核心理论与原则\n\n### 1. 优先建立心肺基础，避免高风险有氧\n* **核心观点**：有氧运动是所有运动的基础。良好的心肺功能不仅能提升运动表现，还能提高安全性，防止训练中出现低血糖 [00:03](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=3)。\n* **避坑建议**：新手切忌盲目尝试高强度的 HIIT、塔巴塔或跳跃类爆发力训练，这在缺乏关节稳定性和动作模式时风险极高 [01:03](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=63)。\n* **推荐心率区间**：建议控制在 **50%–60% 最大心率**（最大心率 ≈ $220 - \\text{年龄}$），大体重人群可从游泳、慢走过渡到快走 [01:03](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=63)。\n\n### 2. 训练前筛查基础身体问题\n* **核心观点**：关节活动度和稳定性决定了训练效果 [02:03](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=123)。\n* **建议**：训练前要先评估是否存在圆肩驼背、骨盆前倾、腰椎问题或足背屈受限等情况，纠正或避开高危动作后再进行强度训练 [02:03](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=123)。\n\n### 3. 重视动作模式的积累\n* **核心观点**：健身动作是一种肌肉记忆，需要重复数百上千次才能真正掌握 [06:33](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=393)。\n* **建议**：训练时要沉浸集中，关注发力细节与收缩感，切忌盲目追求大重量，动作变形容易导致伤病 [06:33](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=393)。\n\n### 4. 采用“高频中等强度”的一分化训练\n* **核心观点**：新手肌肉募集能力较弱，局部刺激不深，不需要套用大神的低频高强度训练（如五分化或绝对极限力竭）[08:03](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=483)。\n* **建议**：建议使用**一分化训练**（全身训练），以高频率（如一周 4–5 次，练一歇一或练二歇一）和中等强度积累动作次数，熟练后再过渡到两分化或三分化 [08:03](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=483)。\n\n---\n\n## 新手 1-2 个月训练计划建议\n\n视频建议新手优先使用安全性高、轨迹固定的器械，避开对腰椎剪切力大或要求极高稳定性的动作 [17:33](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=1053)：\n\n* **胸部（卧推）**：大复合动作，建议做 3 组（15次 / 12次 / 12次），每组保留 2-3 次余量不力竭，避免关节锁死 [17:33](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=1053)。\n* **背部（坐姿龙门架划船）**：相比俯身杠铃划船，龙门架坐姿划船腰椎压力低，能更安全高效地感受背部收缩 [22:03](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=1323)。\n* **腿部（倒蹬/腿举）**：替代自由深蹲/硬拉，对受限的髋关节与足背屈更加友好，腰椎更安全；注意蹬起时膝盖绝对不能过伸锁死 [24:03](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=1443)。\n* **肩部（史密斯推肩）**：轨迹固定，比侧平举更少出现斜方肌代偿，能在肩胛面内安全提高肩部力量 [26:33](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=1593)。\n* **手臂与核心**：搭配杠铃弯举、龙门架下压及核心综合训练 [17:33](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=1053)。",
+      "layered_tools": [
+        "lookup_documents",
+        "lookup_documents",
+        "summarize_document",
+        "summarize_document",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "flat_tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "layered_tools_unique": [
+        "lookup_documents",
+        "summarize_document",
+        "search_knowledge"
+      ],
+      "flat_tools_unique": [
+        "search_knowledge"
+      ],
+      "layered_called_lookup": true,
+      "layered_called_summarize": true,
+      "layered_latency_ms": 32108.9,
+      "flat_latency_ms": 15257.3,
+      "layered_error": null,
+      "flat_error": null,
+      "layered_score": 5,
+      "flat_score": 4,
+      "winner": "layered",
+      "brief_reason": "Answer B covers all key points from the rubric including the assessment of BMI and body fat percentage, whereas Answer A misses the BMI/body fat evaluation point.",
+      "judge_error": null,
+      "assignment": {
+        "A": "flat",
+        "B": "layered"
+      }
+    },
+    {
+      "id": "q035",
+      "video_id": "BV1ev411w7bs",
+      "document_id": "ef6d166a52274710bc3472332c916664",
+      "question": "这期视频主要讲解了什么主题？",
+      "notes": "增肌饮食制作、体脂控制范围、碳氮脂算法及时间轴补充建议",
+      "lacks_l2_l3": true,
+      "layered_answer": "这期视频的主题是**从工程视角系统拆解当前 AI 领域的核心概念与底层架构**。\n\n视频帮助观众打通从基础模型到上层应用的完整技术认知体系，核心内容涵盖以下几个层级：\n\n1. **LLM 与 Token 机制**：讲解 LLM 基于 Transformer 的“文字接龙”运行逻辑，以及 Tokenizer 对文本的编码解码与 Token 计算原理。\n2. **Context 与 Prompt**：拆解 Context Window 构成的临时记忆机制，以及如何通过 System Prompt 与 User Prompt 约束和引导模型输出。\n3. **外部连接与 MCP**：介绍模型如何通过 Tool 与外部环境交互，以及统一工具接入的标准协议 MCP（Model Context Protocol）。\n4. **Agent 与 Agent Skill**：深入讲解具备自主规划与工具调用能力的 Agent，以及如何通过说明文档控制 Agent 行为规则的 Agent Skill。",
+      "flat_answer": "检索结果包含来自不同视频的片段。由于您未指定具体哪一部视频，以下为您列出检索到的主要视频主题：\n\n## 检索到的视频主题\n\n* **大模型与 Agent Skill 原理**：讲解了提示词（Prompt）、提示词工程（Prompt Engineering）以及用户提示词（User Prompt）与系统提示词（System Prompt）的区别，详见 [11:45 Prompt 基本概念与分类](memento://play?platform=bilibili&video_id=BV1E7wtzaEdq&t=705)。\n* **新手健身一分化训练**：讲解了动作模式熟悉与新手为何适合高频、中等强度的训练计划，详见 [06:33 熟悉动作模式](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=393) 和 [08:03 高频中等强度原则](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=483)。\n* **GDP 经济指标解析**：解释了 GDP（国内生产总值）的概念、计算范围以及与 GNP 的区别，详见 [00:57 GDP 概念与最终产品定义](memento://play?platform=youtube&video_id=P-NmMX9rlYQ&t=57)。\n* **保姆式增肌饮食**：分享了增肌过程中的七大营养素、水分补充及蔬菜/维矿摄入的重要性，详见 [23:18 水分与七大营养素](memento://play?platform=bilibili&video_id=BV1ev411w7bs&t=1398) 和 [24:48 蔬菜与抗氧化的意义](memento://play?platform=bilibili&video_id=BV1ev411w7bs&t=1488)。",
+      "layered_tools": [
+        "lookup_documents",
+        "lookup_documents",
+        "summarize_document",
+        "summarize_document"
+      ],
+      "flat_tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "layered_tools_unique": [
+        "lookup_documents",
+        "summarize_document"
+      ],
+      "flat_tools_unique": [
+        "search_knowledge"
+      ],
+      "layered_called_lookup": true,
+      "layered_called_summarize": true,
+      "layered_latency_ms": 18742.6,
+      "flat_latency_ms": 30189.5,
+      "layered_error": null,
+      "flat_error": null,
+      "layered_score": 1,
+      "flat_score": 2,
+      "winner": "flat",
+      "brief_reason": "Answer A is completely off-topic (focusing on AI architecture), whereas Answer B partially mentions a relevant video on muscle-building nutrition among mixed results, though it misses the specific key details.",
+      "judge_error": null,
+      "assignment": {
+        "A": "layered",
+        "B": "flat"
+      }
+    },
+    {
+      "id": "q040",
+      "video_id": "BV1Zk9FBwELs",
+      "document_id": "5b0275d76ecd40d8a8a515bec5e535ae",
+      "question": "这期视频主要讲解了什么主题？",
+      "notes": "讲解了 Harness Engineering 的演进历史、六层架构及其在 OpenAI 和 Anthropic 等一线公司的工程实践",
+      "lacks_l2_l3": false,
+      "layered_answer": "这期视频的主题是**从工程视角系统拆解当前 AI 领域的核心概念与底层架构**。\n\n视频帮助观众打通从基础模型到 AI 应用落地的完整逻辑，具体涵盖以下内容：\n\n* **LLM 运行逻辑**：基于 Transformer 架构的“文字接龙”预测机制。\n* **Tokenizer & Token**：文本如何编码解码以及 Token 的计算原理。\n* **Context & Context Window**：构成本地/临时记忆的机制与上下文窗口限制。\n* **Prompt 工程**：系统提示词（System Prompt）与用户提示词（User Prompt）对模型输出的约束。\n* **外部交互与 MCP 协议**：模型如何通过 Tool 与外部环境交互，以及统一接口的标准 MCP。\n* **Agent & Agent Skill**：具备自主规划和工具调用能力的 Agent，以及通过规范文档控制 Agent 行为与规则的 Agent Skill。",
+      "flat_answer": "由于您的个人视频知识库中包含多个不同主题的视频，您具体想了解哪一部视频的主题呢？\n\n以下是为您找到的知识库中几部主要视频的主题概览：\n\n---\n\n## 知识库视频主题列表\n\n### 1. 人工智能与大模型技术\n*   **《从 LLM 到 Agent Skill，一期视频带你打通底层逻辑！》**\n    *   **核心主题：** 讲解大模型（LLM）的基础概念与底层逻辑，涵盖 Prompt（提示词）、Prompt Engineering（提示词工程）的发展与作用，以及 User Prompt 与 System Prompt 的区别。\n    *   **参考片段：** [11:45 Prompt概念与提示词工程](memento://play?platform=bilibili&video_id=BV1E7wtzaEdq&t=705) | [13:15 User Prompt 与 System Prompt](memento://play?platform=bilibili&video_id=BV1E7wtzaEdq&t=795)\n*   **《最近爆火的 Harness Engineering 到底是啥？一期讲透！》**\n    *   **核心主题：** 解析 Prompt Engineering 的局限性及其演进过程，探讨 Prompt 在塑造局部概率空间方面的本质，以及 AI 从简单对话走向复杂 Agent 应用时的瓶颈与发展。\n    *   **参考片段：** [02:30 Prompt 的本质与局限](memento://play?platform=bilibili&video_id=BV1Zk9FBwELs&t=150) | [03:30 Agent 时代的演进](memento://play?platform=bilibili&video_id=BV1Zk9FBwELs&t=210)\n\n---\n\n### 2. 健身训练与入门计划\n*   **《【新手入门】帮你省去50节私教费！一分化训练 理论+计划+讲解》**\n    *   **核心主题：** 针对新手健身者讲解训练逻辑，强调建立动作模式、积累重复次数的重要性，主张新手应采用“高频中等强度”的一分化训练计划，而非盲目套用高强度分化训练。\n    *   **参考片段：** [06:33 熟悉动作模式与积累重复次数](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=393) | [08:03 高频中等强度一分化训练理论](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=483)\n\n---\n\n### 3. 增肌饮食与营养补充\n*   **《保姆式增肌饮食分享/比例/碳蛋脂算法》**\n    *   **核心主题：** 讲解增肌期间的全面营养补充，强调除了蛋白质外，饮水量、七大营养素、蔬菜摄入及抗氧化机制对肌肉恢复和身体机能的关键作用。\n    *   **参考片段：** [23:18 补水与七大营养素的重要性](memento://play?platform=bilibili&video_id=BV1ev411w7bs&t=1398) | [24:48 蔬菜与抗氧化对身体恢复的意义](memento://play?platform=bilibili&video_id=BV1ev411w7bs&t=1488)\n\n---\n\n您可以告诉我您想深入了解具体哪一部视频（如 AI 技术、健身训练或增肌饮食），或者具体想查询什么主题的内容？",
+      "layered_tools": [
+        "lookup_documents",
+        "lookup_documents",
+        "summarize_document",
+        "summarize_document"
+      ],
+      "flat_tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "layered_tools_unique": [
+        "lookup_documents",
+        "summarize_document"
+      ],
+      "flat_tools_unique": [
+        "search_knowledge"
+      ],
+      "layered_called_lookup": true,
+      "layered_called_summarize": true,
+      "layered_latency_ms": 19933.2,
+      "flat_latency_ms": 13935.1,
+      "layered_error": null,
+      "flat_error": null,
+      "layered_score": 1,
+      "flat_score": 2,
+      "winner": "flat",
+      "brief_reason": "Answer A asks for clarification while briefly listing several videos (including the Harness Engineering video), whereas Answer B completely misses the core topic of Harness Engineering and describes a different video entirely.",
+      "judge_error": null,
+      "assignment": {
+        "A": "flat",
+        "B": "layered"
+      }
+    },
+    {
+      "id": "q044",
+      "video_id": "BV1E7wtzaEdq",
+      "document_id": "4eddb0234a6846c69bc2ca2e9bb427e5",
+      "question": "这期视频的主要内容是什么？",
+      "notes": "从底层工程视角梳理并讲解从大模型（LLM）到 Agent Skill 等核心 AI 概念的底层逻辑与关联",
+      "lacks_l2_l3": false,
+      "layered_answer": "这期视频（**《从 LLM 到 Agent Skill，一期视频带你打通底层逻辑！》**）从工程视角出发，系统且通俗地拆解了当前 AI 领域的核心概念与底层架构，主要涵盖以下几个核心模块：\n\n---\n\n## 核心内容大纲\n\n* **LLM 的底层运行逻辑**  \n  剖析大语言模型的本质，讲解基于 Transformer 的“文字接龙”预测机制。\n\n* **Tokenizer 与 Token 计算**  \n  介绍 Tokenizer 如何对文本进行编码与解码，以及 Token 消耗与计算的具体原理。\n\n* **Context 与记忆机制**  \n  讲解 Context（上下文）与 Context Window（上下文窗口）如何为大模型提供临时记忆能力。\n\n* **Prompt 工程与约束**  \n  对比 User Prompt 与 System Prompt 的作用，说明如何控制与约束大模型的输出行为。\n\n* **工具调用与 MCP 协议**  \n  阐述模型如何与外部环境交互（Tool Calling），以及统一工具接入标准的 **MCP (Model Context Protocol)** 协议。\n\n* **Agent 与 Agent Skill**  \n  深入讲解具备自主规划与工具调用能力的 Agent，以及如何通过说明文档控制 Agent 行为规则的 Agent Skill。\n\n---\n\n总的来说，这期视频帮助观众打通了从基础语言模型到复杂 Agent 应用落地的完整技术认知体系。",
+      "flat_answer": "您没有指定具体的视频。知识库中包含多期不同主题的视频，主要包括以下几内容方向：\n\n## 1. 人工智能与大模型底层逻辑\n在视频[《从 LLM 到 Agent Skill，一期视频带你打通底层逻辑！》](memento://play?platform=bilibili&video_id=BV1E7wtzaEdq)中，主要讲解了：\n* **Context Window（上下文窗口）**：介绍了上下文窗口的概念及主流大模型（如 GPT-4.5、Gemini 1.5 Pro、Claude 3.5 Sonnet）的 Token 容量范围[10:14](memento://play?platform=bilibili&video_id=BV1E7wtzaEdq&t=614)。\n* **RAG（检索增强生成）**：讲解了面对超长文档时，如何通过 RAG 抽取出最相关的片段传给大模型，避免超出窗口限制并降低成本[11:14](memento://play?platform=bilibili&video_id=BV1E7wtzaEdq&t=674)。\n* **Prompt（提示词）与 Prompt 工程**：解释了 Prompt 的定义以及清晰表达的重要性[11:45](memento://play?platform=bilibili&video_id=BV1E7wtzaEdq&t=705)，并区分了 User Prompt（用户提示词）与 System Prompt（系统提示词）的区别[13:15](memento://play?platform=bilibili&video_id=BV1E7wtzaEdq&t=795)。\n\n---\n\n## 2. 健身训练（新手一分化训练）\n在视频[《【新手入门】帮你省去50节私教费！一分化训练 理论+计划+讲解》](memento://play?platform=bilibili&video_id=BV14v4y1G7A3)中，主要针对健身新手讲解了：\n* **动作模式与重复积累**：强调健身需要静心并积累足够的重复次数来建立肌肉记忆，而不是急于使用大重量[06:33](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=393)。\n* **高频中等强度原则**：说明新手为什么适合做高频中等强度的一分化训练，帮助肌肉建立募集感并避免伤病[08:03](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=483)。\n\n---\n\n## 3. 增肌饮食与营养补充\n在视频[《保姆式增肌饮食分享/比例/碳蛋脂算法》](memento://play?platform=bilibili&video_id=BV1ev411w7bs)中，主要讲解了：\n* **水分补充与评判标准**：强调每天摄入 3～3.5 升水的重要性，并介绍通过尿液颜色判断身体水合状态的方法[23:18](memento://play?platform=bilibili&video_id=BV1ev411w7bs&t=1398)。\n* **七大营养素与蔬菜摄入**：提醒增肌者不能只关注蛋白质和米饭，还需要通过多色蔬菜补充维矿和抗氧化物质以帮助身体恢复[23:48](memento://play?platform=bilibili&video_id=BV1ev411w7bs&t=1428)。\n\n---\n\n如果您想询问某具体视频的详细内容，请提供具体的视频名称或主题。",
+      "layered_tools": [
+        "lookup_documents",
+        "lookup_documents",
+        "summarize_document",
+        "summarize_document"
+      ],
+      "flat_tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "layered_tools_unique": [
+        "lookup_documents",
+        "summarize_document"
+      ],
+      "flat_tools_unique": [
+        "search_knowledge"
+      ],
+      "layered_called_lookup": true,
+      "layered_called_summarize": true,
+      "layered_latency_ms": 16401.9,
+      "flat_latency_ms": 12934.4,
+      "layered_error": null,
+      "flat_error": null,
+      "layered_score": 5,
+      "flat_score": 2,
+      "winner": "layered",
+      "brief_reason": "Answer A directly and accurately captures all key points from an engineering perspective, whereas Answer B incorrectly claims no video was specified and includes irrelevant content.",
+      "judge_error": null,
+      "assignment": {
+        "A": "layered",
+        "B": "flat"
+      }
+    }
+  ],
+  "samples": [
+    {
+      "id": "q018",
+      "question": "这篇演讲的主要内容是什么？",
+      "notes": "苏姿丰结合在MIT的求学与个人职业经历，鼓励毕业生勇敢面对难题、发挥工程师本能并在AI时代创造属于自己的运气",
+      "layered_score": 5,
+      "flat_score": 3,
+      "winner": "layered",
+      "brief_reason": "Answer B covers all key reference points including Lisa Su's MIT/career experiences, engineering instincts, facing challenges, and creating luck, whereas Answer A omits her personal background and specific key themes.",
+      "layered_answer": "这篇演讲是 **AMD CEO 苏姿丰（Lisa Su）在麻省理工学院（MIT）毕业典礼上的演讲**，核心内容如下：\n\n* **求学与校训影响**：回顾了自己在 MIT 从本科到博士的求学历程，分享了 MIT “手脑并用（Mens et Manus）” 的校训如何塑造了她的工程师直觉，并在职业生涯中持续产生深远影响。\n* **职业经历与挑战**：结合在 IBM 和 AMD 的工作与领导经历，鼓励毕业生不要害怕困难，要勇敢迎难而上、应对最艰难的挑战，以此创造属于自己的机遇与运气。\n* **AI 的未来与使命**：阐述了 AI 在医疗等众多领域蕴藏的巨大潜力，并强调**技术本身无法决定未来**，只有兼具使命感与责任感的人才能引领时代的变革与发展。",
+      "flat_answer": "这篇演讲是 **AMD CEO 苏姿丰（Lisa Su）在麻省理工学院（MIT）2026届毕业典礼上的致辞**。\n\n演讲的主要内容围绕 **AI 技术变革、技术与人的关系、以及对毕业生的寄语** 展开，核心要点如下：\n\n---\n\n## 1. 技术与人的关系：AI 无法决定要解决什么问题\n苏姿丰指出，未来 10 年的技术发现将超越过去 30 年的总和，但**决定未来走向的并非技术本身，而是优秀的人**。\n> 无论 AI 多么强大，[00:05 AI 无法决定哪些问题值得去解决](memento://play?platform=youtube&video_id=vkpS7WztTMc&t=5)。世界不仅需要掌握强力工具的人，更需要有方向感、判断力和勇气、明确知道“工具该用于何处”的人。\n\n---\n\n## 2. 面对未知与困难的信念\n作为 MIT 校友，她鼓励 graduates 保持信心与面对未知的勇气：\n> 在未来的岁月里，你一定会走进某个自己完全摸不着头脑的房间或领域，但要记住：[14:42 你以前就经历过这种时刻，去弄懂它、解决它](memento://play?platform=youtube&video_id=vkpS7WztTMc&t=882)。\n\n---\n\n## 3. 祝福与表达感谢\n* **向亲友致谢：** 提醒毕业生感谢一路支持和陪伴他们的家人与爱人，[14:24 这份成就同样属于他们](memento://play?platform=youtube&video_id=vkpS7WztTMc&t=864)。\n* **对毕业生的祝贺：** [14:59 表达作为校友的自豪与深切祝福](memento://play?platform=youtube&video_id=vkpS7WztTMc&t=899)，祝贺 2026 届全体毕业生。"
+    },
+    {
+      "id": "q030",
+      "question": "这篇视频主要为健身新手讲解了哪些核心理论与训练建议？",
+      "notes": "提高心肺、筛查问题、熟悉动作模式、高频中等强度一分化训练以及评估BMI与体脂率，并附带一套适合新手的训练计划",
+      "layered_score": 5,
+      "flat_score": 4,
+      "winner": "layered",
+      "brief_reason": "Answer B covers all key points from the rubric including the assessment of BMI and body fat percentage, whereas Answer A misses the BMI/body fat evaluation point.",
+      "layered_answer": "基于视频内容，凯小王为健身新手梳理了 **五大核心认知理论**，并结合这些理论提供了一套具体可操作的 **训练建议与计划**，旨在帮助小白安全、高效地入门。\n\n---\n\n## 核心认知理论\n\n在正式开始力量训练前，新手需要明确以下 5 点核心认知：\n\n1. **心肺功能是运动的基石**：不论是增肌还是减脂，刚进健身房都应先从有氧运动开始提升心肺。良好的心肺功能不仅能提高运动表现，还能在力量训练中有效防止低血糖的发生 [[00:03] 心肺重要性](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=3).\n2. **筛查并改善身体问题**：大部分人由于长期久坐，普遍存在关节活动度受限（如髋关节、足背屈）和体态问题，盲目上重量极易受伤。\n3. **重视动作模式与肌肉记忆的积累**：健身动作需要像练习篮球投篮一样通过成千上万次的重复来建立肌肉记忆。新手不要心急，应沉浸于动作细节，通过重复来掌握正确的发力 [[06:33] 熟悉动作模式](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=393).\n4. **高频中等强度的“一分化训练”**：新手由于神经募集肌肉的能力较差，无法在单次训练中达到极高强度，因此不适用大神的低频力竭训练。相反，**高频率、中等强度的一分化全身训练**能积累更多重复次数，最适合新手快速进步 [[08:03] 一分化理论](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=483).\n5. **结合 BMI 与体脂率评估身材与方向**：通过“田字格”精准定位自己。例如，“高BMI、高体脂”的人完全可以同时进行增肌和减脂；而体重轻但体脂高的“瘦胖子”（低BMI、高体脂）不应盲目节食或大量有氧，而应通过力量训练来塑造肌肉形态 [[10:33] 增肌减脂与身材评估](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=633)。\n\n---\n\n## 新手训练建议与计划\n\n视频提供了一套适合新手执行 **1-2个月** 的一分化全身训练计划，频率为 **练二歇一** 或 **练一歇一**。每个动作做 **3组**（第一组15次，后两组各12次），**每组保留 2-3 次余量，切记不要推到绝对力竭** [[17:33] 计划概述与卧推](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=1053)。\n\n为了安全避坑，计划中特意用**稳定性高、轨迹固定的器械**代替了高难度的自由重量动作：\n\n* **胸部（卧推）**：作为上肢大复合动作以调动大肌肉群。注意不要含胸，肘关节不要超伸锁死，杠铃推到最后应垂直于肩部上方 [[17:33] 卧推要领](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=1053)。\n* **背部（坐姿龙门架划船）**：*替代俯身杠铃划船或硬拉*。因为新手后链稳定性不足，俯身极易导致腰酸。坐姿龙门架划船能减轻腰椎压力，高效募集背部肌肉，感受肩胛的内收与下回旋 [[22:03] 坐姿划船](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=1323)。\n* **腿部（倒蹬/腿举）**：*替代自由深蹲*。针对新手髋关节和足背屈活动度受限的问题，倒蹬器械安全性高、腰椎压力极低。**注意：** 蹬起时膝盖绝对不能完全锁死超伸，下放时腰部要紧贴靠背，不能为了追求过深而让腰部离开椅面 [[24:03] 倒蹬要领](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=1443)。\n* **肩部（史密斯推肩）**：*替代侧平举*。侧平举力臂长且需要极高的肩胛控制，新手容易斜方肌代偿。史密斯推肩轨迹固定，小臂应放在肩胛面（与身体呈约15度夹角），下放至鼻子高度即可，向上推至肘关节微屈 [[26:33] 史密斯推肩](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=1593)。\n* **手臂与核心**：计划还包含杠铃弯举、龙门架下压及核心综合训练 [[17:33] 计划概述](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=1053)。\n\n**关于减脂的额外建议：** \n如果以减脂为主要目标，可以在这套力量计划结束后加做有氧，或者在早上做有氧；但不建议新手刚开始就尝试“空腹有氧”，以防发生低血糖的危险 [[16:33] 减脂有氧建议](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=993)。",
+      "flat_answer": "根据视频讲解，新手健身的核心理论与训练建议主要包含以下 **4 个核心理论** 与具体的 **训练计划建议**：\n\n---\n\n## 核心理论与原则\n\n### 1. 优先建立心肺基础，避免高风险有氧\n* **核心观点**：有氧运动是所有运动的基础。良好的心肺功能不仅能提升运动表现，还能提高安全性，防止训练中出现低血糖 [00:03](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=3)。\n* **避坑建议**：新手切忌盲目尝试高强度的 HIIT、塔巴塔或跳跃类爆发力训练，这在缺乏关节稳定性和动作模式时风险极高 [01:03](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=63)。\n* **推荐心率区间**：建议控制在 **50%–60% 最大心率**（最大心率 ≈ $220 - \\text{年龄}$），大体重人群可从游泳、慢走过渡到快走 [01:03](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=63)。\n\n### 2. 训练前筛查基础身体问题\n* **核心观点**：关节活动度和稳定性决定了训练效果 [02:03](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=123)。\n* **建议**：训练前要先评估是否存在圆肩驼背、骨盆前倾、腰椎问题或足背屈受限等情况，纠正或避开高危动作后再进行强度训练 [02:03](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=123)。\n\n### 3. 重视动作模式的积累\n* **核心观点**：健身动作是一种肌肉记忆，需要重复数百上千次才能真正掌握 [06:33](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=393)。\n* **建议**：训练时要沉浸集中，关注发力细节与收缩感，切忌盲目追求大重量，动作变形容易导致伤病 [06:33](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=393)。\n\n### 4. 采用“高频中等强度”的一分化训练\n* **核心观点**：新手肌肉募集能力较弱，局部刺激不深，不需要套用大神的低频高强度训练（如五分化或绝对极限力竭）[08:03](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=483)。\n* **建议**：建议使用**一分化训练**（全身训练），以高频率（如一周 4–5 次，练一歇一或练二歇一）和中等强度积累动作次数，熟练后再过渡到两分化或三分化 [08:03](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=483)。\n\n---\n\n## 新手 1-2 个月训练计划建议\n\n视频建议新手优先使用安全性高、轨迹固定的器械，避开对腰椎剪切力大或要求极高稳定性的动作 [17:33](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=1053)：\n\n* **胸部（卧推）**：大复合动作，建议做 3 组（15次 / 12次 / 12次），每组保留 2-3 次余量不力竭，避免关节锁死 [17:33](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=1053)。\n* **背部（坐姿龙门架划船）**：相比俯身杠铃划船，龙门架坐姿划船腰椎压力低，能更安全高效地感受背部收缩 [22:03](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=1323)。\n* **腿部（倒蹬/腿举）**：替代自由深蹲/硬拉，对受限的髋关节与足背屈更加友好，腰椎更安全；注意蹬起时膝盖绝对不能过伸锁死 [24:03](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=1443)。\n* **肩部（史密斯推肩）**：轨迹固定，比侧平举更少出现斜方肌代偿，能在肩胛面内安全提高肩部力量 [26:33](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=1593)。\n* **手臂与核心**：搭配杠铃弯举、龙门架下压及核心综合训练 [17:33](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=1053)。"
+    },
+    {
+      "id": "q044",
+      "question": "这期视频的主要内容是什么？",
+      "notes": "从底层工程视角梳理并讲解从大模型（LLM）到 Agent Skill 等核心 AI 概念的底层逻辑与关联",
+      "layered_score": 5,
+      "flat_score": 2,
+      "winner": "layered",
+      "brief_reason": "Answer A directly and accurately captures all key points from an engineering perspective, whereas Answer B incorrectly claims no video was specified and includes irrelevant content.",
+      "layered_answer": "这期视频（**《从 LLM 到 Agent Skill，一期视频带你打通底层逻辑！》**）从工程视角出发，系统且通俗地拆解了当前 AI 领域的核心概念与底层架构，主要涵盖以下几个核心模块：\n\n---\n\n## 核心内容大纲\n\n* **LLM 的底层运行逻辑**  \n  剖析大语言模型的本质，讲解基于 Transformer 的“文字接龙”预测机制。\n\n* **Tokenizer 与 Token 计算**  \n  介绍 Tokenizer 如何对文本进行编码与解码，以及 Token 消耗与计算的具体原理。\n\n* **Context 与记忆机制**  \n  讲解 Context（上下文）与 Context Window（上下文窗口）如何为大模型提供临时记忆能力。\n\n* **Prompt 工程与约束**  \n  对比 User Prompt 与 System Prompt 的作用，说明如何控制与约束大模型的输出行为。\n\n* **工具调用与 MCP 协议**  \n  阐述模型如何与外部环境交互（Tool Calling），以及统一工具接入标准的 **MCP (Model Context Protocol)** 协议。\n\n* **Agent 与 Agent Skill**  \n  深入讲解具备自主规划与工具调用能力的 Agent，以及如何通过说明文档控制 Agent 行为规则的 Agent Skill。\n\n---\n\n总的来说，这期视频帮助观众打通了从基础语言模型到复杂 Agent 应用落地的完整技术认知体系。",
+      "flat_answer": "您没有指定具体的视频。知识库中包含多期不同主题的视频，主要包括以下几内容方向：\n\n## 1. 人工智能与大模型底层逻辑\n在视频[《从 LLM 到 Agent Skill，一期视频带你打通底层逻辑！》](memento://play?platform=bilibili&video_id=BV1E7wtzaEdq)中，主要讲解了：\n* **Context Window（上下文窗口）**：介绍了上下文窗口的概念及主流大模型（如 GPT-4.5、Gemini 1.5 Pro、Claude 3.5 Sonnet）的 Token 容量范围[10:14](memento://play?platform=bilibili&video_id=BV1E7wtzaEdq&t=614)。\n* **RAG（检索增强生成）**：讲解了面对超长文档时，如何通过 RAG 抽取出最相关的片段传给大模型，避免超出窗口限制并降低成本[11:14](memento://play?platform=bilibili&video_id=BV1E7wtzaEdq&t=674)。\n* **Prompt（提示词）与 Prompt 工程**：解释了 Prompt 的定义以及清晰表达的重要性[11:45](memento://play?platform=bilibili&video_id=BV1E7wtzaEdq&t=705)，并区分了 User Prompt（用户提示词）与 System Prompt（系统提示词）的区别[13:15](memento://play?platform=bilibili&video_id=BV1E7wtzaEdq&t=795)。\n\n---\n\n## 2. 健身训练（新手一分化训练）\n在视频[《【新手入门】帮你省去50节私教费！一分化训练 理论+计划+讲解》](memento://play?platform=bilibili&video_id=BV14v4y1G7A3)中，主要针对健身新手讲解了：\n* **动作模式与重复积累**：强调健身需要静心并积累足够的重复次数来建立肌肉记忆，而不是急于使用大重量[06:33](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=393)。\n* **高频中等强度原则**：说明新手为什么适合做高频中等强度的一分化训练，帮助肌肉建立募集感并避免伤病[08:03](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=483)。\n\n---\n\n## 3. 增肌饮食与营养补充\n在视频[《保姆式增肌饮食分享/比例/碳蛋脂算法》](memento://play?platform=bilibili&video_id=BV1ev411w7bs)中，主要讲解了：\n* **水分补充与评判标准**：强调每天摄入 3～3.5 升水的重要性，并介绍通过尿液颜色判断身体水合状态的方法[23:18](memento://play?platform=bilibili&video_id=BV1ev411w7bs&t=1398)。\n* **七大营养素与蔬菜摄入**：提醒增肌者不能只关注蛋白质和米饭，还需要通过多色蔬菜补充维矿和抗氧化物质以帮助身体恢复[23:48](memento://play?platform=bilibili&video_id=BV1ev411w7bs&t=1428)。\n\n---\n\n如果您想询问某具体视频的详细内容，请提供具体的视频名称或主题。"
+    }
+  ],
+  "notes": [
+    "Blind LLM-as-judge: answers randomized as A/B; scores mapped back to layered/flat.",
+    "Flat agent has only search_knowledge; Layered has search + lookup + summarize + propose_memory.",
+    "Docs lacking L2/L3 tags: ['BV1ev411w7bs', 'P-NmMX9rlYQ', 'oYxTTirKY8M']",
+    "Judge.complete called via asyncio.to_thread to avoid nested event loop."
+  ],
+  "qdrant_point_count": 323,
+  "smoke_embed_dim": 1024
+}
