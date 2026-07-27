@@ -15,13 +15,30 @@ Memento RAG 基准测试：在一个 50 视频 / 2040 chunks 的知识库上评�
 
 ### a. Embedding 服务（:8003）
 
-位于 `services/embedding/`。**默认 CPU**；Apple Silicon 必须覆盖为 `mps` 才能用 GPU：
+位于 `services/embedding/`。`run.sh` 里 `EMBEDDING_DEVICE="${EMBEDDING_DEVICE:-cpu}"` —— **不 export 覆盖就跑 CPU、很慢**。`server.py` 的 `_get_device()` 识别三种设备，必须在起 server 前 export 该 env var：
+
+| `EMBEDDING_DEVICE` | 平台 | 说明 |
+|---|---|---|
+| `cpu`（默认） | 任意 | 纯 CPU；`run.sh` 不覆盖时的兜底 |
+| `mps` | Apple Silicon | `torch.backends.mps.is_available()` 为真时用 GPU，否则 warning 回退 cpu |
+| `cuda` | NVIDIA GPU | 须在 embedding venv 装好 CUDA 版 torch；`torch.cuda.is_available()` 为真时用 GPU。**若为假，server 打印 warning 并回退 cpu —— 别让下一 session 误以为在跑 GPU** |
+
+各平台覆盖命令（在 worktree 根目录执行）：
 
 ```
+# NVIDIA GPU（须先在 services/embedding/.venv 装 CUDA 版 torch）
+EMBEDDING_DEVICE=cuda bash services/embedding/run.sh
+
+# Apple Silicon GPU
 EMBEDDING_DEVICE=mps bash services/embedding/run.sh
+
+# CPU（默认）
+EMBEDDING_DEVICE=cpu bash services/embedding/run.sh   # 或直接 bash services/embedding/run.sh
 ```
 
-`run.sh` 里 `EMBEDDING_DEVICE="${EMBEDDING_DEVICE:-cpu}"` —— 不覆盖会跑 CPU、很慢。
+> 本轮基线（§7）embedding 跑的是 `mps`（见 `SUMMARY.md`）。
+> benchmark 里只有 embedding 是本地 GPU 相关（chat 模型在远端）。GPU 主要利好 01/03 的检索 / 延迟；02/04 受远端 chat 端点瓶颈，GPU 影响小；05 不调 embedding。注意 03 的真正瓶颈是 `HybridRetriever` 的 BM25 scroll（见 §6），非 embedding 侧。
+
 起来后验证：
 
 ```
@@ -130,7 +147,7 @@ PYEOF
 ## 5. 跑分顺序与命令
 
 按 **01 → 03 → 04 → 02 → 05** 顺序（先快后慢，便于早发现环境问题）。
-**01/03/05 不调 chat 模型（快，分钟级）；02/04 调 chat 模型（慢，各约 25–45 min）。**
+**01/03/05 不调 chat 模型（无 429/限流风险）：01 分钟级、05 秒级，但 03 ≈ 25 min（BM25 scroll 瓶颈，见 §6）；02/04 调 chat 模型（慢，各约 25–45 min）。**
 
 每个 phase 都先 `source bench_chat.env`（对不调 chat 的 phase 也无害，统一流程）：
 
@@ -142,7 +159,7 @@ python3 -m benchmarks.<module> 2>&1 | tee benchmarks/results/<NN>_run.log
 | 顺序 | module | 写入文件 | 调 chat? | 大致耗时 |
 |---|---|---|---|---|
 | 01 | `retrieval_ab` | `results/01_retrieval_ab.{md,json}` | 否 | 分钟级 |
-| 03 | `latency` | `results/03_latency.{md,json}` | 否 | 分钟级 |
+| 03 | `latency` | `results/03_latency.{md,json}` | 否 | ~25 min |
 | 04 | `routing_accuracy` | `results/04_routing.{md,json}` | 是 | ~26 min |
 | 02 | `architecture_ab` | `results/02_architecture.{md,json}` | 是 | ~40 min |
 | 05 | `scale_snapshot` | `results/05_scale.{md,json}` | 否 | 秒级 |
