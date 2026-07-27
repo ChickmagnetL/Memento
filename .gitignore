@@ -53,6 +53,7 @@ data/
 # Secrets
 .env
 .env.local
+benchmarks/bench_chat.env
 config.local.yaml
 config.local.yaml.bak
 private/
@@ -71,3 +72,6 @@ backend/build/
 
 # Desktop packaging artifacts
 desktop/resources/
+
+# Benchmark corpus (rebuildable via ingest_videos.py)
+bench_data/

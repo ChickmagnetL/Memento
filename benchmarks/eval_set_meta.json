@@ -1,0 +1,26 @@
+{
+  "n_total": 145,
+  "by_type": {
+    "detail": 53,
+    "multi_evidence": 19,
+    "multi_hop": 10,
+    "summary": 49,
+    "unanswerable": 9,
+    "memory": 5
+  },
+  "by_language": {
+    "zh": 65,
+    "en": 77,
+    "mixed": 3
+  },
+  "n_videos_covered": 50,
+  "n_summary_eligible_true": 49,
+  "n_summary_eligible_false": 0,
+  "difficulty_dist": {
+    "medium": 116,
+    "easy": 12,
+    "hard": 17
+  },
+  "corpus_videos": 50,
+  "frozen_at": "2026-07-27"
+}
