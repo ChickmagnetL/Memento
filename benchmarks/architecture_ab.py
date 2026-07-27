@@ -29,6 +29,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "benchmarks"))
 sys.path.insert(0, str(ROOT / "backend"))
 import bench_env  # noqa: F401  # sets env BEFORE other memento imports
+from routing_accuracy import agent_run_with_retry  # noqa: E402  # parity with 04 routing retry
 
 from pydantic_ai import Agent, RunContext  # noqa: E402
 
@@ -457,10 +458,15 @@ def write_md(payload: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-async def run_one_agent(agent, question: str, deps: ChatDeps) -> tuple[str, list[str], str | None]:
-    """Run agent; return (answer_text, tools, error)."""
+async def run_one_agent(agent, question: str, deps: ChatDeps, qid: str = "") -> tuple[str, list[str], str | None]:
+    """Run agent; return (answer_text, tools, error).
+
+    Retries transient HTTP/timeout errors via routing_accuracy.agent_run_with_retry
+    (backoff 30/60/120s, MAX_RETRIES=3, same retryable set as 04 routing) so
+    Layered scores aren't inflated by empty replies on transient failures.
+    """
     try:
-        result = await agent.run(question, deps=deps)
+        result = await agent_run_with_retry(agent, question, deps, qid=qid)
         answer = str(getattr(result, "output", "") or "")
         tools = extract_tool_names(result)
         return answer, tools, None
@@ -470,13 +476,58 @@ async def run_one_agent(agent, question: str, deps: ChatDeps) -> tuple[str, list
 
 
 async def timed_run(
-    agent, question: str, deps: ChatDeps
+    agent, question: str, deps: ChatDeps, qid: str = ""
 ) -> tuple[str, list[str], str | None, float]:
     """Run agent with wall latency; return (answer, tools, error, latency_ms)."""
     t0 = time.perf_counter()
-    answer, tools, err = await run_one_agent(agent, question, deps)
+    answer, tools, err = await run_one_agent(agent, question, deps, qid=qid)
     ms = (time.perf_counter() - t0) * 1000.0
     return answer, tools, err, ms
+
+
+# Smoke run: retry transient HTTP/timeout errors; never block the full suite.
+SMOKE_MAX_ATTEMPTS = 3
+SMOKE_SLEEP_S = 60.0
+SMOKE_RETRY_KEYWORDS = (
+    "timeout", "timed out", "connect", "connection",
+    "temporarily", "unavailable", "524", "502", "503", "429",
+)
+
+
+def _smoke_is_retryable(exc: BaseException) -> bool:
+    code = getattr(getattr(exc, "status_code", None), "value", None) or getattr(
+        exc, "status_code", None
+    )
+    if isinstance(code, int) and code in {429, 500, 502, 503, 504, 524}:
+        return True
+    text = f"{type(exc).__name__}: {exc}".lower()
+    return any(k in text for k in SMOKE_RETRY_KEYWORDS)
+
+
+async def smoke_run_with_retry(agent, prompt: str, deps, label: str):
+    """Smoke call with up to 3 attempts. Returns result or None on final failure.
+
+    3 次尝试，间隔 60s；仅在 transient (524/502/timeout/connection) 时重试。
+    全部失败返回 None —— smoke 不阻塞主套件。
+    """
+    last_exc: BaseException | None = None
+    for attempt in range(SMOKE_MAX_ATTEMPTS):
+        try:
+            return await agent.run(prompt, deps=deps)
+        except Exception as exc:
+            last_exc = exc
+            if attempt + 1 >= SMOKE_MAX_ATTEMPTS or not _smoke_is_retryable(exc):
+                print(
+                    f"WARNING: smoke[{label}] attempt {attempt + 1}/{SMOKE_MAX_ATTEMPTS} "
+                    f"failed: {type(exc).__name__}: {exc}"
+                )
+                return None
+            print(
+                f"smoke[{label}] attempt {attempt + 1}/{SMOKE_MAX_ATTEMPTS} failed, "
+                f"sleeping {SMOKE_SLEEP_S:.0f}s: {type(exc).__name__}: {exc}"
+            )
+            await asyncio.sleep(SMOKE_SLEEP_S)
+    return None
 
 
 async def main_async(
@@ -552,21 +603,37 @@ async def main_async(
         judge = build_chat_completion_client(settings)
         print(f"judge={chat_model_name} @ {chat_endpoint}")
 
-        # Smoke: one layered + one flat call
+        # Smoke: one layered + one flat call (non-blocking; suite continues on failure)
         print("smoke layered agent.run ...")
         t0 = time.perf_counter()
-        smoke_l = await layered_agent.run("一句话介绍你自己", deps=deps)
-        print(
-            f"smoke layered ok latency={(time.perf_counter() - t0) * 1000:.0f}ms "
-            f"tools={extract_tool_names(smoke_l)}"
+        smoke_l = await smoke_run_with_retry(
+            layered_agent, "一句话介绍你自己", deps, label="layered"
         )
+        if smoke_l is not None:
+            print(
+                f"smoke layered ok latency={(time.perf_counter() - t0) * 1000:.0f}ms "
+                f"tools={extract_tool_names(smoke_l)}"
+            )
+        else:
+            print(
+                "WARNING: smoke[layered] failed all retries; suite CONTINUES "
+                "(layered/flat agents will surface per-question errors)."
+            )
         print("smoke flat agent.run ...")
         t0 = time.perf_counter()
-        smoke_f = await flat_agent.run("一句话介绍你自己", deps=deps)
-        print(
-            f"smoke flat ok latency={(time.perf_counter() - t0) * 1000:.0f}ms "
-            f"tools={extract_tool_names(smoke_f)}"
+        smoke_f = await smoke_run_with_retry(
+            flat_agent, "一句话介绍你自己", deps, label="flat"
         )
+        if smoke_f is not None:
+            print(
+                f"smoke flat ok latency={(time.perf_counter() - t0) * 1000:.0f}ms "
+                f"tools={extract_tool_names(smoke_f)}"
+            )
+        else:
+            print(
+                "WARNING: smoke[flat] failed all retries; suite CONTINUES "
+                "(layered/flat agents will surface per-question errors)."
+            )
         if smoke_only:
             print("smoke_only=True, exiting after smoke")
             return 0
@@ -617,8 +684,8 @@ async def main_async(
                     (layered_answer, layered_tools, layered_err, layered_ms),
                     (flat_answer, flat_tools, flat_err, flat_ms),
                 ) = await asyncio.gather(
-                    timed_run(layered_agent, question, deps),
-                    timed_run(flat_agent, question, deps),
+                    timed_run(layered_agent, question, deps, qid=qid),
+                    timed_run(flat_agent, question, deps, qid=qid),
                 )
 
                 print(

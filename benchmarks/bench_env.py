@@ -71,11 +71,11 @@ def _apply_env() -> None:
 
     source_db = os.environ.get("SOURCE_MEMENTO_DB") or _DEFAULT_SOURCE_DB
     chat = _load_chat_config(source_db)
-    if chat.get("endpoint"):
+    if chat.get("endpoint") and "MODELS__CHAT__ENDPOINT" not in os.environ:
         os.environ["MODELS__CHAT__ENDPOINT"] = str(chat["endpoint"])
-    if chat.get("model"):
+    if chat.get("model") and "MODELS__CHAT__MODEL" not in os.environ:
         os.environ["MODELS__CHAT__MODEL"] = str(chat["model"])
-    if chat.get("api_key"):
+    if chat.get("api_key") and "MODELS__CHAT__API_KEY" not in os.environ:
         os.environ["MODELS__CHAT__API_KEY"] = str(chat["api_key"])
 
     cookie = _load_bilibili_cookie(source_db)

@@ -1,0 +1,3806 @@
+{
+  "timestamp": "2026-07-27 09:02:31 UTC",
+  "chat_model": "mimo-v2.5-pro",
+  "chat_endpoint": "https://fufu.iqach.top/v1",
+  "embedding_model": "Qwen/Qwen3-Embedding-0.6B",
+  "embedding_endpoint": "http://localhost:8003/v1",
+  "n_total": 145,
+  "n_correct": 123,
+  "n_errors": 0,
+  "n_error_predictions": 0,
+  "overall_accuracy": 0.8482758620689655,
+  "expected_distribution": {
+    "search": 82,
+    "lookup+summarize": 49,
+    "refuse": 9,
+    "memory": 5
+  },
+  "confusion_matrix": {
+    "search": {
+      "search": 81,
+      "lookup+summarize": 1,
+      "memory": 0,
+      "refuse": 0
+    },
+    "lookup+summarize": {
+      "search": 9,
+      "lookup+summarize": 40,
+      "memory": 0,
+      "refuse": 0
+    },
+    "memory": {
+      "search": 1,
+      "lookup+summarize": 1,
+      "memory": 2,
+      "refuse": 1
+    },
+    "refuse": {
+      "search": 4,
+      "lookup+summarize": 5,
+      "memory": 0,
+      "refuse": 0
+    }
+  },
+  "per_class": {
+    "search": {
+      "precision": 0.8526315789473684,
+      "recall": 0.9878048780487805,
+      "support": 82,
+      "tp": 81,
+      "predicted": 95
+    },
+    "lookup+summarize": {
+      "precision": 0.851063829787234,
+      "recall": 0.8163265306122449,
+      "support": 49,
+      "tp": 40,
+      "predicted": 47
+    },
+    "memory": {
+      "precision": 1.0,
+      "recall": 0.4,
+      "support": 5,
+      "tp": 2,
+      "predicted": 2
+    },
+    "refuse": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "support": 9,
+      "tp": 0,
+      "predicted": 1
+    }
+  },
+  "failures": [
+    {
+      "id": "q_detail_b5H8D_wD2AY_01",
+      "question": "In this lecture on how central banks determine interest rates, which regional Federal Reserve Bank president is the only one who never rotates off the interest-rate-setting committee, and what reason does the speaker give for that exception?",
+      "expected": "search",
+      "predicted": "lookup+summarize",
+      "tools": [
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "lookup_documents"
+      ],
+      "error": null
+    },
+    {
+      "id": "q_summary_185XGEMefgc_01",
+      "question": "In the explainer that lays out MCP (Model Context Protocol) as an alternative to traditional APIs for connecting AI agents to tools, what overall argument does it make about how MCP relates to APIs rather than replacing them, and what unresolved challenges does it flag before MCP sees wide adoption?",
+      "expected": "lookup+summarize",
+      "predicted": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "error": null
+    },
+    {
+      "id": "q_summary_3ub8RBE7BC8_01",
+      "question": "In the Renaissance Periodization guide to gaining muscle size that centers on the Stimulus-Recovery-Adaptation cycle, what overall framework does it lay out for how training technique, calories/protein, individual recovery, and genetics each factor into building muscle — and what does it name as the single biggest lever for long-term gains?",
+      "expected": "lookup+summarize",
+      "predicted": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "error": null
+    },
+    {
+      "id": "q_summary_64Zp3tzNbpE_01",
+      "question": "In MIT 6.824 Lecture 6 on fault tolerance with Raft for state machine replication, what problems with prior single-decision designs does the lecture start from, and which Raft mechanisms for elections, log replication, and failure recovery does it develop?",
+      "expected": "lookup+summarize",
+      "predicted": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "error": null
+    },
+    {
+      "id": "q_summary_8BKbu_s8p1Q_01",
+      "question": "In the full day of eating that Jeff Nippard walks through for a lean bulk aimed at building muscle while limiting fat gain, what overall meal-timing and macro strategy does he lay out — from his total daily calorie/macro target down to how he times carbs and protein around and after training?",
+      "expected": "lookup+summarize",
+      "predicted": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "error": null
+    },
+    {
+      "id": "q_summary_Cl0QYkez-BE_01",
+      "question": "In the 2011 Nobel Memorial Prize lectures by Thomas Sargent and Christopher Sims on identifying cause and effect in macroeconomics, what main themes does each laureate develop, and what tools or historical applications do they emphasize?",
+      "expected": "lookup+summarize",
+      "predicted": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "error": null
+    },
+    {
+      "id": "q_summary_PHe0bXAIuk0_01",
+      "question": "In Ray Dalio's roughly half-hour 'How the Economic Machine Works' explanation, what three main forces drive the economy, and how does he describe a healthy ('beautiful') deleveraging?",
+      "expected": "lookup+summarize",
+      "predicted": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "error": null
+    },
+    {
+      "id": "q_summary_RmVL30sS2yU_01",
+      "question": "In Daron Acemoglu's 2024 Nobel Prize lecture on inclusive versus extractive institutions, what main arguments does he make about colonial origins of prosperity and how the same framework applies to AI and automation choices today?",
+      "expected": "lookup+summarize",
+      "predicted": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "error": null
+    },
+    {
+      "id": "q_summary_cQP8WApzIQQ_01",
+      "question": "MIT 6.824分布式系统课由Robert Morris主讲的那节开篇课——覆盖课程安排、并以MapReduce收尾作为案例研究的那节——里，老师给出的构建分布式系统的核心动机有哪些？课程后续会反复出现的几个交叉主题又是什么？",
+      "expected": "lookup+summarize",
+      "predicted": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "error": null
+    },
+    {
+      "id": "q_summary_wD48p6m8U-8_01",
+      "question": "In David Card's Sveriges Riksbank (Nobel) Prize lecture — the one that traces the rise of design-based empirical methods through his own studies of the Mariel boatlift and the New Jersey/Pennsylvania minimum-wage comparison — what overall arc does he use to make his case for research design in economics?",
+      "expected": "lookup+summarize",
+      "predicted": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "error": null
+    },
+    {
+      "id": "q_unanswerable_global_01",
+      "question": "操作系统做CPU调度的时候，具体用的是什么算法？比如是轮转调度还是优先级调度，视频里有讲过吗？",
+      "expected": "refuse",
+      "predicted": "lookup+summarize",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "lookup_documents",
+        "lookup_documents"
+      ],
+      "error": null
+    },
+    {
+      "id": "q_unanswerable_global_02",
+      "question": "GFS那节课里说，Google的论文一开始就为了避免单点故障，设计了自动故障切换的多副本Master集群，对吗？具体是怎么实现自动切换的？",
+      "expected": "refuse",
+      "predicted": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "error": null
+    },
+    {
+      "id": "q_unanswerable_global_03",
+      "question": "Raft协议里，当节点的日志越攒越多时，是怎么做日志压缩（snapshot）来控制日志体积增长的？",
+      "expected": "refuse",
+      "predicted": "lookup+summarize",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "error": null
+    },
+    {
+      "id": "q_unanswerable_global_04",
+      "question": "数据库为了让查询更快而建的索引，具体是靠什么样的树形数据结构（比如B树）来实现快速查找的？",
+      "expected": "refuse",
+      "predicted": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "error": null
+    },
+    {
+      "id": "q_unanswerable_global_05",
+      "question": "大模型在预训练阶段，具体是通过怎样的训练过程（比如损失函数、反向传播这些机制）一步步学会预测下一个词的？",
+      "expected": "refuse",
+      "predicted": "lookup+summarize",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "lookup_documents",
+        "lookup_documents"
+      ],
+      "error": null
+    },
+    {
+      "id": "q_unanswerable_global_06",
+      "question": "如果训练目标是练力量（比如冲击个人最大重量PR），而不是单纯练维度，那训练量和组数安排该怎么调整？",
+      "expected": "refuse",
+      "predicted": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "error": null
+    },
+    {
+      "id": "q_unanswerable_global_07",
+      "question": "讲MCP和API区别的那期视频里说，MCP的目标就是要彻底取代传统API，以后开发者都不用再关心API了，对吗？",
+      "expected": "refuse",
+      "predicted": "lookup+summarize",
+      "tools": [
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "lookup_documents"
+      ],
+      "error": null
+    },
+    {
+      "id": "q_unanswerable_global_08",
+      "question": "讲Harness Engineering的那期视频里说，决定一个AI系统能不能稳定交付的核心其实是模型能力本身，外围工程只是锦上添花，对吗？",
+      "expected": "refuse",
+      "predicted": "lookup+summarize",
+      "tools": [
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "lookup_documents"
+      ],
+      "error": null
+    },
+    {
+      "id": "q_unanswerable_global_09",
+      "question": "讲Dalio经济机器运作原理的那期视频里说，去杠杆的时候只要一直印钱扩大流动性就没什么风险、不会有副作用，对吗？",
+      "expected": "refuse",
+      "predicted": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "error": null
+    },
+    {
+      "id": "q_memory_global_01",
+      "question": "两周后就要面试了，按我之前跟你说过的复习进度，接下来这几天我应该优先补哪块内容？",
+      "expected": "memory",
+      "predicted": "lookup+summarize",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "search_knowledge",
+        "lookup_documents",
+        "summarize_document",
+        "summarize_document"
+      ],
+      "error": null
+    },
+    {
+      "id": "q_memory_global_04",
+      "question": "面试前最后这三天，你觉得我还要不要再看新的分布式系统相关视频，还是应该做别的事？",
+      "expected": "memory",
+      "predicted": "refuse",
+      "tools": [],
+      "error": null
+    },
+    {
+      "id": "q_memory_global_05",
+      "question": "我今晚下班已经很累了，还想抓紧再补一点分布式系统的内容，你觉得我现在适合看哪种视频？",
+      "expected": "memory",
+      "predicted": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "error": null
+    }
+  ],
+  "per_question": [
+    {
+      "id": "q_detail_-HOzOBmQ5ro_01",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 30231.1,
+      "reply": "根据你知识库里的视频，这个事件讲得非常清楚：\n\n## 2015年1月15日\"瑞郎黑天鹅\"\n\n**背景：** 2011年欧债危机高潮时，瑞郎被过度高估（《经济学人》估算瑞郎兑美元被高估了98%），瑞士央行被迫宣布**欧元兑瑞郎 1.2 的下限**，承诺无限购买外币来守住这个底线，同时把利率降到零。[25:56 瑞士央行设下限](memento://play?platform=youtube&video_id=-HOzOBmQ5ro&t=1556)\n\n**转折：** 之后央行甚至在2014年把利率降到了**负0.75%**，依然压不住瑞郎的升值压力。结果不到一个月后的**2015年1月15日**，瑞士央行突然宣布取消1.2的下限——[26:39 取消下限的决定](memento://play?platform=youtube&video_id=-HOzOBmQ5ro&t=1599)\n\n**结果：** 瑞郎**单日暴涨约15%**。[27:01 瑞郎暴涨15%](memento://play?platform=youtube&video_id=-HOzOBmQ5ro&t=1621)\n\n这次事件堪称外汇市场历史级别的黑天鹅，不少基金因此爆仓倒闭，给交易员们留下了严重的\"后遗症\"。瑞士央行之所以能做到如此突然，是因为它一贯奉行**信息不透明策略**——不像美联储讲求预期管理，瑞士央行的风格就"
+    },
+    {
+      "id": "q_detail_-lcgyCG-olg_01",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 36336.8,
+      "reply": "## \"Greedy Occupations\" — Claudia Goldin 的概念\n\n这个术语来自 2023 年诺贝尔经济学奖得主 **Claudia Goldin** 在她的获奖演讲中的分析。\n\n### 核心定义\n\nGoldin 将**贪婪职业（greedy occupations）**定义为：**隐性时薪随着工作时长（或工作强度）的增加而上升的职业**。也就是说，补偿与投入时间之间不是简单的线性关系——你工作得越多，你每小时的\"有效工资\"就越高，而且这种上升是非线性的、加速的。\n\n[21:33 greedy occupations definition](memento://play?platform=youtube&video_id=-lcgyCG-olg&t=1293)\n\n### 这类职业的特征\n\n根据美国劳工统计局（BLS）的 O*NET 数据，贪婪职业具有以下工作特征：\n\n- 对**面对面沟通（FaceTime）和客户接触**的需求更大\n- 工作高度**相互依赖（interdependent）**，不太可能独立完成\n- 典型代表：**金融、银行、管理、企业及商业类**职业（Goldin 图中的红色方块）\n\n[22:02 greedy occupations characteristics](memento://play?platform=youtube&video"
+    },
+    {
+      "id": "q_detail_185XGEMefgc_01",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 23953.0,
+      "reply": "这个数字来自 YouTube 视频 [MCP vs API: Why traditional APIs are failing AI agents](memento://play?platform=youtube&video_id=185XGEMefgc&t=395)：\n\n> Instead of building **100** custom integrations, you build one MCP interface for any compatible model.\n\n也就是说，在没有统一协议（MCP）的情况下，开发者需要手写 **100** 个独立的定制集成；而有了 MCP 之后，只需构建一个统一接口，就能对接任何兼容的模型。"
+    },
+    {
+      "id": "q_detail_2qf6ry-YjwU_01",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 28449.8,
+      "reply": "根据教练 Jared Feather（IFBB Pro）的说法，对于一个已经非常干（extremely conditioned）的自然选手，从周一到周六上台，执行得当的 peak week 可以让你看起来**好大约 5%**。\n\n原话如下：\n\n> \"I'm gonna quantify it… by **five percent**. Going into the show you can look five percent better. If you're extremely conditioned and you are a flat natural competitor, from Monday to Saturday the show you can look five percent better — it's a thing. Peaking is a thing.\"\n\n[05:34 Jared 量化 peak week 效果约 5%](memento://play?platform=youtube&video_id=2qf6ry-YjwU&t=334)\n\n不过他也强调了两个前提：\n\n1. **不要在 peak week 尝试疯狂的新操作**——如果赛前一周你已经状态很好了，就不该做太多大幅度的调整，否则可能弄巧成拙。[05:22 \"not a ton of mani"
+    },
+    {
+      "id": "q_detail_31YTH1ywbS8_01",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 33661.9,
+      "reply": "## 委托监督（Delegated Monitoring）\n\n\"委托监督\"是 Douglas Diamond（2022年诺贝尔经济学奖得主）在其博士论文中提出的金融中介核心理论。它的出发点是：\n\n> 如果企业需要向大量分散的小额出借人借款，每个出借人亲自去监督借款人的成本会非常高——假设监督一笔贷款要花100美元，1万笔贷款就要重复支付1万次，这显然不经济。\n\n正如 Diamond 在诺贝尔奖演讲中所讲：\n\n- [14:03 如果让每个投资者都去监督，费用会极其愚蠢地高](memento://play?platform=youtube&video_id=31YTH1ywbS8&t=843)——直接融资下的监督成本过高。\n- [14:41 如果不监督，最优合同只能是无监督债务合同，但在不确定性足够大的情况下，借款人根本借不到钱](memento://play?platform=youtube&video_id=31YTH1ywbS8&t=881)。\n\n### 制度安排\n\n解决方案是：**不再让所有1万个投资者各自监督，而是将监督职能委托给一个单一的中介机构**——\n\n> [14:56 \"我们把监督委托给一个叫作 banker 的一方\"](memento://play?platform=youtube&video_id=31YTH1ywbS8&t=896)\n\n这个中介机构最终表现为**"
+    },
+    {
+      "id": "q_detail_3ub8RBE7BC8_01",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 15061.7,
+      "reply": "根据搜索结果，这位主持人建议的每日热量盈余甜点区间是 **250 到 500 大卡**。\n\n具体来说，在 [16:44 讲解热量盈余](memento://play?platform=youtube&video_id=3ub8RBE7BC8&t=1004) 这段，他提到：\n\n> \"for most folks their best muscle growth will be at a slight surplus — so for many people that's an extra **250 to 500 calories per day** than they normally eat\"\n\n也就是说，你不需要疯狂地\"脏增肌\"（dirty bulk），只需要在日常维持热量的基础上每天多吃 **250–500 kcal**，就能在最大化肌肉合成的同时把脂肪增长控制在合理范围内。配合他后面提到的\"75% 来自健康食物\"原则，这个温和盈余对大多数人来说是最实用的增肌饮食策略。\n\n---\n\n💡 这个数字和你之前记录的\"lean bulk\"增肌目标完全吻合——如果需要，我可以帮你把这个区间的热量换算成你目前体重对应的蛋白质/碳水/脂肪克数。"
+    },
+    {
+      "id": "q_detail_64Zp3tzNbpE_01",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 30355.9,
+      "reply": "Raft 对每个 term 的领导权有非常明确的约束。根据 MIT 6.824 Lecture 6 的讲解：\n\n### 每个 term 最多只能有 **一个** leader\n\n> **[48:18 每个 term 最多一个 leader](memento://play?platform=youtube&video_id=64Zp3tzNbpE&t=2898)** — \"each term has at most one leader… for every term there might be no leader during that term or there might be one leader but there cannot be two leaders during the same term.\"\n\n所以一个给定的 term 只有 **两种可能的结局**：\n\n| 结局 | 含义 |\n|------|------|\n| **没有 leader（0 个）** | 该 term 内没有 candidate 获得多数票（比如选票瓜分、网络分区导致投票失败），该 term 结束时 leader 为空 |\n| **恰好一个 leader（1 个）** | 某 candidate 成功拿到多数节点的 yes vote，成为该 term 唯一的 leader |\n\n**不可能出现两"
+    },
+    {
+      "id": "q_detail_8BKbu_s8p1Q_01",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 27230.3,
+      "reply": "根据视频中的说法，这个人（Jeremy Ethier）在为自己远高于体重所需的蛋白质目标辩护时，引用了文献中的上限数据：\n\n> 极高蛋白质摄入在文献中被证明仍能改善体成分，**高达每公斤体重 3.4 克蛋白质**（约每磅 1.5 克以上）。\n\n具体出处如下：\n\n[02:15 开始解释为何故意吃得比体重所需的高](memento://play?platform=youtube&video_id=8BKbu_s8p1Q&t=135) — 他提到自己体重只有 163 磅（约 74 公斤），但蛋白质目标定得更高，理由之一就是文献显示即使到 **3.4 g/kg** 仍然对体成分有正面影响。\n\n所以上限是 **3.4 克/公斤**。"
+    },
+    {
+      "id": "q_detail_BBCp28YF-hg_01",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 41273.7,
+      "reply": "在 Ben Bernanke 的诺贝尔奖讲座中，他将这一概念称为 **外部融资溢价（External Finance Premium，简称 EFP）**。\n\n具体来说，Bernanke 在 [02:26 外部融资溢价定义](memento://play?platform=youtube&video_id=BBCp28YF-hg&t=146) 中解释道：EFP 就是发放一笔贷款的**全部成本**，减去经济中**纯粹的安全利率（pure safe rate of interest）**之后的差额。换言之，它是银行在\"发放贷款\"与\"持有安全证券（如国债）\"之间的额外成本楔子。\n\n那么这个楔子对银行而言代表什么呢？Bernanke 在 [01:53 银行克服信息问题](memento://play?platform=youtube&video_id=BBCp28YF-hg&t=113) 中指出，贷款市场充斥着**信息不对称**问题，银行需要：\n\n- **筛选（screening）** 借款人——要求填写大量表格\n- **监控（monitoring）** 借款人的行为\n- 对资金用途施加**限制**\n- 要求**抵押品（collateral）**\n\n这些筛选和监控活动都消耗真实资源，EFP 正是银行为覆盖这些信息成本而必须获得的**补偿**——否则银行宁可直接去安全的国债市场，而不愿承担放贷"
+    },
+    {
+      "id": "q_detail_BV11o4y1s7VY_01",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 31033.1,
+      "reply": "根据视频《我是如何快速学习一个领域的》，作者分享了他读长文章或论文的方法：\n\n**第一遍的核心原则：忽略所有能忽略的细节，只看大框架。**\n\n具体做法是先找关键性的框架信息，包括：\n- **摘要**：了解最主要的原因\n- **核心数据**：比如关键人物、持仓结构、重要指标等\n- **清晰的脉络**：比如亏损的根本原因是什么，能够快速理解整体逻辑\n\n作者举了研究硅谷银行的例子：他会先找\"一文读懂\"类型的文章，然后快速浏览摘要、核心持仓、净现金流入数据、资产负债表等关键框架信息，目的是先搞清楚\"他为什么亏了\"这个整体脉络。\n\n第一遍读完后，作者会把框架和关键数据摘下来，之后再根据具体想了解的问题，逐步补充细节。这样的好处是避免一开始就陷入细节的汪洋大海中，能够快速建立整体认知。\n\n相关参考：\n- [13:37 作者分享读长文两遍法](memento://play?platform=bilibili&video_id=BV11o4y1s7VY&t=817) - 第一遍忽略细节，只看大框架\n- [14:01 以硅谷银行研究为例](memento://play?platform=bilibili&video_id=BV11o4y1s7VY&t=841) - 先找关键框架信息，再补充细节"
+    },
+    {
+      "id": "q_detail_BV14v4y1G7A3_01",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 43380.1,
+      "reply": "根据你库里这条 B 站视频的内容，**新手一分化计划**的整体设计如下：\n\n---\n\n## 计划总览\n\n频率：**练二歇一** 或 **练一歇一**，一次性练完全身动作，建议执行 **1–2 个月**。\n\n---\n\n## 各动作安排\n\n| 动作 | 组数 × 次数 | 余量/强度 |\n|------|------------|-----------|\n| **卧推** | 3 组：第一组 15 次，第二组 12 次，第三组 12 次 | **保留 2–3 次余量，不要推到力竭** |\n| **坐姿龙门架划船** | 搜索结果中未给出具体组次细节 | — |\n| **倒蹬（腿举）** | 搜索结果中未给出具体组次细节 | — |\n| **史密斯推肩** | 搜索结果中未给出具体组次细节 | — |\n| **杠铃弯举** | 搜索结果中未给出具体组次细节 | — |\n| **龙门架下压** | 搜索结果中未给出具体组次细节 | — |\n| **核心综合训练** | 搜索结果中未给出具体组次细节 | — |\n\n> 每个动作做 **3 组**这一点在视频中被提及（[17:33 每个动作做3组](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=1053)），但只有卧推给出了精确的次数与余量要求。\n\n---\n\n## 卧推的详细要"
+    },
+    {
+      "id": "q_detail_BV1654y1F7fZ_01",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 12618.0,
+      "reply": "找到了！在视频 [10:18 训练记录的习惯](memento://play?platform=bilibili&video_id=BV1654y1F7fZ&t=618) 中，讲者提到：\n\n> \"我从 **2007年** 开始做训练记录的，到现在已经 **16年** 了哈，做了16年的记录了。\"\n\n他把训练日志称为「**最强的训练辅助工具**」，建议大家记录每次训练的重量、组数、每组个数，这样可以用肉眼看到自己的进步。\n\n所以答案是：**2007 年开始记，到拍片时已经连续记了 16 年。**\n\n顺便一提，这个习惯跟你的渐进超负荷训练理念非常契合——有了日志数据，才能真正做到有据可依地加重量、控进度 💪"
+    },
+    {
+      "id": "q_detail_BV1Dm7J6XEEh_01",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 22787.5,
+      "reply": "根据视频中的讲解，《古兰经》全书共 **114 章**，按降示地点可分为两大类：\n\n---\n\n### 一、麦加篇章（标卡其色）—— **86 章**\n\n**主题侧重：精神信仰的建立**\n- 信仰的坚定\n- 真主的唯一性\n- 对历史的纠正\n- 先贤的苦难叙事\n- 核心关注的是\"信仰层面\"的精神建设\n\n> 来源：[26:30 麦加与麦地那篇章分类](memento://play?platform=bilibili&video_id=BV1Dm7J6XEEh&t=1590)\n\n---\n\n### 二、麦地那篇章（标绿色）—— **28 章**\n\n**主题侧重：社会制度的务实建设**\n- 婚姻、遗产、贸易禁令\n- 刑法、税收\n- 战争与战俘处理\n- 异族外交问题\n- 社会道德规范与行为习俗\n- 还出现了密集的**针对犹太教神学的辩论和修正**（因麦地那有三大犹太部落，穆罕默德需在神学和法律上论证自身领袖的合法性）\n\n> 来源：[30:51 麦地那篇章主题](memento://play?platform=bilibili&video_id=BV1Dm7J6XEEh&t=1851)\n\n---\n\n简单来说，**麦加阶段偏\"形而上\"——建信仰，麦地那阶段偏\"形而下\"——建国家**。这也与穆罕默德在两个阶段的处境吻合：麦加时期他是地下传教的精神领袖，迁徙到麦地那后他成了实际的政治统治者，需要立法治理"
+    },
+    {
+      "id": "q_detail_BV1E7wtzaEdq_01",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 20139.3,
+      "reply": "这个固定文件名必须叫做 **`SKILL.md`**，其中 `SKILL` 四个字母全部大写，错一个都不行。\n\n演示视频里是这么说的：\n\n> 进入到这个文件夹里面之后，我们需要新建一个文件，把刚才的内容全部贴进来。重点来了：这个文件名必须叫做 **SKILL.md**，其中 SKILL 是大写，这是 Agent Skill 的硬性规范，算是个接头暗号。如果你随便起别的名字，系统是绝对不会认的。\n>\n> — [27:55 文件命名规范](memento://play?platform=bilibili&video_id=BV1E7wtzaEdq&t=675)\n\n总结一下存放到 Claude Code 磁盘上的两步规则：\n\n1. 在 `~/.claude/skills/` 目录下新建一个**文件夹**，文件夹名必须与 Agent Skill 的 `name` 属性完全一致。\n2. 在该文件夹内新建一个文件，**必须命名为 `SKILL.md`**（全大写 + `.md`），把技能说明文档的内容贴进去保存即可。\n\n写成 `skill.md`、`Skill.md` 或其他任何形式都不会被 Claude Code 识别。"
+    },
+    {
+      "id": "q_detail_BV1FUYQz7E4H_01",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 28127.3,
+      "reply": "答案来自视频中的讲解，非常明确：\n\n## 关键字是 `UNLOGGED`\n\n在 PostgreSQL 建表时加上 **`UNLOGGED`** 关键字，表就会**跳过写入 WAL（Write-Ahead Log）日志**，从而大幅提升写入性能。\n\n根据 [18:21 UNLOGGED 表讲解](memento://play?platform=bilibili&video_id=BV1FUYQz7E4H&t=1101)：\n\n> 写入速度大约能**提高 5 倍左右**。\n\n---\n\n## 代价：掉电 = 数据全丢\n\n> **一旦数据库断电或者意外崩溃，表里面的数据全部丢失。**\n\n这就是 `UNLOGGED` 的本质代价——你用**持久性（Durability）** 换来了速度。正常执行 `UNDO` / 关机流程时数据还在，但只要是非正常关闭（进程被 kill、服务器掉电等），该表的所有数据直接蒸发，无法通过 WAL 重放恢复。\n\n---\n\n## 实际使用建议\n\n视频还提到一套\"用 PG 代替轻量 Redis\"的组合拳：\n\n| 手段 | 作用 |\n|---|---|\n| `CREATE UNLOGGED TABLE` | 跳过 WAL，写入快 5× |\n| 调大 `shared_buffers` | 热数据常驻内存，读也快 |\n| 配合 `pg_cron` 定时清理 | 模拟 Red"
+    },
+    {
+      "id": "q_detail_BV1HR7o6CE8q_01",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 20102.5,
+      "reply": "这套说法叫**「螺丝理论」**。\n\n在视频里，私教是这样解释的：练背时上下两端（肩胛骨和下肢/骨盆）必须同时固定、同时发力收紧，就像拧毛巾一样——你得把两端都握住才能把水拧干；如果有一端没有固定，怎么拧都拧不干。[27:50 螺丝理论讲解](memento://play?platform=bilibili&video_id=BV1HR7o6CE8q&t=1670)\n\n他还在后面的训练中反复强调这个理论，比如做划船动作时屁股要坐住、不要起来，这样上下才能收紧，背的受力才会好。"
+    },
+    {
+      "id": "q_detail_BV1LAVh6UEQz_01",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 16623.9,
+      "reply": "找到了。在视频《蛋白质营养拆解及运动应用》中，作者在讲到蛋白质在胃里的变性和水解过程时提到：\n\n> 消化 **100 大卡**的蛋白质，在整条代谢通路里，身体自身需要额外消耗 **20～30 大卡**。\n\n[07:33 作者原话](memento://play?platform=bilibili&video_id=BV1LAVh6UEQz&t=453)\n\n紧接着他还做了三大宏量营养素的对比：同样 100 大卡的碳水化合物，食物热效应比蛋白质低不少；而脂肪的热效应就更少了。这也就是网上常说的\"蛋白质的食物热效应最高\"这个结论的由来——身体消化吸收蛋白质要花更多的\"手续费\"。"
+    },
+    {
+      "id": "q_detail_BV1M2421T7qk_01",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 19466.8,
+      "reply": "根据视频中的讲解：\n\n- **2014 年**莫迪提出「Make in India」时，制造业占 GDP 的比例只有 **16%**，当时定下的目标是 **到 2022 年将这一比例提升到 25%**。([23:14 印度制造目标](memento://play?platform=bilibili&video_id=BV1M2421T7qk&t=1394)——\"当时在14年的时候，制造业占GDP的总数其实只有16%……他们的目标就是在22年让制造业的比例达到25%\")\n\n- 结果到了 **2024 年前后**，制造业占比反倒**掉到了约 13%**，不升反降，比当初的起点还低。([23:26 实际占比](memento://play?platform=bilibili&video_id=BV1M2421T7qk&t=1406)——\"现在都2024年了……现在反倒只有13%，就这短板变得更短了\")\n\n简而言之：目标是 2022 年达到 25%，实际到 2024 年只剩 13%，差距相当大。视频认为尽管印度政府在简化投资流程、鼓励建厂等方面做了很多努力，但制造业的实际效果\"非常一般\"，目前拉动印度 GDP 的主力反而是政府的基建投资。"
+    },
+    {
+      "id": "q_detail_BV1QGXABxEbq_01",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 17866.8,
+      "reply": "是**马六甲海峡**。根据视频中的介绍，如果单就石油运载量来看，霍尔木兹海峡并不是全球最大的，马六甲海峡比霍尔木兹海峡还要大那么\"一丢丢\"。\n\n具体数据：\n\n- **霍尔木兹海峡**：每天通过约 [01:40 2000万桶](memento://play?platform=bilibili&video_id=BV1QGXABxEbq&t=100) 石油，约占全球原油消费的 1/5。\n- **马六甲海峡**：石油贸易量大概 [03:08 每天有2300万桶](memento://play?platform=bilibili&video_id=BV1QGXABxEbq&t=188)，是通往东亚的贸易入口，新加坡就扼守在这个海峡上。\n\n不过视频也指出，大家平时更关注霍尔木兹海峡，是因为马六甲海峡远没有中东那么动荡，地缘政治风险低得多，所以新闻曝光度和市场紧张感都不如霍尔木兹。"
+    },
+    {
+      "id": "q_detail_BV1Zk9FBwELs_01",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 19342.8,
+      "reply": "根据视频中的举例，那家公司是 **LangChain**。\n\n在 [12:09](memento://play?platform=bilibili&video_id=BV1Zk9FBwELs&t=729) 处，视频原话是这样说的：\n\n> LangChain 在底层模型完全不变的情况下，只通过改造和迭代 Harness，就把它自家的智能体应用从榜单上的 **30 开外直接杀到了前五**。\n\n也就是说，起点大约三十名开外，最终冲到了 **前五名**（Top 5）。整个过程没有替换底层模型，纯粹靠反复打磨任务拆解、状态管理、校验和恢复机制——也就是 Harness——实现了排名的大幅提升。这也正是视频用来论证「真正决定 Agent 能不能稳定交付的，不是模型本身，而是模型外面那套运行系统」的核心案例。"
+    },
+    {
+      "id": "q_detail_BV1dMGm6xET9_01",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 19322.2,
+      "reply": "视频中的具体数字是 **六家**。\n\n根据 [05:17 具体数据](memento://play?platform=bilibili&video_id=BV1dMGm6xET9&t=317)：1970年，北京全市人口有700多万，但整个北京**仅有六家民用家具厂**。\n\n所以当时排队等家具票是常态，一等几年都很正常。申请理由里结婚排在最优先级——凭结婚证申请往往能优先得到票，但还是不够，很多时候还得发动亲戚朋友帮忙凑票，凑齐结婚必备的\"36只脚\"（床、大衣柜、五斗橱、床头柜、四方桌、四把椅子）。"
+    },
+    {
+      "id": "q_detail_BV1ev411w7bs_01",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 22658.7,
+      "reply": "根据视频中的分享，作者说运动营养师的教材推荐用目标体重（公斤）× **50大卡** 来算增肌期的总热量，但他认为那个参考人群是一线健美选手，热量偏高。经过自己多年的实战应用，他把这个倍数保守地下调到了 **35**（每公斤目标体重乘以35大卡）。\n\n具体来说：\n\n- [08:18 运动营养教材推荐的算法](memento://play?platform=bilibili&video_id=BV1ev411w7bs&t=498)：目标体重 × 50大卡，但试调人群是健美一线选手，他觉得这个热量非常多了。\n- [08:48 作者自己调整到35](memento://play?platform=bilibili&video_id=BV1ev411w7bs&t=528)：经过实战应用，他把它打到了乘以 **35**，认为这样比较保守。\n- [09:48 更保守的起点：25](memento://play?platform=bilibili&video_id=BV1ev411w7bs&t=588)：如果是内胚型（容易胖的体质），他甚至建议从 **25** 开始试，以5为单位（25→30→35）逐渐上调。\n\n所以总结：教材给的是 **×50**，作者保守下调到 **×35**，易胖体质的人还可以从 **×25** 起步逐步调整。"
+    },
+    {
+      "id": "q_detail_BV1hA7K6jER9_01",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 19981.3,
+      "reply": "根据视频中的介绍，雅鲁藏布江水电工程的关键数据如下：\n\n1. **总投资额**：约 **1.2万亿元**\n2. **规划装机容量**：**6000万千瓦至7000万千瓦**（60GW~70GW）\n\n此外，该工程规划年发电量约3000亿千瓦时，相当于目前全国发电量的3%，预计2030年首台机组发电，2035年五座电站全部投运。\n\n具体信息来源见 [06:44 雅鲁藏布江工程规模](memento://play?platform=bilibili&video_id=BV1hA7K6jER9&t=404)。"
+    },
+    {
+      "id": "q_detail_BV1hN596zEas_01",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 21022.1,
+      "reply": "根据视频中的描述，1994年12月墨西哥政府宣布比索与美元脱钩后，**三天之内比索暴跌超过 40%**。\n\n具体过程是这样的：[04:08 94年12月，墨西哥外汇储备耗尽](memento://play?platform=bilibili&video_id=BV1hN596zEas&t=248)，被迫宣布比索与美元脱钩并大量印钞。[04:15 三天之内，比索暴跌超过40%](memento://play?platform=bilibili&video_id=BV1hN596zEas&t=255)。\n\n这次暴跌的\"龙卷风效应\"非常典型——之前墨西哥政府为了吸引外资，把比索汇率和美元绑定，同时大量发行高息短期美元债（利率高达10%）。[04:38 华尔街拿着美国民众的养老金和积蓄去抢那10%的利息](memento://play?platform=bilibili&video_id=BV1hN596zEas&t=278)，一旦脱钩崩盘，这些美国基金和养老金面临破产威胁。最终美国不得不牵头让 IMF 提供了 500 亿美元的紧急救助贷款才稳住局面。\n\n这场\"龙舌兰危机\"后来也被视为亚洲金融危机的预演，其救助模式还埋下了道德风险的伏笔——让资本误以为新兴市场\"高收益、低风险\"，从而更加疯狂地涌入东南亚。"
+    },
+    {
+      "id": "q_detail_BV1mMHyz3Erk_01",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 15618.4,
+      "reply": "根据视频中的讲解，程序加载到内存变成进程之后，操作系统额外分配给它、用来存放运行期间产生的数据（如用户输入和临时结果）的那部分内存，被称为**进程的地址空间（Address Space）**。\n\n具体来说，视频在 [00:59 说明](memento://play?platform=bilibili&video_id=BV1mMHyz3Erk&t=59) 处指出：\n\n> 然而该进程的执行可能需要**额外的内存**来存储用户输入和临时结果，操作系统负责分配这部分内存，分配给进程的内存有一个特殊的名字——**进程的地址空间**。\n\n所以答案是：**地址空间（Address Space）**。"
+    },
+    {
+      "id": "q_detail_BV1mMHyz3Erk_02",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 16562.7,
+      "reply": "答案是 **task**（任务），在 Linux 内核中对应的结构体就是大名鼎鼎的 `task_struct`。\n\n根据视频中的讲解：\n\n> [15:13 这个结构被称为任务 task，而不是进程 process](memento://play?platform=bilibili&video_id=BV1mMHyz3Erk&t=913)\n\n之所以叫 \"task\" 而不是 \"process\"，是因为 Linux 用 **task** 一词来表示**执行的基本单位**——它在同一个数据结构里同时包含了线程和进程的概念，两者在调度时被视为同一类实体。\n\n换句话说，Linux 内核并不区分\"进程\"和\"线程\"这两个独立的数据结构，而是统一用 `task_struct` 来管理。当你创建一个\"进程\"时，内核分配的是一个 `task_struct`；当你创建一个\"线程\"时，内核分配的还是一个 `task_struct`，只不过它会和父任务共享地址空间等资源。所以面试时如果被问到\"Linux 内核里进程的数据结构叫什么\"，答 **task_struct** 才是标准答案。"
+    },
+    {
+      "id": "q_detail_BV1ub421J7jv_01",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 19117.5,
+      "reply": "根据视频内容，2023 年土耳其的利率和汇率变动如下：\n\n**政策利率：** 2023 年 5 月起，土耳其在大约半年内把政策利率从 **8.5%** 一路加到了 **50%**。([26:08 半年内疯狂加息](memento://play?platform=bilibili&video_id=BV1ub421J7jv&t=1568))\n\n**里拉贬值：** 同年（2023 年），土耳其里拉对美元跌了将近 **40%**，是当年全球主要经济体中表现最差的货币，甚至比被欧美单独制裁的俄罗斯卢布还糟糕。([26:20 里拉依然暴跌](memento://play?platform=bilibili&video_id=BV1ub421J7jv&t=1580))\n\n视频还解释了一个反直觉的现象：加息了为什么里拉还在跌？原因是土耳其在加息的**同时放开了外汇管制**——之前低利率环境下积累的贬值压力被压制着，外汇管制一放开，贬值压力瞬间释放，所以里拉先是一波暴跌回归均衡。([26:57 放开外汇管制](memento://play?platform=bilibili&video_id=BV1ub421J7jv&t=1617))\n\n如果拉长时间线看，过去 4 年里土耳其里拉对美元累计暴跌超过 **80%**。([28:00 4年暴跌超过80%](memento://play?platform"
+    },
+    {
+      "id": "q_detail_BV1vtT46WEoW_01",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 15102.2,
+      "reply": "博主说的是**十泰铢**。\n\n在视频 [09:12 购买火车票](memento://play?platform=bilibili&video_id=BV1vtT46WEoW&t=552) 处，他成功买到车票后感叹：\n\n> \"这个火车票才**十泰铢**……坐个地铁随随便便就是**三五十铢**，坐个长途火车**一百多公里**才收**十铢**，太神奇了！\"\n\n一百多公里的复古长途火车只要 10 铢（约合人民币 2 块钱），地铁却动辄三五十铢，博主用这个巨大反差来感叹泰国交通定价的魔幻。"
+    },
+    {
+      "id": "q_detail_BV1z8zPYjE4j_01",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 23031.1,
+      "reply": "根据你收藏的视频内容，这个问题有非常明确的参考数据：\n\n## 训练日 vs 休息日的热量安排\n\n- **训练日：+200～300 大卡**（在基础代谢 + 生活消耗 + 训练消耗的基础上，保持热量盈余）\n- **休息日：−500～700 大卡**（同样基础上，允许较大的能量亏空）\n\n来源：[03:46 训练日盈余与休息日亏空的数值](memento://play?platform=bilibili&video_id=BV1z8zPYjE4j&t=226)\n\n### 核心逻辑\n\n这段内容强调了一个关键点：**以周为单位来看，整体可能是一个轻度亏空状态，但热量分配到该用的那天**——训练日给盈余、休息日给亏空。这样既能保证训练日的状态和增肌效果，又能避免脂肪过度堆积。\n\n来源：[23:40 以周为单位的热量调控思路](memento://play?platform=bilibili&video_id=BV1z8zPYjE4j&t=1420)\n\n### 为什么训练日绝不能亏空？\n\n视频里还提到了一个很重要的研究结论：**如果在重训日热量亏空达到 500 大卡以上，会特别大程度地影响增肌效果**。所以训练日一定要确保是盈余状态。\n\n来源：[23:25 重训日亏空500以上对增肌的影响](memento://play?platform=bilibili&video_id=BV1z8zPYjE"
+    },
+    {
+      "id": "q_detail_BV1z8zPYjE4j_02",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 18610.3,
+      "reply": "根据视频中的讲解，作者提到的「碳水后置」技巧，具体是指将全天 **30% 以上** 的碳水量集中安排在训练后摄入。\n\n作者在视频中是这样解释的：\n\n> [17:57 碳水后置技巧](memento://play?platform=bilibili&video_id=BV1z8zPYjE4j&t=1077)——要把这一天一大部分的碳水量，**30%以上的碳水量放在你的训练后**。\n\n其背后的逻辑是：高强度训练（比如深蹲）会大量消耗肌糖原，训练后身体处于\"缺糖\"状态，此时摄入的碳水会优先补充肌肉和肝脏中缺失的糖原，而不是转化为脂肪储存 [18:33 身体缺糖机制](memento://play?platform=bilibili&video_id=BV1z8zPYjE4j&t=1113)。\n\n另外，在另一期饮食详解视频中，作者进一步细化了训练后那一餐的宏量配比：\n\n> [30:18 训练后餐比例](memento://play?platform=bilibili&video_id=BV1ev411w7bs&t=1818)——训练之后的这一餐里，**80% 是碳水化合物，20% 是蛋白质**，脂肪和蔬菜在训练后两小时内都不要吃。\n\n简单总结就是：\n- **全天 30%+ 的碳水放在训练后**\n- 训练后那一餐本身：碳水占 80%，蛋白质占 20%，暂避脂肪和蔬菜\n\n这对你的增肌期饮食安排"
+    },
+    {
+      "id": "q_detail_Cl0QYkez-BE_01",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 20295.5,
+      "reply": "这个案例出自诺贝尔经济学奖得主 **Thomas Sargent** 的获奖演讲，他以美国独立战争后的财政状况为经典案例。具体数字如下：\n\n1. **公共债务（按面值计）**：约为 GDP 的 **40%**。\n   — [34:06 债务规模说明](memento://play?platform=youtube&video_id=Cl0QYkez-BE&t=2046)\n\n2. **政府最大税收能力**：即使在最理想的情况下，美国也只能征收到 GDP 的 **2%–3%**。\n   — [34:15 税收能力](memento://play?platform=youtube&video_id=Cl0QYkez-BE&t=2055)\n\nSargent 用 \"do the arithmetic\" 来强调这个算术有多残酷：债务/GDP 比率高达 40%，而每年只能收到 2–3% 的产出来偿债，这意味着单靠正常税收根本无法偿还本金，甚至连利息都吃力。正因如此，那些国债在市场上被**大幅折价**（deeply discounted）交易——投资者自己也算清了这笔账。\n\n这个财政危机最终推动了 1787 年的制宪运动，Hamilton 和 Washington 等人借此推动了新宪法，建立更强的联邦财政制度（包括关税制度和联邦政府**兜底各州债务**的大规模 bailout），才逐渐恢复了政府信"
+    },
+    {
+      "id": "q_detail_D3aHciiVdvQ_01",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 20354.0,
+      "reply": "这是耶鲁大学 Robert Shiller 教授的 **Economics 252: Financial Markets** 课程。他在第一讲中明确给出了成绩构成：\n\n| 组成部分 | 大致权重 |\n|---------|---------|\n| Problem Sets（作业） | **~10%** |\n| 第一次期中考 | **~20%** |\n| 第二次期中考 | **~30%** |\n| 期末考试 | **~40%** |\n\n此外，Shiller 特别提到成绩还会参考 **T.A.（助教）的判断**，这正是你所说的\"让助教影响成绩\"的部分。\n\n相关出处：[20:19 课程成绩构成](memento://play?platform=youtube&video_id=D3aHciiVdvQ&t=1219)"
+    },
+    {
+      "id": "q_detail_EpIgvowZr00_01",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 29574.6,
+      "reply": "好问题！这正好是 GFS 设计中一个非常关键的容错机制。核心答案是 **版本号（version number）**，由 master 统一颁发并持久化到磁盘。\n\n---\n\n## Master 如何判定副本是否过期\n\n### 1. 版本号的颁发\n\nGFS 中每个 chunk 都有一个 **版本号**。每当 master 向某个 chunk 的 primary 颁发 lease 时，它会把该 chunk 的版本号递增，并把这个新版本号通知给所有持有该 chunk 的 replica server。\n\n> 如 [26:23 处所述](memento://play?platform=youtube&video_id=EpIgvowZr00&t=1583)，master 为每个 chunk 记住一个 current version number。\n\n### 2. 对比：哪些副本是\"最新\"的\n\n当 client 请求读取或写入时，master 需要告诉 client 去找哪些 chunk server。它的判定逻辑很简单：\n\n- master 知道某个 chunk 最新的版本号（比如 version 17）\n- chunk server 上报自己持有的 chunk 及其版本号\n- **只有版本号等于 master 记录的最新版本号的副本，才被视为 up-to-date**；版本号较低的就被视为"
+    },
+    {
+      "id": "q_detail_NS_GeXoboo4_01",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 27057.0,
+      "reply": "根据一个专门在 Walmart 做价格实测的视频，**扁豆（lentils）** 是最便宜的选项——每摄入 **40 克蛋白质只需约 66 美分**。\n\n排名前三的顺序如下：\n\n| 排名 | 食物 | 40g 蛋白质成本 |\n|------|------|---------------|\n| 🥇 | **扁豆（Lentils）** | **~66¢** |\n| 🥈 | 牛奶（Milk） | ~81¢ |\n| 🥉 | 鸡胸肉（Chicken breast） | ~$1.17 |\n\n来源：[01:17 蛋白质食物价格排名](memento://play?platform=youtube&video_id=NS_GeXoboo4&t=77)\n\n> ⚠️ 提醒：考虑到你乳糖不耐受，牛奶和乳清蛋白粉不适合你。扁豆对你来说确实是性价比之王——便宜、蛋白密度高、热量也相对可控。如果嫌煮扁豆麻烦，可以一次多煮一些冷冻分装，或者买罐头扁豆（cost 会稍高一点点但几乎零准备时间）。鸡胸肉排第三，作为你日常主力蛋白来源依然是非常划算的选择。"
+    },
+    {
+      "id": "q_detail_P-NmMX9rlYQ_01",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 20335.3,
+      "reply": "作者在视频里专门强调了这一点：**GDP 支出法公式里的「投资」，和我们日常说的「投资」是两个完全不同的概念。**\n\n### 日常说的投资 ≠ GDP 里的投资\n\n我们平时说\"投资\"——买股票、买黄金、买基金——这些在 GDP 里**统统不算投资**，它们只是资产的股权转让或所有权流转，跟实际生产没有关系。正如作者在 [10:11 这里澄清](memento://play?platform=youtube&video_id=P-NmMX9rlYQ&t=611)：\n\n> *\"这里头说的这个投资，跟我们日常生活当中理解的投资是两个概念。我们平时说的投资，你买了股票、买了黄金、买了基金，这些在 GDP 里头都不叫投资。\"*\n\n### GDP 里的「投资」到底指什么？\n\n指的是**企业为了进行生产所做的实物投入**，比如买厂房、买机器设备这类。作者原话是：\n\n> *\"GDP 里指的是什么啊？就是一般企业它为了生产的投入。比如说我买了个厂房，我买了个电机，这种叫投资。\"*（[10:22 生产性投入](memento://play?platform=youtube&video_id=P-NmMX9rlYQ&t=622)）\n\n### 补充：股票涨跌也和 GDP 无关\n\n作者还进一步说明，股票从 50 块涨到 150 块赚的那 100 块，同样不算 GDP。因为股票交易本质上是股权转让行为，不涉及"
+    },
+    {
+      "id": "q_detail_PHe0bXAIuk0_01",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 17817.2,
+      "reply": "在 Ray Dalio 的简化经济机器模型中，美国的 **信用总量约为 50 万亿美元**，而 **实际货币总量仅约 3 万亿美元**——信用规模大约是实际货币的 **15–17 倍**。\n\n正如 Dalio 所说：「现实中，大部分人们所谓的\"钱\"其实都是信用。」\n\n[09:45 信用 vs 货币](memento://play?platform=youtube&video_id=PHe0bXAIuk0&t=585)\n\n这个巨大的倍数正是信用周期（credit cycle）能对经济产生如此大波动的根本原因：信用可以凭空创造支出，短期内让收入增速超过生产力增速，但长期终将回归。\n\n### 相关要点速览\n\n| 概念 | 内容 |\n|------|------|\n| **信用的本质** | 信用花起来和钱一样，都会产生支出（spending） |\n| **有信用 vs 无信用** | 没有信用时，增加支出只能靠提高生产力；有了信用，还可以通过借贷来增加支出 |\n| **信用的好坏** | 借钱买拖拉机（产生收入）= 好信用；借钱买电视（不产生收入）= 坏信用 |\n| **周期驱动力** | 经济围绕长期生产力趋势线的上下摆动，主要由信用量的波动驱动 |\n\n[01:28 交易的基本构成](memento://play?platform=youtube&video_id=PHe0bXAIuk"
+    },
+    {
+      "id": "q_detail_RmVL30sS2yU_01",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 21788.6,
+      "reply": "## 殖民时期欧洲定居者的\"潜在死亡率\"（Potential Settler Mortality）\n\nAcemoglu 在诺贝尔奖演讲中解释了这个问题的核心逻辑：\n\n**内生性问题**：欧洲人更愿意在资源丰富的地方定居，因此\"定居\"本身和\"繁荣\"之间存在反向因果——你无法简单地用定居模式来推断制度对繁荣的因果效应。\n\n**解决方案**：他们找到了**殖民时期欧洲人面临的潜在死亡率（potential settler mortality）**作为工具变量。在[12:07](memento://play?platform=youtube&video_id=RmVL30sS2yU&t=727)处，Acemoglu 明确说道：\n\n> \"Of course settlements themselves are determined endogenously — people were more likely to settle in places that offered greater riches. So the approach that we developed was to look for something that would be more exogenous to these dynamics but still influence settlements, and th"
+    },
+    {
+      "id": "q_detail_W-Q9AOp2FW8_01",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 21774.2,
+      "reply": "是 **Exxon（埃克森）**。\n\n根据 FRONTLINE 纪录片 *Money, Power and Wall Street* 的记载，1989 年 **Exxon Valdez** 号油轮在威廉王子湾泄漏了近 1100 万加仑原油，随后面临大量诉讼。Exxon 因此在 JP Morgan 开出了一笔数十亿美元的**信用证（letter of credit）**，这给 JP Morgan 带来了巨大的信用风险敞口。\n\n[09:25 第一笔重大信用违约互换由 Blythe Masters 设计，涉及 Exxon](memento://play?platform=youtube&video_id=W-Q9AOp2FW8&t=565)\n\n[09:37 Exxon Valdez 泄漏事件的背景](memento://play?platform=youtube&video_id=W-Q9AOp2FW8&t=577)\n\n[09:43 泄漏后 Exxon 向 JP Morgan 申请巨额信用证](memento://play?platform=youtube&video_id=W-Q9AOp2FW8&t=583)\n\n正是为了对冲这笔与 Exxon 信用证相关的信用风险，JP Morgan 的 Blythe Masters 团队设计了现代意义上的第一笔**信用违约互换（Credit Defa"
+    },
+    {
+      "id": "q_detail_XvyMO7CmFlk_01",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 28136.6,
+      "reply": "根据 Abhijit Banerjee 在诺贝尔奖讲座中描述的实地实验，结果非常显著：\n\n1. **信息传播实验（印度卡纳塔克邦，手机抽奖）**：当分别让\"gossips\"、随机村民和\"重要人物\"作为种子节点传播信息时，gossips 在触达人数方面的效果是其他人的 **3 倍**。[12:19 gossips are three times as good](memento://play?platform=youtube&video_id=XvyMO7CmFlk&t=739)\n\n2. **疫苗接种实验**：在随机选择的村庄中，研究者分别让 gossips、\"受信任的人\"（trusted people）和随机村民作为种子来推动疫苗接种。结果显示，gossips 带来的**儿童接种人数是其他组的两倍**。[12:58 gossips lead to twice as many kids being vaccinated](memento://play?platform=youtube&video_id=XvyMO7CmFlk&t=778)\n\n值得注意的是，Banerjee 指出 gossips 之所以如此有效，一方面是因为他们在社交网络中处于**中心位置、连接广泛**，另一方面他们还**比其他人更快乐（happier）**——即使在控制了网络中心度之后这一特质依然显著。[13:14 "
+    },
+    {
+      "id": "q_detail_ZlVBSZYaVF0_01",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 62843.3,
+      "reply": "根据视频中的信息，以下是具体的指导原则：\n\n---\n\n### 上界：大约 6 组 hard sets / 每肌群 / 每次训练\n\n视频引用了 Jeff Nippard 对文献的分析，指出**大约 6 组 hard-working sets / 每肌群 / 每次训练基本上是最优值**。\n\n[05:11 Jeff Nippard's analysis](memento://play?platform=youtube&video_id=cfXTQmFRjWU&t=311) —— 原文说 \"Jeff Nippard's analysis of the data shows that about six hard-working sets per muscle per session is basically Optimum\"。\n\n而如果你每次训练持续做**超过 8 组**，则属于 \"a lot of volume\"，几乎不太可能是训练量不够，反而更可能是过多了：\n\n[04:36 \"consistently more than eight working sets\"](memento://play?platform=youtube&video_id=cfXTQmFRjWU&t=276)\n\n---\n\n### 你应该从低端开始：2–3 组\n\n主持人明确建议从范围的**低那一端**起步，也就是大约"
+    },
+    {
+      "id": "q_detail_b5H8D_wD2AY_01",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "lookup_documents"
+      ],
+      "tools_unique": [
+        "search_knowledge",
+        "lookup_documents"
+      ],
+      "correct": false,
+      "error": null,
+      "latency_ms": 18643.4,
+      "reply": "是**纽约联邦储备银行（New York Fed）的行长**。\n\n在 [05:48](memento://play?platform=youtube&video_id=b5H8D_wD2AY&t=348)，讲者解释道：\n\n> 在 FOMC 的投票成员中，七名理事会成员加上 12 位地区联储行长中的 4 位（轮换制）。**唯一不轮换的是纽约联储行长**。\n\n讲者给出的原因是：**纽约是美国的金融中心（financial heart of the US）**，因此需要纽约联储行长始终参与利率决策。此外，纽约联储还负责与金融市场进行沟通（communication with financial markets），这一点至关重要。\n\n所以核心逻辑就是：纽约作为美国金融市场的枢纽，其联储行长必须持续在 FOMC 中发挥关键角色，不能被轮换出去。"
+    },
+    {
+      "id": "q_detail_cQP8WApzIQQ_01",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 26854.0,
+      "reply": "这个问题在讲座开头就有直接讨论。Robert Morris 列举了构建分布式系统的几大动机，其中一条恰好回答了你的问题：\n\n## 安全/信任隔离\n\n根据 [02:40 讲座中的安全动机](memento://play?platform=youtube&video_id=cQP8WApzIQQ&t=160)，教授解释道：\n\n> 如果有一段代码你**不信任**，或者你需要跟某人协作，但对方**可能是恶意的**，或者他们的代码**有 bug**——你不想被迫信任它。这时候你就会选择**把计算拆分开**：你的代码跑在那台机器上，我的代码跑在我这台机器上，双方只通过一个**严格定义的窄接口网络协议**来通信。\n\n简言之，**把计算分到不同机器上是为了实现安全隔离**：即使对方的代码有问题或有恶意行为，损害也被限制在对方的机器上，不会直接影响到你这边。\n\n---\n\n此外，同一段讲座还提到了其他几个分布式计算的动机（[02:06](memento://play?platform=youtube&video_id=cQP8WApzIQQ&t=126)）：\n\n| 动机 | 说明 |\n|------|------|\n| **容错** | 两台机器做同一件事，一台挂了可以切到另一台 |\n| **物理上天然分布** | 比如纽约的银行和伦敦的银行必须跨地域协作 |\n| **性能/并行** | 用一千台机器"
+    },
+    {
+      "id": "q_detail_cQP8WApzIQQ_02",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 13030.4,
+      "reply": "这个术语就是 **sharding（分片）**。\n\n在课程中，教授明确解释道：[13:49 sharding 的定义](memento://play?platform=youtube&video_id=cQP8WApzIQQ&t=829)——\"sharding refers to splitting up the data, partitioning the data among multiple servers in order to get parallel speed up\"（分片就是将数据拆分、分布到多台服务器上，以获得并行加速）。\n\n在 Lab 4 中你就会亲手实现这个：将复制的 key-value server 拆分成多个独立的 group，把数据分片到这些 group 上并行运行，同时还要负责在服务器加入或离开时迁移数据块。"
+    },
+    {
+      "id": "q_detail_cfXTQmFRjWU_01",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 14027.5,
+      "reply": "根据视频中的说法，每个肌群**每组训练超过 8 组（working sets）**就算\"训练量充足\"了。\n\n具体来说，在 [04:36 这个位置](memento://play?platform=youtube&video_id=cfXTQmFRjWU&t=276)，作者说：\n\n> \"如果你每个肌群每组训练 consistently 做超过 8 组 working sets，你做的训练量已经很多了，训练量不足的可能性非常低。\"\n\n随后在 [05:11 这里](memento://play?platform=youtube&video_id=cfXTQmFRjWU&t=311)进一步明确：\n\n> \"对我来说，充足的训练量就是每个肌群 8 组或以上。\"\n\n他还补充说，Jeff Nippard 的数据分析显示大约 6 组 hard working sets per muscle per session 就已经接近最优了，所以 8 组已经是偏多的一端，不太可能是练少了。"
+    },
+    {
+      "id": "q_detail_ej6cygeB2X0_01",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 14488.1,
+      "reply": "在 Richard Thaler 的诺贝尔奖演讲中，他介绍了这个经典的咖啡杯交易实验。科斯定理预测，在交易成本足够低的市场中，无论初始产权如何随机分配，资源最终都会流向对其估值最高的人手中。然而实验结果是：\n\n实际发生的交易量只有科斯定理预测的 **大约三分之一**（\"about a third as much trading as we should have\"）。\n\n[13:10 实验结果描述](memento://play?platform=youtube&video_id=ej6cygeB2X0&t=790)\n\n原因是**禀赋效应（endowment effect）**——那些随机分到杯子的人，一旦拥有了杯子，对它的估价就会上升，导致他们不愿意以市场价格卖出，从而抑制了本应发生的交易。这个发现正是 Thaler 行为经济学研究的核心贡献之一。"
+    },
+    {
+      "id": "q_detail_h1RkSuAs03Q_01",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 19274.7,
+      "reply": "在 Nordhaus 的诺贝尔奖演讲中，他用 **每吨 $50** 的碳价来举例说明\"气候俱乐部\"（Climate Club）的惩罚性关税机制是如何运作的：\n\n> 如果一个俱乐部设定了每吨 $50 的碳价，那么对于**不参与该俱乐部的国家**，俱乐部成员将对其出口商品施加惩罚性关税。\n\n具体逻辑链条如下：\n\n1. **俱乐部成员**须对本国碳排放定价（缴纳\"会费\"），即承担减排的国内成本。\n2. **非成员国**不承担碳价，相当于在生产成本上获得了\"免费搭便车\"的优势。\n3. 为了消除这种不公平激励，俱乐部成员对非成员国的进口商品征收与碳价挂钩的**惩罚性关税**（如按 $50/吨计算）。\n4. Nordhaus 的模型显示，随着关税惩罚力度上升，越来越多的国家会选择加入俱乐部，最终趋向全球参与。\n\n相关出处：[29:29 举例 $50/ton 碳价与惩罚关税](memento://play?platform=youtube&video_id=h1RkSuAs03Q&t=1769)\n\n这个设计的核心洞察是：**纯粹自愿的国际气候协议（如京都、巴黎）之所以失败，根源在于搭便车问题**——每个国家都想享受全球减排的好处而不愿承担国内成本。气候俱乐部通过\"不加入就受罚\"的贸易机制，将搭便车的代价外部化，从而改变了各国的博弈激励。"
+    },
+    {
+      "id": "q_detail_heBErnN3ZPk_01",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 26856.3,
+      "reply": "Based on Ben Bernanke's Nobel Prize lecture, the 2007–2009 downturn is referred to by two names:\n\n1. **\"The Great Recession\"** — this name draws a direct parallel to the **Great Depression** of the 1930s (the 1930s crisis). Bernanke uses this term at [16:53](memento://play?platform=youtube&video_id=BBCp28YF-hg&t=1013): *\"second case study the Great Recession of 2007-2009.\"*\n\n2. **\"The Global Financial Crisis\"** — this name highlights that the recession was felt **across the whole world**. Bernanke uses this term at [21:00](memento://play?platform=youtube&video_id=BBCp28YF-hg&t=1260): *\"2007-20"
+    },
+    {
+      "id": "q_detail_iQyg-KypKAA_01",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 18515.2,
+      "reply": "Kun 拿一个叫 **Android Skills** 的 GitHub 仓库开刀，这个仓库有 **177,000 颗星**，看起来声势浩大。他用 **Program Bench**（一个端到端测试 agent 构建程序能力的基准）实际跑了一遍，结果发现：\n\n1. **Token 用量多了 5%**：用了这个 skill 之后，agent 每次请求消耗的 token 反而更多了。\n2. **输出质量反而更差**：不仅没提升，结果质量还下降了。\n\n也就是说——花了更多钱，得到更差的结果。\n\n另外，他特意指出这个 skill **并不是 André Karpathy 本人写的**。很多人看到星数就默认质量有保障，但实际上这个仓库只是某个人自己用着碰巧能行，然后就病毒式传播开了。\n\n> [19:09 实际评估结果](memento://play?platform=youtube&video_id=iQyg-KypKAA&t=1149) — \"by using this skill, the agent will use 5% more tokens while making the results worse\"\n> \n> [19:44 不是 Karpathy 写的](memento://play?platform=youtube&video_id=iQyg-KypKAA&t=1184) "
+    },
+    {
+      "id": "q_detail_lu_BObG6dj8_01",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 17322.7,
+      "reply": "根据 YouTube 视频 [03:06 替代法则](memento://play?platform=youtube&video_id=lu_BObG6dj8&t=186) 中的讲解：\n\n> 如果你体脂非常高，按「克/公斤体重」来算蛋白质摄入量就不太合适了。比如你 300 磅（约 136 公斤），你并不需要真的吃 300 克蛋白质。这种情况下，视频建议用一个更简洁的替代方案——**每厘米身高对应 1 克蛋白质**。\n\n也就是说，如果你身高 175 cm，每天目标就是大约 **175 克蛋白质**。这个规则的好处是它**与体重脱钩**，不受体脂率高低的干扰，对体脂偏高的人群来说比 g/kg 体重法更合理、更好用。\n\n面试复习小提醒 💡：这种「备选估算策略」的思维方式在系统设计面试里也很常见——当常规指标（比如 QPS）在极端场景下失效时，有没有一个更鲁棒的 proxy 指标来替代？可以类比记忆。"
+    },
+    {
+      "id": "q_detail_oKM-L_WiOhg_01",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 18148.4,
+      "reply": "根据视频作者 Terry 对特斯拉 **Q2 财报**的解读，关键数据如下：\n\n---\n\n### 📊 当季（Q2）资本开支\n**约 57.89 亿美元**（$5.789B），为特斯拉**单季度历史最高 CapEx**。\n\n> 详见 [06:51 单季 CapEx 数据](memento://play?platform=youtube&video_id=oKM-L_WiOhg&t=411)\n\n---\n\n### 📈 同比增长\n**同比增长 142%**，增幅极为惊人。\n\n> 详见 [06:55 同比增长 142%](memento://play?platform=youtube&video_id=oKM-L_WiOhg&t=415)\n\n---\n\n### 🗓️ 全年资本开支指引\n**全年指引超过 250 亿美元**（>$25B）。作者特别指出，特斯拉上半年 CapEx 才花了约 82.8 亿美元，这意味着 Q3+Q4 还需要花掉大约 **167 亿美元以上**，即接下来两个季度的 CapEx 还要继续创新高。\n\n> 详见 [06:57 全年指引及下半年推算](memento://play?platform=youtube&video_id=oKM-L_WiOhg&t=417)\n\n---\n\n### 💡 背景补充\n作者认为，特斯拉之所以大幅提高 CapEx，是因为公司正处于多个业务线同步扩张"
+    },
+    {
+      "id": "q_detail_oYxTTirKY8M_01",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 14539.5,
+      "reply": "在加权负载均衡算法的部分，讲座给出了一个具体例子：三台服务器的 RAM 分别如下 [20:45](memento://play?platform=youtube&video_id=oYxTTirKY8M&t=1245)：\n\n- **第一台服务器**：**16 GB** RAM\n- **第二台服务器**：**32 GB** RAM\n- **第三台服务器**：**64 GB** RAM\n\n讲座指出，基于服务器的 RAM 容量和其他性能指标，系统会给每台服务器分配权重（weight），然后负载均衡器在转发流量时会将这些权重纳入考量——拥有更多资源（更高权重）的服务器会被分配更多的连接请求。"
+    },
+    {
+      "id": "q_detail_vkpS7WztTMc_01",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 20976.5,
+      "reply": "这是 AMD CEO **苏姿丰 (Lisa Su)** 在 MIT 演讲中分享的亲身经历。\n\n她的第一个本科研究项目（UROP）是在 **Hank Smith 教授**位于 Building 39 的实验室里，帮一位研究生制作 **X 射线光刻掩模版（X-ray lithography mask blanks）**。她坦言当时根本不知道那是什么意思 ([03:09](memento://play?platform=youtube&video_id=vkpS7WztTMc&t=189))。\n\n她第一次穿上无尘服走进洁净室，开始在小小的 **2 英寸晶圆**上制造器件——这在当时算是相当先进的工艺 ([03:20](memento://play?platform=youtube&video_id=vkpS7WztTMc&t=200))。她还特别提到那些晶圆非常脆弱，自己小心翼翼生怕弄碎 ([03:32](memento://play?platform=youtube&video_id=vkpS7WztTMc&t=212))。\n\n这段经历让她第一次感受到\"不只是在课堂上学技术，而是真正参与一个团队去发现新东西\"，也从此爱上了半导体 ([04:19](memento://play?platform=youtube&video_id=vkpS7WztTMc&t=259))。"
+    },
+    {
+      "id": "q_detail_wD48p6m8U-8_01",
+      "type": "detail",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 20378.3,
+      "reply": "根据 David Card 在 2021 年诺贝尔经济学奖获奖演讲中提到的 Dewald、Thursby 和 Anderson 的研究：\n\n- 在他们深入分析的 **9 篇**论文中，只有 **2 篇**能够被精确复现。[06:45 只有2篇可复现](memento://play?platform=youtube&video_id=wD48p6m8U-8&t=405)\n\n- 那批较早期论文（1982年7月期刊强制存档政策实施**之前**发表的）的作者中，**三分之二（约67%）** 在多次请求后从未回复数据索取要求。[06:40 三分之二作者未回复](memento://play?platform=youtube&video_id=wD48p6m8U-8&t=400)\n\n值得注意的是，即使在1982年7月之后发表的论文（期刊已要求作者存档数据和代码），仍有**四分之一**的作者未回应数据请求。[06:33 四分之一后期作者也未回复](memento://play?platform=youtube&video_id=wD48p6m8U-8&t=393)\n\n这项研究在当时发表于《美国经济评论》（AER），对推动经济学实证研究的透明度和可复现性产生了深远影响，也是后来\"credibility gap\"（可信度鸿沟）讨论的重要起点。"
+    },
+    {
+      "id": "q_multi_evidence_2qf6ry-YjwU_01",
+      "type": "multi_evidence",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 41131.1,
+      "reply": "找到了，这是来自 Jared Feather 在\"How to Peak a Natural Bodybuilder\"视频中的分享。\n\n**每公斤上限数字：23 克/公斤瘦体重**\n\nJared 提到，人体全身糖原储存量大约是每公斤瘦体重 **23 克**。他用一个100公斤的人举例，即大约可以存 2300 克碳水。[09:26 这个上限说明](memento://play?platform=youtube&video_id=2qf6ry-YjwU&t=566)\n\n**他个人超标的真实经历**\n\n在备赛 nationals（美国全国赛）时，Jared 回忆自己两天分别吃了 **1500 克碳水**，比赛当天因为晚上才上场又追加了 **500 克**，远远突破了 23g/kg 的上限。[23:31 他描述超标过程](memento://play?platform=youtube&video_id=2qf6ry-YjwU&t=1411)\n\n**不舒服的症状：口干如棉（cotton mouth）**\n\n在碳水大量灌入的同时，他把**水和钠都逐步减了下来**（tapered off），结果他越来越严重的**\"cotton mouth\"——极度口干**，嘴唇喉咙像塞了棉花一样干涩。他自己原话是 *\"my water and sodium were tapered off and it was"
+    },
+    {
+      "id": "q_multi_evidence_31YTH1ywbS8_01",
+      "type": "multi_evidence",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 47312.3,
+      "reply": "这个问题恰好是 Diamond-Dybvig (1983) 模型的核心，而 Douglas Diamond 在他的 2022 年诺贝尔奖演讲中用了一个非常清晰的数值例子来解释。我来结合视频内容系统地回答。\n\n---\n\n## 一、存款如何\"创造流动性\"\n\nDiamond 的模型假设银行的资产是**长期、安全、但不流动**的——如果你持有到期，收益是确定的；但如果你中途提前卖出，会遭受巨大的价值损失。正如 Diamond 所说：\n\n> 持有到到期日（maturity），资产是安全的……提前退出会有很大的损失，这就是我们所说的\"不流动\"（illiquid）。\n\n[22:43 资产是安全但不流动的](memento://play?platform=youtube&video_id=31YTH1ywbS8&t=1363)\n\n[25:06 中途退出会损失一半价值，这就是不流动的含义](memento://play?platform=youtube&video_id=31YTH1ywbS8&t=1506)\n\n但银行做的事情是：把这些不流动的资产包装成**短期、可随时支取的存款**。Diamond 给了一个具体数字——存入 1 元，在第一天取走可得 **1.28**，第二天取走可得 **1.81**：\n\n> 如果你直接持有银行的资产，在日期一只值 1 元；但如果你持有银行存款，你能拿到 1.28。"
+    },
+    {
+      "id": "q_multi_evidence_3ub8RBE7BC8_01",
+      "type": "multi_evidence",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 38254.3,
+      "reply": "The presenter is **Dr. Mike** from Renaissance Periodization, in his video \"Easily Build Muscle: The Simple Guide To Gaining Size.\"\n\n**The factor is *time*.** He explicitly says:\n\n> \"the last factor that can magnify your results is the biggest factor that can magnify your results **by far** and it's **time**\" — [30:44](memento://play?platform=youtube&video_id=3ub8RBE7BC8&t=1844)\n\n**He cites 25 years** as his own training history. When people recognize he's more muscular than average and ask how long he's been at it:\n\n> \"how long have you been at this for and then I go yeah **25 years**\" — [31:"
+    },
+    {
+      "id": "q_multi_evidence_64Zp3tzNbpE_01",
+      "type": "multi_evidence",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 34065.5,
+      "reply": "## Raft 拜票僵局（Split Vote）与随机化选举超时\n\n### 为什么连续轮次会反复失败？\n\n在三副本集群中，如果所有节点的选举计时器同时到期，会触发如下死循环：\n\n1. **同时变 Candidate**：三个节点同时进入 Candidate 状态，Term 各自 +1。\n2. **每人都投自己**：每个 Candidate 在发出 `RequestVote` 之前已经把票投给了自己。当收到别人的 `RequestVote` 时，因为本 Term 内已经投过票，只能拒绝——结果三人各得 1 票。\n3. **无人过半**：三节点集群的多数派是 2 票，每人只拿 1 票，无人当选。\n4. **计时器重新点燃**：由于没有 Leader 产生，也就没有 `AppendEntries` 心跳来重置任何人的选举计时器。计时器再次到期——如果它们的超时值仍然相同，就会在完全相同的时刻再次同时爆发，完全相同的分裂投票再次上演。\n\n正如课程中所述：\n\n> *\"[57:30] supposing we have a three replica system all their election timers go off at the same time every server [votes] for itself and then when each of them receive"
+    },
+    {
+      "id": "q_multi_evidence_BBCp28YF-hg_01",
+      "type": "multi_evidence",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 24062.6,
+      "reply": "这些数据来自 Ben Bernanke 2022年诺贝尔经济学奖演讲中对大萧条时期信贷危机的案例分析：\n\n---\n\n### 银行倒闭规模\n\n当时的美国大约有 **2万到2.5万家银行**（以大量小型银行为主）。在 1929 至 1933 年间，约 **40%** 的银行消失了——通过倒闭、关门或被其他银行合并吸收。大规模的银行挤兑（bank runs）导致民众信心崩溃、纷纷提走存款，幸存下来的银行也变得极度惜贷，转向清算存量贷款而非发放新贷款。\n\n> [12:08 约40%银行消失](memento://play?platform=youtube&video_id=BBCp28YF-hg&t=728)\n\n---\n\n### 1933 年按揭贷款违约情况\n\n在借款端，私人借款人同样大面积资不抵债：\n\n- **住房按揭**：1933年一项覆盖22个城市的调查显示，房主按揭违约率从 **21% 到 62%** 不等（即拖欠还款）。\n- **农场按揭**：1933年约 **一半**（约50%）的农场按揭贷款处于违约状态。\n\n> [12:53 住房与农场按揭大规模违约](memento://play?platform=youtube&video_id=BBCp28YF-hg&t=773)\n\nBernanke 特别强调，这些数字远比 2008 年全球金融危机后的情况严重得多。银行惜贷 + 借款人"
+    },
+    {
+      "id": "q_multi_evidence_Cl0QYkez-BE_01",
+      "type": "multi_evidence",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 27945.3,
+      "reply": "这个故事出自 **Thomas Sargent 的诺贝尔奖演讲**（2011年），他用美国早期财政史来回答关于政府救助与财政纪律的经典问题。整个脉络如下：\n\n---\n\n## 背景：联邦第一次\"兜底\"州债\n\n建国初期，Hamilton 主导联邦政府大规模**承担了各州的战争债务**（约占初始联邦债务的三分之一），这是一次\"建国级 bailout\"，成功树立了联邦的国际信誉。[37:20 联邦承担各州债务](memento://play?platform=youtube&video_id=Cl0QYkez-BE&t=2240)\n\n## 州债膨胀：运河和铁路泡沫\n\n后来 Madison、Monroe 和 Hamilton 陆续否决了联邦基础设施法案，修运河、铁路的任务便落到了各州。当时各州**没有平衡预算约束**，大量举债投资，Sargent 将此比作\"互联网泡沫\"——人人都说这些项目会自己回本。[42:07 各州举债修运河铁路](memento://play?platform=youtube&video_id=Cl0QYkez-BE&t=2527)\n\n## 1830s 末经济萧条：州债崩盘\n\n经济衰退来了，这些州债全部违约（\"went belly up\"），而联邦债券安然无恙。[42:48 晚1830s萧条州债崩盘](memento://play?platform=youtube&vi"
+    },
+    {
+      "id": "q_multi_evidence_EpIgvowZr00_01",
+      "type": "multi_evidence",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 40963.2,
+      "reply": "这是 **GFS** 写路径中一个非常关键的安全设计。让我把逻辑串起来：\n\n---\n\n## 为什么不能立即指派新 Primary？\n\n你可能会想：Master 定期 ping 所有 chunk server，一旦发现当前 Primary 不回应，为什么不马上指派一个新的？\n\n原因在于 **split brain（脑裂）** 风险。Master 收不到 Primary 的响应，不代表 Primary 真的宕机了——很可能只是网络分区（network partition），Primary 本身还在正常运行，并且仍在接受某些客户端的写请求。如果 Master 立刻指派一个新 Primary，就会出现 **两个 Primary 同时接受写入同一 chunk** 的局面，数据一致性被彻底破坏。\n\n正如课上所说：\n\n> you might think that at that point where gosh you're not responding to my pings then you might think the master at that point would designate a new primary — it turns out that by itself is a mistake\n>\n> — [01:01:52](memento://play?platform=y"
+    },
+    {
+      "id": "q_multi_evidence_PHe0bXAIuk0_01",
+      "type": "multi_evidence",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 34184.7,
+      "reply": "这个问题在 Ray Dalio 的经典视频中有非常清晰的讲解。以下是他提出的**去杠杆化四条路径**，以及为什么单纯削减开支反而会让债务负担恶化。\n\n---\n\n## 去杠杆化的四条路径\n\n据 [19:17 去杠杆化的四种方式](memento://play?platform=youtube&video_id=PHe0bXAIuk0&t=1157)，债务负担过重必须降低，有四种办法：\n\n1. **削减支出**（austerity）—— 个人、企业、政府勒紧裤腰带，减少开支来偿还债务\n2. **债务违约与重组**（defaults & restructurings）—— 借款人还不起钱，债权人被迫接受减记、延期或降息\n3. **财富再分配**（transfer wealth）—— 从\"富人\"向\"穷人\"转移财富\n4. **央行印钞**（print new money）—— 中央银行发行新货币\n\nDalio 强调，**这四种方式在现代历史上每一次去杠杆中都会出现**（[19:37](memento://play?platform=youtube&video_id=PHe0bXAIuk0&t=1177)）。\n\n---\n\n## 为什么削减支出反而让债务负担更重？\n\n这是最反直觉但最关键的一点。据 [19:58 削减支出的悖论](memento://play?platform=youtube&v"
+    },
+    {
+      "id": "q_multi_evidence_RmVL30sS2yU_01",
+      "type": "multi_evidence",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 37618.8,
+      "reply": "这是来自 Daron Acemoglu（2024年诺贝尔经济学奖得主）在诺贝尔奖演讲中的核心框架。让我来回答你的两个问题：\n\n## 1. AI 如何让体力劳动者分享更高的生产率？\n\nAcemoglu 引入了**效用-技术可能性前沿（Utility-Technology Possibilities Frontier, UTF）**框架来描述不同社会群体（如\"穷人\"与\"富人\"、劳动者与资本所有者）之间的收入/效用分配如何由技术选择共同决定。[18:01 UTF框架介绍](memento://play?platform=youtube&video_id=RmVL30sS2yU&t=1081)\n\n在演讲中，Acemoglu 强调 AI 是一种**多用途技术**，可以有多种不同的使用方式。具体来说，可以**用 AI 为体力劳动者提供更好的信息，使他们的生产率大幅提高**——这就是他所称的 **\"Pro-worker AI\"（亲劳动者 AI）**。如果走这条路，就可以回到类似原始前沿（他图中的\"黑色前沿\"），从而为**共享繁荣（shared prosperity）**创造机会——不同群体的工资和效用都能提高。[33:25 Pro-worker AI与共享繁荣](memento://play?platform=youtube&video_id=RmVL30sS2yU&t=2005)\n\n## 2."
+    },
+    {
+      "id": "q_multi_evidence_W-Q9AOp2FW8_01",
+      "type": "multi_evidence",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 30170.6,
+      "reply": "根据 FRONTLINE 纪录片《Money, Power and Wall Street》第一集的讲述：\n\n**AIG 的信用违约互换（CDS）总敞口约为 4,400 亿美元。** 纪录片在 [44:54](memento://play?platform=youtube&video_id=W-Q9AOp2FW8&t=2694) 处明确提到：\"AIG was on the hook for **$440 billion** worth of credit default swaps.\" 随后在 [45:41](memento://play?platform=youtube&video_id=W-Q9AOp2FW8&t=2741) 又用\"some **$400-odd billion** of credit default swaps\"再次确认了这一量级。\n\n**美国政府紧急注入的救助贷款为 850 亿美元。** 纪录片在 [45:41–45:46](memento://play?platform=youtube&video_id=W-Q9AOp2FW8&t=2741) 讲道：\"another government bailout, AIG securing an **$85 billion**\"紧急信贷额度。\n\n纪录片还强调了 AIG 走到这一步的根本原因：它严重误判了这些衍生品的"
+    },
+    {
+      "id": "q_multi_evidence_XvyMO7CmFlk_01",
+      "type": "multi_evidence",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 25925.1,
+      "reply": "这是 Abhijit Banerjee 在 2019 年诺贝尔奖演讲中介绍的加纳实验（与 Dean Karlan 等人合作）。两个发现非常关键：\n\n---\n\n## 1. 只给资产、去掉\"手把手\"辅导会怎样？\n\n实验将一部分参与者**只给予资产**，而剥去了毕业计划（graduation program）中的陪伴式辅导（hand-holding）和心理咨询部分。结果发现：\n\n> **仅仅给资产、没有后续的辅导支持，并没有产生持久的效果（no durable effect）。**\n\n这说明光有物质资本是不够的，心理层面的改变——比如信心、自我效能感、对未来的规划能力——可能是毕业计划产生长期影响的关键因素。\n\n[26:42 实验设计与结果](memento://play?platform=youtube&video_id=XvyMO7CmFlk&t=1602)\n\n---\n\n## 2. 包装袋工厂的生产力实验\n\n为了进一步探究\"心理机制\"的作用，研究者在毕业计划中设计了一个额外的随机化：参与者在资产开始产生收入之前会收到一笔**临时现金补助**（temporary cash support），金额被随机分为\"小额\"和\"大额\"。为了测量这对生产力的影响，研究者**实际运营了一个制袋工厂**（生产了 117,000 个袋子），在工厂里直接观察参与者的工作表现。\n\n结果：\n- 毕业计划的参与者"
+    },
+    {
+      "id": "q_multi_evidence_ZlVBSZYaVF0_01",
+      "type": "multi_evidence",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 90216.6,
+      "reply": "根据《Determining YOUR Hypertrophy Volume》这个视频，以下是两个问题的答案：\n\n---\n\n### 1. 训练后第一时间该看的信号：**泵感（Pump）**\n\n视频在 [10:19](memento://play?platform=youtube&video_id=ZlVBSZYaVF0&t=619) 处说，每次训练结束后要评估**三个指标**。其中第一个被提到的就是**力量/功能下降程度**（strength and function loss）——训练结束时这个肌肉还有多少力量、功能是否明显下降。\n\n但紧接着在 [11:26](memento://play?platform=youtube&video_id=ZlVBSZYaVF0&t=686) 处，视频把 **pump（泵感）** 作为第二个即时指标重点讨论，并在后续的容量调整算法中反复以泵感作为核心判断依据：\n\n> [14:48](memento://play?platform=youtube&video_id=ZlVBSZYaVF0&t=888)：\"after all this volume at the end of the session you got a good pump or a great pump\"\n\n> [16:32](memento://play?platform=you"
+    },
+    {
+      "id": "q_multi_evidence_cQP8WApzIQQ_01",
+      "type": "multi_evidence",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 48504.0,
+      "reply": "这个问题在 MIT 6.824 的第一讲里有非常清晰的描述。\n\n**第一反应：加 Web 服务器（水平扩展前端层）**\n\n当用户量增长时，工程师最直觉的做法就是不断往前端层（web tier）加更多的服务器来分担请求。\n\n**最终卡住它的是：共享的数据库**\n\n正如 [27:23 讲师的原话](memento://play?platform=youtube&video_id=cQP8WApzIQQ&t=1643) 所说：\n\n> \"At some point, after you have 10 or 20 or 100 web servers all talking to the same database, now all of a sudden the database starts to be a bottleneck. And adding more web servers no longer helps.\"\n\n具体过程是这样的：\n\n1. **起步**：前端层扛不住了 → 工程师加更多 web server，通过负载均衡分散流量。\n2. **瓶颈转移**：web 层不再是瓶颈了，但所有这些服务器都在读写同一个数据库，数据库变成了新的瓶颈。\n3. **死胡同**：继续加 web server 已经没有意义，因为瓶颈已经从 web 层转移到了数据库层。\n\n讲师还用了一个很形象的"
+    },
+    {
+      "id": "q_multi_evidence_cfXTQmFRjWU_01",
+      "type": "multi_evidence",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 82835.4,
+      "reply": "根据 *Stop Overdoing It! How Many Sets Should You Really Be Doing?* 这期视频中介绍的 volume reset 协议：\n\n---\n\n### 初始休息期（Active Rest Phase）由两部分组成：\n\n1. **一周正常减载（deload week）**——和平时的减载一样\n2. **一周几乎什么都不做**——用原话讲就是\"basically nothing, just like frolicking in the field with your friends, plenty of sleep, plenty of food, plenty of rest\"。这段时间用于大幅降低疲劳、并开始让肌肉重新对训练量敏感。\n\n[12:51 视频解释 active rest 的两个阶段](memento://play?platform=youtube&video_id=cfXTQmFRjWU&t=771)\n\n---\n\n### 恢复训练后第一周的训练量：\n\n应使用**正常起始组数的一半（½）**。视频原话是：\n\n> \"Go to **half the normal amount** — if you normally do four sets of bench press in week one of a program, "
+    },
+    {
+      "id": "q_multi_evidence_ej6cygeB2X0_01",
+      "type": "multi_evidence",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 131088.9,
+      "reply": "根据 Richard Thaler 在诺贝尔奖演讲中的描述，这个计划就是著名的 **\"Save More Tomorrow\"（SMarT）** 计划，由 Thaler 和 Benartzi 共同设计。\n\n**具体步幅：** 每次员工获得加薪时，储蓄率自动上调 **3 个百分点**。\n\n正如 [32:09 的讲解](memento://play?platform=youtube&video_id=ej6cygeB2X0&t=1929) 所述——这些员工此前已经拒绝了理财顾问要求他们一次性提高5个百分点储蓄率的建议，随后才被引导加入这个更温和的\"以后再涨\"方案，储蓄率在每次加薪时递增3个百分点。\n\n**最终效果：** 参与者的储蓄率几乎翻了 **四倍**。Thaler 在 [33:40 的总结](memento://play?platform=youtube&video_id=ej6cygeB2X0&t=2020) 中说：\"you can see we almost **quadrupled** saving rates using supposedly irrelevant factors.\"\n\n结合 Thaler 和 Benartzi 2004 年发表的论文数据，参与者的平均储蓄率从大约 **3.5%** 起步，最终攀升到了大约 **13.6%**——确实是近四倍的增长。而对照组的"
+    },
+    {
+      "id": "q_multi_evidence_heBErnN3ZPk_01",
+      "type": "multi_evidence",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 32354.9,
+      "reply": "这个例子来自 MIT 14.02 宏观经济学导论课的 Lecture 1，教授用它来说明经济数据发布对市场的冲击力。\n\n- **预测值**：华尔街预期非农就业人数（non-farm payroll）将增加约 **19 万人** ([19:08–19:19](memento://play?platform=youtube&video_id=heBErnN3ZPk&t=1148))\n- **实际值**：8:30 a.m. 数据公布后，实际新增就业人数超过了 **50 万人**，是预期的两倍多 ([19:51–19:58](memento://play?platform=youtube&video_id=heBErnN3ZPk&t=1191))\n\n教授接着展示了一个反直觉的现象：虽然就业数据是\"great news for the labor market\"，但股指期货在数据公布瞬间**暴跌**（\"imploded immediately\"）([20:02–20:07](memento://play?platform=youtube&video_id=heBErnN3ZPk&t=1202))。原因是就业太强劲 → 市场预期美联储不得不推迟降息（原本预计约 4–6 个月内开始降息，数据出来后立刻被推到年底 ([22:53–23:07](memento://play?platform=you"
+    },
+    {
+      "id": "q_multi_evidence_iQyg-KypKAA_01",
+      "type": "multi_evidence",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 42576.7,
+      "reply": "根据 Kun 的基准测试数据：\n\n1. **GitHub MCP Server vs CLI 的开销对比**：\n   - Token 成本：MCP Server 比直接调用 CLI **贵 3 倍**（[22:50](memento://play?platform=youtube&video_id=iQyg-KypKAA&t=1370)）\n   - 延迟：MCP Server 比 CLI **慢一倍以上**（[22:56](memento://play?platform=youtube&video_id=iQyg-KypKAA&t=1376)）\n\n2. **表现最好的工具**：\n   - **Axi**（[23:07](memento://play?platform=youtube&video_id=iQyg-KypKAA&t=1387)）—— 它同时拥有**最低的成本**和**最高的成功率**。\n\nAxi 是 Kun 自己设计的一套工具设计标准，核心理念是把 agent 当作一等公民来优化工具的人因工程（agent ergonomics）。他基于这套标准构建了 GitHub Axi 等工具，并用 benchmark 证明了其优势。正如他总结的：使用 MCP Server 访问 GitHub 基本上是在浪费时间和金钱，却没有换来任何明显的收益（[23:00](memento://p"
+    },
+    {
+      "id": "q_multi_evidence_lu_BObG6dj8_01",
+      "type": "multi_evidence",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 42703.5,
+      "reply": "## 三个因素 & 唯一无争议的驱动因子\n\n这个视频来自 [How To Build Muscle (Explained In 5 Levels)](https://youtube.com/watch?v=lu_BObG6dj8)，讨论的是 Dr. Brad Schoenfeld 在 2010 年发表的那篇被引用超过 500 次的论文，该论文提出了肌肉肥大的**三因素模型**：\n\n1. **机械张力（Mechanical Tension）**\n2. **肌肉损伤（Muscle Damage）**\n3. **代谢压力（Metabolic Stress）**\n\n视频明确指出，**机械张力（Mechanical Tension）是目前科学界唯一仍无争议的肌肉增长主要驱动因子**：\n\n> [11:00 \"as of now tension remains absolutely undisputed as the primary driver of hypertrophy within the scientific community at large\"](memento://play?platform=youtube&video_id=lu_BObG6dj8&t=660)\n\n---\n\n## 离心训练的\"反例\"为什么不成立\n\n视频给出了非常清晰的论证链：\n\n**1）相关性 ≠ 因果性：** "
+    },
+    {
+      "id": "q_multi_evidence_oYxTTirKY8M_01",
+      "type": "multi_evidence",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 43280.8,
+      "reply": "这场讲座来自 *System Design Explained* 这门课，讨论的是传输层的 **TCP vs UDP** 选择。\n\n---\n\n### 支付/银行 API 应该用什么协议？\n\n讲座明确指出，涉及**支付（payments）、认证（authentication）、用户数据（user data）** 的 API 应该始终使用 **TCP（Transmission Control Protocol）**。因为 TCP 像寄快递时带有\"签收回执+追踪\"——它保证数据包**按序、可靠地送达**，即使分成了多个 chunk，也会确保每一块都被对方收到并确认。\n\n> [01:00:01 银行与支付场景推荐 TCP](memento://play?platform=youtube&video_id=oYxTTirKY8M&t=3601) — \"APIs that involve payments, authentication, or user data always use TCP.\"\n\n> [01:02:44 银行与支付必须 TCP](memento://play?platform=youtube&video_id=oYxTTirKY8M&t=3764) — \"It is best for using TCP in bankings, emails, payments, and "
+    },
+    {
+      "id": "q_multi_hop_global_01",
+      "type": "multi_hop",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 43294.4,
+      "reply": "好问题，这两个系统在\"失败后由谁来拍板\"这件事上走了截然不同的路。\n\n---\n\n## GFS 的单点 Master 瓶颈\n\nGFS 的设计里只有一个 master，它必须在内存中维护 **每一个文件到 chunk 的映射表**。随着 Google 内部使用量爆炸式增长，这个设计首先碰到的硬墙就是 **master 的内存耗尽**：\n\n> master had to have a table entry for every file in every chunk and that meant as the GFS use grew and there were more and more files, the master just ran out of RAM to store the files… you can put more RAM on but there's limits to how much RAM a single machine can have\n\n— [01:20:47 单 Master 内存瓶颈](memento://play?platform=youtube&video_id=EpIgvowZr00&t=1247)\n\n除了内存，**请求负载**也压在同一个 master 上——成千上万的 client 都要和这一个节点交互，内核层面也扛不住。\n\n简而言之："
+    },
+    {
+      "id": "q_multi_hop_global_02",
+      "type": "multi_hop",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 73995.1,
+      "reply": "好问题，两个层面刚好对应「模型视角的质变」和「工程视角的痛点」。我把搜到的资料整理一下，分两部分回答你。\n\n---\n\n## 一、MCP 相比原始 API，到底改了什么？\n\n核心变化可以用一句话概括：**API 是给程序员读的\"使用手册\"，MCP 是给模型读的\"活地图\"。**\n\n| 维度 | 传统 API | MCP |\n|------|---------|-----|\n| **消费者** | 人类开发者 / 另一个程序 | **模型本身** |\n| **工具描述方式** | 写在文档里，靠 prompt 硬塞给模型 | 机器可读的 JSON Schema，模型自动发现 |\n| **集成逻辑在哪** | 在应用代码里（你告诉模型该调哪个 endpoint） | **转移到模型的推理层**（模型自己决定调什么、什么时候调） |\n\n具体来说有三个关键改变：\n\n### 1. 自描述（Self-describing）——模型自己\"摸清\"工具\n\n传统 API 下，你要通过冗长的 prompt 告诉模型：\"这个接口的 URL 是什么、参数怎么传、返回值长什么样\"。而 MCP Server 会在启动时把自己的能力（可用的 function、参数 schema、返回格式）**主动暴露**给模型。正如 [02:58 MCP vs API](memento://play?platform=youtube"
+    },
+    {
+      "id": "q_multi_hop_global_03",
+      "type": "multi_hop",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 97610.2,
+      "reply": "好问题，这两个流派其实是同一个框架的不同\"分辨率\"。我结合视频内容给你拆开讲。\n\n---\n\n## 一、为什么要划分地标（MEV / MV / MAV / MRV）\n\nDr. Mike 在视频里提到了这些地标名称：[08:27 minimum effective volume, maintenance volume, maximum recovery volume, maximum adaptive volume](memento://play?platform=youtube&video_id=ZlVBSZYaVF0&t=507)。\n\n划分地标的核心目的是 **给训练量建一张「地形图」，让你知道每个阶段该在地图的哪个区域运作**：\n\n| 地标 | 含义 | 在周期中的角色 |\n|------|------|--------------|\n| **MV**（Maintenance Volume） | 维持现有肌肉量所需的最低组数 | 减脂期/休息期用 |\n| **MEV**（Minimum Effective Volume） | 能产生增长的最低组数 | mesocycle 起始周，摸底用 |\n| **MAV**（Maximum Adaptive Volume） | 增长效益最高的组数区间（甜区） | 积累期（accumulation phase）的主战场 |\n| **MRV**（M"
+    },
+    {
+      "id": "q_multi_hop_global_04",
+      "type": "multi_hop",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 74285.2,
+      "reply": "好问题，这两个视角恰好互补。我从知识库里找到了对应的原始讲解，下面分层回答。\n\n---\n\n## 一、四类政策杠杆（Ray Dalio 框架）\n\nRay Dalio 在《How The Economic Machine Works》里指出，去杠杆时债务负担必须下降，**历史上每一次去杠杆都会用到以下四种手段**：\n\n| # | 手段 | 含义 |\n|---|------|------|\n| 1 | **削减开支（紧缩）** | 个人、企业、政府压缩支出以偿还债务 |\n| 2 | **债务违约与重组** | 通过违约、展期等方式直接削减债务存量 |\n| 3 | **财富再分配** | 从\"有钱人\"向\"没钱人\"转移财富（如税收、补贴） |\n| 4 | **央行印钞** | 央行创造新货币注入经济 |\n\n> 来自 [19:09 四种去杠杆手段](memento://play?platform=youtube&video_id=PHe0bXAIuk0&t=1149)：*\"There are four ways this can happen. 1. people, businesses, and governments cut their spending. 2. debts are reduced through defaults and restructurings. 3. wealth"
+    },
+    {
+      "id": "q_multi_hop_global_05",
+      "type": "multi_hop",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 63051.1,
+      "reply": "好问题，这其实是一个**分布式系统设计**和**操作系统基础**的交叉点。我结合你之前看过的 GFS 以及 OS 底层知识来回答。\n\n---\n\n## 一、活生生的例子：GFS 的 single master 撞墙\n\nMIT 6.824 课上讲得很直白——GFS 的 master 必须为**每一个文件的每一个 chunk** 维护一张元数据表：\n\n> GFS 最严重的限制之一是只有一个 master，master 必须为每个文件的每个 chunk 保存一条表项。随着 GFS 使用量增长、文件越来越多，master 就**内存溢出**了——RAM 不够装这些元数据了。你可以加 RAM，但**单台机器能装的 RAM 是有上限的**。\n>\n> — [01:20:47 GFS single master 的内存瓶颈](memento://play?platform=youtube&video_id=EpIgvowZr00&t=4847)\n\n这不是 GFS 独有的问题。**任何**把全量元数据塞进单机内存的架构——单机数据库的索引、单机缓存的 key 目录、单 master 的分布式文件系统——都会在规模增长时撞上同一堵墙。\n\n---\n\n## 二、这堵墙的本质：进程的地址空间\n\n回到计算机基础，你问的\"进程能用的内存\"，在 OS 里叫 **进程的地址空间（Address Space）**。\n\n"
+    },
+    {
+      "id": "q_multi_hop_global_06",
+      "type": "multi_hop",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 50757.6,
+      "reply": "这是一个非常好的类比，两个场景的结构确实高度同构：**原系统有明确的能力天花板 → 中间加一层「语义/扩展层」→ 让它承担原本不擅长的任务**。下面分别拆解。\n\n---\n\n## 一、大模型调用外部工具：扩展层 = Tool + MCP\n\n### 原系统的局限\n\n大模型的底层引擎（Transformer）本质上只能做一件事：**根据输入文本，输出下一段文本**。它无法：\n\n- 访问实时数据（天气、股价、数据库）\n- 执行副作用操作（发邮件、创建文件、调 API）\n- 获取训练数据截止日之后的信息\n\n正如视频中所说，模型\"能做的仅仅是输出一段文本，告诉平台它想要调用哪个工具\"，真正执行调用的是平台——模型本身无法触及外部世界。[18:54](memento://play?platform=bilibili&video_id=BV1E7wtzaEdq&t=1134)\n\n### 扩展层做了什么\n\n**第一层：Tool（工具调用）** —— 在模型和外部世界之间插入一个\"工具描述 + 执行中间层\"：\n\n1. 平台把工具列表（名称、参数 schema、用途描述）注入模型的上下文\n2. 模型根据意图**选择工具并生成结构化参数**（JSON 格式）\n3. 平台拿到模型的\"调用意图\"后，**实际执行**工具调用，把结果返回模型\n4. 模型将工具返回的结果**归纳总结**成自然语言\n\n这样，模型就突"
+    },
+    {
+      "id": "q_multi_hop_global_07",
+      "type": "multi_hop",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 59340.6,
+      "reply": "这是一个非常好的宏观视角问题。我把知识库里的内容串联起来，从**局部投机机制**和**美元周期**两个层面拆解。\n\n---\n\n## 一、局部投机机制：泰铢是怎么被攻破的\n\n### 1. 前提条件——\"固定汇率 + 金融自由化\"的致命组合\n\n90年代初，在[华盛顿共识](memento://play?platform=bilibili&video_id=BV1hN596zEas&t=67)的推动下，东南亚各国纷纷打开资本管制大门。泰铢采取的是**盯住美元的固定汇率**，这意味着汇率风险被\"消除\"了——对外资来说，去泰国投资几乎不用担心汇率波动，等于[高收益、低风险](memento://play?platform=bilibili&video_id=BV1hN596zEas&t=342)，谁不想冲？\n\n### 2. 日元热钱率先涌入——吹大泡沫\n\n90年代中期，日本国内利率不到2%，而日元在1995年升值到历史高位（1美元兑不到80日元）。日元又值钱、本土收益又低，于是[日本银行以不到2%的融资成本大量贷款给东南亚](memento://play?platform=bilibili&video_id=BV1hN596zEas&t=414)，获取5%-6%甚至更高的收益。到1996年，**单单日本银行的资金就占到泰国债务的50%**、印尼的39%、马来西亚的36%。\n\n这些钱本质上是*"
+    },
+    {
+      "id": "q_multi_hop_global_08",
+      "type": "multi_hop",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 60756.1,
+      "reply": "好问题，这个\"测了车速、没测方向\"的比喻太精准了。你在知识库里存的那期视频正好把这个问题讲得很透彻，我来结合它的框架展开。\n\n---\n\n## 一、GDP 到底漏掉了什么？\n\n视频里有一个经典比喻——把一个国家的经济比作一辆行驶的车：\n\n> GDP 就是简简单单衡量这个车速，它开得到底有多快。**具体这辆车正在往哪开、车本身有没有老化、有没有磨损，GDP 全都不管。**\n>\n> — [17:38 GDP是会骗人的 | 一口气了解GDP](memento://play?platform=youtube&video_id=P-NmMX9rlYQ&t=1058)\n\n具体来说，GDP 至少遗漏了以下几个维度：\n\n| 漏掉的维度 | 说明 |\n|---|---|\n| **贫富差距（分配）** | GDP 是总量，不告诉你蛋糕怎么分。一个国家 GDP 翻倍，但财富集中在 1% 手里，大多数人的生活可能没改善。 |\n| **幸福感与生活质量** | 收入高不等于幸福，工作压力、通勤时长、心理健康等全不在考量范围内。 |\n| **环境破坏与资源耗竭** | 更要命的是，污染后治理、自然灾害后重建反而会**拉动** GDP——[18:15 环境破坏与GDP失灵](memento://play?platform=youtube&video_id=P-NmMX9rlYQ&t=1095) |\n| **可持续"
+    },
+    {
+      "id": "q_multi_hop_global_09",
+      "type": "multi_hop",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 98858.6,
+      "reply": "好的，你这个问题问得很有层次感。我把视频里提到的两条线索拆开来说清楚。\n\n---\n\n## 一、结构原则：训练日 vs 休息日的热量 & 宏量安排\n\n核心逻辑来自 [17:51 三分化-饮食详解](memento://play?platform=bilibili&video_id=BV1z8zPYjE4j&t=1071) 里直接点明的「核心技巧」：\n\n> **训练日 → 200\\~300 大卡盈余；休息日 → 500\\~700 大卡亏空**\n\n具体原理在 [03:28 同一视频](memento://play?platform=bilibili&video_id=BV1z8zPYjE4j&t=208) 有展开：\n\n- 把基础代谢 + 日常消耗 + 训练消耗加起来，训练日在此基础上 **加** 200–300 kcal，保证肌糖原充足、合成代谢窗口有原料。\n- 休息日在此基础上 **减** 500–700 kcal，靠低活动量让身体处于轻度分解状态来控制脂肪增长。\n- 如果你的训练日是 3–4 天、休息日 3–4 天，**周总量仍然可以是微亏或持平的**，但训练日因为有盈余，肌肉合成效率不受影响。这就是碳水循环增肌的核心——以周为单位保持微亏/持平，以天为单位做热量调度。\n\n同时 [23:14 同一视频](memento://play?platform=bilibili&video_i"
+    },
+    {
+      "id": "q_multi_hop_global_10",
+      "type": "multi_hop",
+      "expected_route": "search",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 105572.8,
+      "reply": "好问题。这两位诺奖得主分别是 **Richard Thaler**（2017）和 **Abhijit Banerjee**（2019，与 Esther Duflo、Michael Kremer 共享），他们用截然不同的实证方法挑战了「自由选择 = 最优结果」的假设。\n\n---\n\n## 一、Richard Thaler —— 大规模制度自然实验 + \"助推\"（Nudge）\n\n**方法：** 利用美国企业养老金制度的真实变更数据，比较「自动注册」（automatic enrollment）与传统「主动加入」（opt-in）两种默认选项下的行为差异。\n\n**核心发现：**\n\n- **默认选项的巨大力量：** 传统制度下，员工需要主动填表才能加入养老金计划，参与率很低；而自动注册制度只是把默认选项反转——\"如果你不填表，我们就自动帮你加入\"——参与率就飙升到约 **90%**，且对低收入群体效果尤其显著。[28:00 about 90% join with automatic enrollment](memento://play?platform=youtube&video_id=ej6cygeB2X0&t=1680)\n\n- **Save More Tomorrow 计划：** 针对自动注册下储蓄率偏低的问题，Thaler 设计了\"现在签约、未来加薪时再提高储蓄率\"的方案，利用人类\"自我控"
+    },
+    {
+      "id": "q_summary_-HOzOBmQ5ro_01",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "lookup_documents",
+        "lookup_documents",
+        "summarize_document",
+        "summarize_document",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "lookup_documents",
+        "summarize_document",
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 59548.5,
+      "reply": "这期视频整体围绕 **六条主线** 来解释瑞士的高人均收入与经济韧性，彼此之间环环相扣：\n\n---\n\n### 主线一：永久中立国身份——安全港效应\n\n瑞士通过\"对自己够狠、对外部够圆滑\"的策略，在1815年维也纳会议上获得欧洲各国承认的永久中立国身份 [07:50](memento://play?platform=youtube&video_id=-HOzOBmQ5ro&t=470)。这个身份带来两个巨大红利：一是吸引了50多个国际组织（WTO、WHO、红十字会等）将总部设在瑞士；二是让全球资本在战乱时期放心涌入瑞士，奠定了后续金融和商业的基础。\n\n---\n\n### 主线二：银行业与财富管理——保密制度的兴衰\n\n中立国身份直接催生了瑞士的王牌产业——离岸金融。1934年《瑞士银行法》第47条将客户信息保密写入联邦法，二战之后瑞士成为全球最大离岸金融中心，管理着全球1/4的跨境资产 [08:20](memento://play?platform=youtube&video_id=-HOzOBmQ5ro&t=500)。但视频也指出，近年来国际保密协议破裂后，银行业优势已大幅削弱，瑞士经济其实早就不单靠银行了 [18:36](memento://play?platform=youtube&video_id=-HOzOBmQ5ro&t=1116)。\n\n---\n\n### 主线三：三大高附加值"
+    },
+    {
+      "id": "q_summary_-lcgyCG-olg_01",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge",
+        "lookup_documents"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 63351.0,
+      "reply": "下面根据 Goldin 在 2023 年诺贝尔经济学奖演讲中的三个核心论点来回答：\n\n---\n\n## 一、女性劳动参与的长期格局：U 形曲线\n\nGoldin 首先指出，女性的市场劳动参与率在国家的长期历史和跨国截面上呈 **U 形**。在工业化早期，女性从农业中的隐性参与下降（U 形的底部），随后随着实际工资上升、家务生产机会成本变化、受教育程度提高以及服务业和白领岗位的扩张，女性重新大量进入劳动力市场，形成 U 形的上升段。正如 [03:56 她的描述](memento://play?platform=youtube&video_id=-lcgyCG-olg&t=236)：\n\n> \"the market role of women has tended to be U-shaped across the long history of a nation and across nations\"\n\n到 1920 年，专业和办公类岗位已从占全部就业女性的 20% 翻倍到 40%，推动了 U 形上升段的展开 [05:58 讨论](memento://play?platform=youtube&video_id=-lcgyCG-olg&t=358)。\n\n---\n\n## 二、世纪中叶的\"静悄悄的革命\"：年轻女性职业视野的根本转变\n\nGoldin 强调，在经历了数十年参与率上升的渐进变化之后，"
+    },
+    {
+      "id": "q_summary_185XGEMefgc_01",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": false,
+      "error": null,
+      "latency_ms": 35410.4,
+      "reply": "你说的是 Google Cloud Tech 发的那期 **「MCP vs API: Why traditional APIs are failing AI agents」**。下面是它围绕你的两个问题做出的核心论述：\n\n---\n\n## 一、MCP 和 API 的关系：不是取代，而是「架在上面」\n\n视频的核心立场非常明确——**「It's not MCP versus API, but MCP on top of APIs」**。\n\n具体论证逻辑分几层：\n\n1. **API 并没有消失，它们仍然是底座。** MCP 改变的是模型访问 API 的方式，而非替代 API 本身。MCP 扮演的角色是模型与 API 之间的**翻译层 / 中间件**，把 API 转换成模型能自动理解的格式。\n   > [07:19 MCP replaces the middleware between the model and the API](memento://play?platform=youtube&video_id=185XGEMefgc&t=439)\n\n2. **API 是代码级契约，MCP 是语义级协议。** 传统 API 是应用与应用之间的 code-level contract；而 MCP 是模型与其环境之间的 semantic protocol——你不再是教模型命中哪个 endpoin"
+    },
+    {
+      "id": "q_summary_2qf6ry-YjwU_01",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "lookup_documents",
+        "summarize_document",
+        "search_knowledge",
+        "summarize_document",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge",
+        "lookup_documents",
+        "summarize_document"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 163804.7,
+      "reply": "Now I have a comprehensive picture of the strategy. Here's what Dr. Mike and Jared Feather lay out in this conversation:\n\n---\n\n## 1. Conditioning — Be Stage-Ready *Before* Peak Week\n\nThe overarching philosophy is that **the athlete must already be shredded well before peak week**. Jared is blunt about it: if you need peak week to \"get extra shredded,\" you're in trouble. [32:10 Peak week won't save you](memento://play?platform=youtube&video_id=2qf6ry-YjwU&t=1930) — he says if you're not already conditioned, \"you're kind of pretty much fucked up.\" Peak week is for **fine-tuning and presenting** "
+    },
+    {
+      "id": "q_summary_31YTH1ywbS8_01",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "lookup_documents",
+        "summarize_document",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "summarize_document",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge",
+        "lookup_documents",
+        "summarize_document"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 133748.2,
+      "reply": "Douglas Diamond 的 2022 诺贝尔奖演讲围绕他职业生涯中两篇核心论文展开，系统地构建了三个相互咬合的机制。以下是完整梳理：\n\n---\n\n## 一、为什么需要中介：委托监督（Delegated Monitoring）\n\nDiamond 指出，借贷关系中存在固有的利益冲突——借款人可能把钱拿去跟\"小舅子\"做交易，而分散的投资者无法一一监督。如果每 10,000 个投资者各自花 100 美元去监督 100 笔贷款，直接融资的监督成本是荒谬的（14:03 一笔带过这个问题）。\n\n[04:04 第一篇论文](memento://play?platform=youtube&video_id=31YTH1ywbS8&t=244) 正是来自他的博士论文《Financial Intermediation and Delegated Monitoring》，核心问题是：**怎样设计一套最优合约，让一个被称为\"银行家\"的单一主体替所有投资者执行监督？**\n\n答案是：\n- **未监督的债务合约行不通**——借款人会隐瞒真实现金流，和\"小舅子\"串通只报告最低数字 [15:20 银行可以观察到借款人的真实交易](memento://play?platform=youtube&video_id=31YTH1ywbS8&t=920)\n- **每个人都去监督成本太高** [14:03 直接融资的监"
+    },
+    {
+      "id": "q_summary_3ub8RBE7BC8_01",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": false,
+      "error": null,
+      "latency_ms": 176228.1,
+      "reply": "好的，这是 Dr. Mike 在 RP 频道的 **\"Easily Build Muscle: The Simple Guide To Gaining Size\"** 这期视频里讲解的完整框架。以下是每个要素的梳理：\n\n---\n\n## 核心机制：Stimulus-Recovery-Adaptation（SRA）\n\n整个增肌框架的底层逻辑就是两步循环：\n\n1. **Stimulate（刺激）** — 用高质量的训练给肌肉施加刺激\n2. **Recover & Adapt（恢复 & 适应）** — 给身体时间恢复并生长\n\n[02:55 SRA 循环说明](memento://play?platform=youtube&video_id=3ub8RBE7BC8&t=175)：Dr. Mike 把它比作爬寺庙台阶——每完成一轮\"刺激→恢复→适应\"，你就像往上迈了一级台阶，越来越壮。这个循环构成的 [03:57 session-rest-session 训练范式](memento://play?platform=youtube&video_id=3ub8RBE7BC8&t=237) 是所有训练设计的根本起点。\n\n---\n\n## 四个\"底层因素\"（Underlying Factors）\n\nDr. Mike 强调，SRA 是最直接的理论框架，但有几个底层因素在背后**支撑**这个循环的运转：\n\n"
+    },
+    {
+      "id": "q_summary_64Zp3tzNbpE_01",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": false,
+      "error": null,
+      "latency_ms": 179749.9,
+      "reply": "下面是对 **MIT 6.824 Lecture 6: Fault Tolerance — Raft (1)** 的梳理，基于视频中的实际讲解顺序。\n\n---\n\n## 一、出发点：之前系统的\"单点决策\"问题\n\n课程开场，Robert Morris 就指出一个贯穿此前所有容错系统的**共同模式**：\n\n> MapReduce 复制计算，但整个计算由一个 **single master** 控制；GFS 复制数据，但同样有一个 **single master** 负责元数据决策。\n\n[00:00 开场：MapReduce 单 master 模式](memento://play?platform=youtube&video_id=64Zp3tzNbpE&t=0)\n\n他进一步抽象：\n\n> 这些系统的复制机制里，都\"**tucked away in a corner**\"藏着一个 **single entity** 来做出关键决定（比如谁是 primary）。好处是它不会跟自己产生分歧；坏处是它本身是一个 **single point of failure**。\n\n[01:34 单实体决策的利弊](memento://play?platform=youtube&video_id=64Zp3tzNbpE&t=94)\n\n也就是说，这些 prior 设计把真正的容错核心推到了一个无法自身容错的角落"
+    },
+    {
+      "id": "q_summary_8BKbu_s8p1Q_01",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": false,
+      "error": null,
+      "latency_ms": 93837.0,
+      "reply": "好的，下面是 Jeff Nippard 在这支 Lean Bulk Full Day of Eating 视频中完整展示的策略：\n\n---\n\n## 1. 总热量 & 宏量素目标\n\n他当天的 macro target 是：\n\n| 宏量素 | 克数 |\n|--------|------|\n| 蛋白质 | **225 g** |\n| 脂肪 | **75 g** |\n| 碳水 | **300 g** |\n| **总热量** | **≈ 2800 kcal** |\n\n他提到几个月前还在 ~2600 kcal 左右，之后逐步上调；未来几个月计划继续加到 3200–3400 kcal 甚至更多，**同时尽量维持体脂不变**——核心思路就是用一个**保守的热量盈余**来最大化 lean mass gain、最小化脂肪增长。\n\n> [01:36 宏量素目标公布](memento://play?platform=youtube&video_id=8BKbu_s8p1Q&t=96)\n\n---\n\n## 2. 碳水分配哲学——\"前重后轻、围绕训练集中\"\n\nJeff 的核心原则是 **把碳水主要集中在训练前和训练后**，而早餐则故意做成高蛋白、相对低碳：\n\n> \"I like to partition my carbs more around the workout and later in the day "
+    },
+    {
+      "id": "q_summary_BBCp28YF-hg_01",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "lookup_documents",
+        "summarize_document",
+        "search_knowledge",
+        "summarize_document",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge",
+        "lookup_documents",
+        "summarize_document"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 66882.4,
+      "reply": "下面是对 Bernanke 2022 年诺贝尔经济学奖演讲 **\"Banking, Credit, and Economic Fluctuations\"** 的系统梳理。\n\n---\n\n## 一、核心论点：什么是\"信贷市场压力\"，它如何放大衰退？\n\nBernanke 的主线论证围绕一个关键变量——**外部融资溢价（External Finance Premium, EFP）**展开。EFP 是企业或个人从银行/债券市场借款的利率与同期限无风险国债利率之间的利差。[03:40](memento://play?platform=youtube&video_id=BBCp28YF-hg&t=220)\n\n他的核心观点是：\n\n> 银行和信贷市场可能进入\"压力状态\"（stress），表现为 EFP 急剧上升、信贷供给收缩。这种信贷压力会对宏观经济产生\"非常重大的后果\"（very consequential effects）。[00:48](memento://play?platform=youtube&video_id=BBCp28YF-hg&t=48)\n\n具体传导机制是**双向反馈回路**：经济下行 → 借款人和贷款人的资产负债表恶化 → EFP 上升 → 信贷更难获得 → 实体经济进一步萎缩，衰退被**放大**（amplify）并延长。[08:01](memento://play?platf"
+    },
+    {
+      "id": "q_summary_BV11o4y1s7VY_01",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "lookup_documents",
+        "lookup_documents",
+        "summarize_document",
+        "summarize_document",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "lookup_documents",
+        "summarize_document",
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 46098.6,
+      "reply": "这期视频（小Lin说）围绕「先建框架、再填细节」的总思路，给出了 **四条核心建树路径 + 两条辅助巩固习惯**，我帮你梳理如下：\n\n---\n\n## 🌳 总纲：框架先于细节\n\n视频的核心主张是：面对庞杂信息，**第一优先级不是抠细节，而是搭出一棵\"知识树\"**。有了树，新信息永远知道往哪个枝上挂；没有树，再多树叶记下来也是散的，\"风一吹就散了\"。\n\n[03:16 每次来新的信息，你就知道在哪个树枝上](memento://play?platform=bilibili&video_id=BV11o4y1s7VY&t=196)\n\n---\n\n## 四条「建树」路径\n\n### 1️⃣ 借用已有框架——站在巨人肩膀上\n> 大多数知识前人已经梳理过，写成了教材、课程或综述文章。最偷懒的方式就是拿一本教材，**只摘目录/大纲**，不用先读细节。也可以搜\"一文读懂 XX\"之类的综述，甚至直接问 AI 帮你梳理框架。\n\n[03:54 你可以参考一个别人已有的框架](memento://play?platform=bilibili&video_id=BV11o4y1s7VY&t=234)\n\n### 2️⃣ 连续追问\"为什么\"——层层深挖\n> 从最表层的问题出发，不断问\"为什么\"，像剥洋葱一样一层层挖到根本原因。小Lin以硅谷银行为例：SVB 为什么倒 → 持有长期债券 → 为什么风险大 → 不做风控、"
+    },
+    {
+      "id": "q_summary_BV14v4y1G7A3_01",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "lookup_documents"
+      ],
+      "tools_unique": [
+        "search_knowledge",
+        "lookup_documents"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 41685.0,
+      "reply": "这期凯圣王的视频结构很清晰，可以拆成 **「5 个理论认知点 + 1 份落地计划」** 六大板块，逐步把小白从\"进健身房该怎么想\"带到\"该怎么练\"：\n\n---\n\n## 一、理论认知（5 个核心点）\n\n### 1. 先练心肺，别急着上力量\n视频开头就强调：有氧是所有运动的基础，心肺不行爬 5 楼都喘，既影响运动表现也增加低血糖风险，所以新手入门第一步是提高心肺功能。[00:03 开头讲解](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=3)\n\n### 2. 筛查体态与活动度问题\n作者指出绝大多数人都存在足背屈受限、髋关节紧张、臀大肌激活不足等问题，需要先筛查和松解，再训练，而不是带着隐患直接上重量。\n\n### 3. 熟悉动作模式——重复才是王道\n用篮球投篮做类比：学会动作 ≠ 掌握动作，需要成百上千次重复才能形成肌肉记忆。新手不要心急，每次专注于动作细节的重复就好。[06:33 动作模式讲解](memento://play?platform=bilibili&video_id=BV14v4y1G7A3&t=393)\n\n### 4. 高频 × 中等强度 × 一分化\n这是全视频的**核心论点**：\n- **为什么高频？** 新手肌肉募集能力差，单次刺激不深，48 小时超量恢复理论对小白意义不大，高频才能积累足够动作次数。"
+    },
+    {
+      "id": "q_summary_BV1654y1F7fZ_01",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge",
+        "lookup_documents"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 45666.2,
+      "reply": "找到了这期视频，是 B 站 UP 主出的 **【6条忠告】健身不走弯路 新手必看 干货**（[BV1654y1F7fZ](memento://play?platform=bilibili&video_id=BV1654y1F7fZ&t=44)）。整体按 **「饮食三件事 + 训练三件事」** 两条主线、共六个要点展开，具体如下：\n\n---\n\n## 一、饮食篇（三条忠告）\n\n1. **不要长时间空腹** [02:42](memento://play?platform=bilibili&video_id=BV1654y1F7fZ&t=162) — 训练只是把肌纤维拉裂，真正的肌肉合成发生在日常休息中，必须持续给身体供营养。所以好好吃一日三餐，不要跳过早餐或晚餐来\"减肥\"。\n\n2. **了解你吃的每样东西是什么** [04:45](memento://play?platform=bilibili&video_id=BV1654y1F7fZ&t=285) — 最基础的营养常识要知道：蛋白质和碳水各 4 大卡/g、脂肪 9 大卡/g、酒精 7 大卡/g 但除了热量毫无用处。增肌推荐比例大约 **碳水 50-60%、蛋白质 30%、脂肪 20%**。像\"100g 鸡胸约 22-23g 蛋白质\"\"一个鸡蛋约 6-7g 蛋白质\"这类基础数据要烂熟于心。\n\n3. **做好基础饮食，胜过一切补剂** "
+    },
+    {
+      "id": "q_summary_BV1Dm7J6XEEh_01",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "lookup_documents",
+        "summarize_document",
+        "search_knowledge",
+        "summarize_document",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge",
+        "lookup_documents",
+        "summarize_document"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 64152.4,
+      "reply": "这是青蛙刀圣「伊斯兰简史」系列的第一章（共1/4），视频通过**四个小节**、用**三条主要线索**把整段起源故事串联起来：\n\n---\n\n## 主线一：亚伯拉罕宗教谱系线（第一、二小节）\n\n视频开篇从联合国大会上以色列大使翻圣经论证主权讲起，快速梳理了三大一神教共享的「祖谱」：\n\n> 太初 → 亚当夏娃 → 诺亚方舟 → 亚伯拉罕（分支出以撒→犹太教、以实玛利→阿拉伯线）→ 摩西 → 耶稣 → 穆罕默德\n\n这条线的核心论点是「三本书」递进关系——[33:51 如果你认同第一本书的叙事那就是犹太教，认同前两本就是基督教，认同三本并接受第三本对前两本的修正那就是伊斯兰教](memento://play?platform=bilibili&video_id=BV1Dm7J6XEEh&t=2031)。古兰经在承继前两部经典的同时做了关键修正，比如：亚伯拉罕送夏甲母子到沙漠后还一起重建了克尔白天房；耶稣不是神的儿子，没有被钉死在十字架上，而是和前面所有人一样只是「先知」。\n\n---\n\n## 主线二：绿色标题——穆斯林宗教视角（第三小节）\n\n[13:51 标题变绿，进入穆斯林的历史观](memento://play?platform=bilibili&video_id=BV1Dm7J6XEEh&t=831)。这条线的逻辑是：\n\n- **神创立了伊斯兰**，通过天使吉布利勒（Gabriel）在6"
+    },
+    {
+      "id": "q_summary_BV1E7wtzaEdq_01",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "lookup_documents",
+        "summarize_document",
+        "search_knowledge",
+        "summarize_document",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge",
+        "lookup_documents",
+        "summarize_document"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 69752.1,
+      "reply": "这期视频出自 **马克的技术工作坊**，整体采用 **「从底层到顶层逐层堆叠」** 的叙事结构，一共串了 **7 个核心概念**，每一层都是为了解决上一层暴露出来的痛点而自然引出的。下面是完整的概念层级：\n\n---\n\n### 🧱 第一层：LLM（大语言模型）\n一切的起点。马克从 Transformer 架构和 GPT 系列切入，说明大模型的本质就是一个 **\"文字接龙\"数学函数**——输入 token 序列，输出下一个 token。\n\n[00:34 LLM 的定义](memento://play?platform=bilibili&video_id=BV1E7wtzaEdq&t=34)\n\n---\n\n### 🧱 第二层：Token（令牌）\nLLM 处理文本的最小单元。马克用\"马克的技术工作坊\"被拆成 5 个 token、\"程序员\"被拆成 2 个 token 等例子，打破了「token = 词」的直觉。\n\n[05:15 Token 与词的对应关系](memento://play?platform=bilibili&video_id=BV1E7wtzaEdq&t=315)\n\n---\n\n### 🧱 第三层：Context & Context Window（上下文 & 上下文窗口）\n大模型本身没有记忆，每次请求时平台会把 **对话历史 + 工具列表 + system prompt + 当前输"
+    },
+    {
+      "id": "q_summary_BV1FUYQz7E4H_01",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "lookup_documents",
+        "summarize_document",
+        "summarize_document"
+      ],
+      "tools_unique": [
+        "search_knowledge",
+        "lookup_documents",
+        "summarize_document"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 37483.4,
+      "reply": "这期视频从 **七大维度** 来论证 PostgreSQL 不再只是传统关系库，而是一个「能存万物」的全能后端平台。下面逐一梳理：\n\n---\n\n### 1️⃣ JSONB 文档存储 — 替代 NoSQL\n视频展示了 PostgreSQL 的 `JSONB` 类型可以直接存储和查询半结构化 JSON 数据，具备类似 MongoDB 的文档数据库能力，不需要额外引入 NoSQL 组件。\n\n### 2️⃣ 全文搜索 — 原生 + PGroonga 插件\n- **原生全文检索**：PG 自带 `tsvector/tsquery` 可做英文全文搜索。\n- **中文搜索**：通过安装 **PGroonga** 插件，用一行 SQL 创建索引就能支持中文分词检索。视频演示了用自定义操作符搜索包含「引擎」的文本并成功命中 [11:31](memento://play?platform=bilibili&video_id=BV1FUYQz7E4H&t=691)。\n\n### 3️⃣ 向量数据库 + RAG 系统 — 替代专用向量库\n这是视频的核心亮点。通过安装 **pgvector** 插件，PostgreSQL 直接变身向量数据库：\n- 新建含 `embedding` 向量字段的表，存入文本的向量表示 [12:06](memento://play?platform=bilibili&video_id"
+    },
+    {
+      "id": "q_summary_BV1HR7o6CE8q_01",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge",
+        "lookup_documents"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 79297.9,
+      "reply": "这期视频来自 Bilibili（BV1HR7o6CE8q），是一期以**背阔肌为核心**、从私教带学员的视角出发的完整背部训练课。下面是整体结构和核心原则的梳理：\n\n---\n\n## 🔥 热身：泡沫轴替代健腹轮做肩胛激活\n\n视频开场，UP 主就点明了整节课的核心原则：\n\n> **\"背部最重要的一个点，就是肩胛骨的稳定和躯干的稳定。不管你练什么动作，拉还是划，你的躯干和肩胛骨的位置一定要在稳定状态下再去做肩的运动，否则整个人都是联动的，背的效率就比较低。\"**  \n> — [01:24](memento://play?platform=bilibili&video_id=BV1HR7o6CE8q&t=84)\n\n热身用**跪姿泡沫轴前推**替代健腹轮：\n- 小臂放在泡沫轴上，膝盖撑地，五指伸直\n- 推的过程中**躯干不前后移动**，只有肩在动\n- 关键是要把**肩胛骨顶起来（前引）**，顶得越高前锯肌和核心参与越多，激活效率越高\n- 想加大难度：先把泡沫轴往前多放一点再推，而不是硬往前顶（否则脊柱稳定会丢掉）\n\n[02:38 泡沫轴热身示范](memento://play?platform=bilibili&video_id=BV1HR7o6CE8q&t=158)\n\n---\n\n## 💪 正式训练动作（4个）\n\n### 1️⃣ 直臂下压（过渡动作）\n- 定位为\"激活和正式动作之间的适应动作"
+    },
+    {
+      "id": "q_summary_BV1LAVh6UEQz_01",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "lookup_documents",
+        "lookup_documents",
+        "summarize_document",
+        "summarize_document",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge",
+        "lookup_documents",
+        "summarize_document"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 61212.9,
+      "reply": "这期「蛋白质营养拆解及运动应用」视频的结构非常清晰，是从**基础机制**逐步推导到**运动场景应用**的。整个内容可以分为以下几大板块：\n\n## 1. 蛋白质的基础地位\n视频开篇就强调「蛋白质是一切生命的基础」[01:16]，从肌肉、皮肤到免疫系统，都离不开蛋白质。\n\n## 2. 氨基酸结构与分类\n- **基本骨架**：讲解氨基、羧基和侧链的结构 [01:55-02:03]\n- **必需氨基酸分类**：区分必需、条件必需和非必需氨基酸 [03:32-03:38]\n- **植物蛋白 vs 动物蛋白**：解释为什么动物蛋白是「完全蛋白」，而植物蛋白需要氨基酸互补 [04:05-04:47]\n\n## 3. 消化吸收机制\n- **物流分拣比喻**：蛋白质像快递，被拆解成氨基酸后由不同「小三轮」转运 [08:39-08:44]\n- **肝脏的角色**：氨基酸进入肝脏后，一部分自用，一部分释放入血形成「全身总氨基酸」[09:06-09:16]\n- **过量处理**：多余的氨基酸去氮后变成碳骨架，或供能或转化为葡萄糖 [09:22-09:42]\n\n## 4. 核心比喻：氨基酸池的「杯子」\n这是视频最精彩的比喻 [11:14-11:51]：\n- 身体里有一个装氨基酸的杯子，吃蛋白质后水位上升\n- 各组织不断从杯子里「舀水」，水位低时身体会分解肌肉来加水\n- **持续吃蛋白质**就是为了保证杯子里有"
+    },
+    {
+      "id": "q_summary_BV1M2421T7qk_01",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "lookup_documents",
+        "lookup_documents",
+        "summarize_document",
+        "summarize_document",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "lookup_documents",
+        "summarize_document",
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 45075.4,
+      "reply": "好的，小林这期视频的整体结构非常清晰，是一个「**先总后分**」的框架，大致可以分成以下几大板块：\n\n---\n\n### 一、开场与方法论铺垫（00:00 – 01:09）\n小林先交代这期的目标：从宏观经济角度帮大家**捋清全球经济轮廓**，然后挑几个主要经济体逐个击破。他还预告了结尾会分享自己分析一个国家经济的**个人方法论和踩雷点**。\n\n> [00:29 开头说明结构](memento://play?platform=bilibili&video_id=BV1M2421T7qk&t=29)\n\n---\n\n### 二、全球经济总览：2022 → 2023 → 2024 三年主线（01:20 – 03:00）\n用一个「生病→恢复→正常化」的比喻串起三年：\n- **2022 = 危机**：高通胀、加息、能源危机\n- **2023 = 恢复**：通胀和能源危机得到控制，总体好于预期\n- **2024 = 正常化（Normalization）**：能否软着陆、避免留下病根\n\n然后用一张各国 GDP 增速表引出后续逐国分析的线索（印度 7.3% 排第一，德国倒数第二），同时抛出一个悬念：**德国增速倒数，却为何 GDP 总量反超日本？**——引出汇率问题。\n\n> [01:21 2022危机→2023恢复→2024正常化](memento://play?platform=bilibili&vi"
+    },
+    {
+      "id": "q_summary_BV1QGXABxEbq_01",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "lookup_documents",
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "lookup_documents",
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 55095.9,
+      "reply": "这期视频（《伊朗战争，和全球能源格局》，[BV1QGXABxEbq](memento://play?platform=bilibili&video_id=BV1QGXABxEbq)）的结构非常清晰，主要按**五条主线**层层递进展开：\n\n---\n\n### ① 霍尔木兹海峡 → 封锁冲击 → 油价暴涨\n视频开篇从伊朗封锁霍尔木兹海峡切入，介绍这条仅 33km 宽的海峡每天运输约 [01:40 两千万桶石油](memento://play?platform=bilibili&video_id=BV1QGXABxEbq&t=100)，占全球原油消费的 1/5，85% 流向中日韩印四国。封锁后油价从 65 美元暴涨至 110+ 美元。\n\n### ② 美国的\"油价软肋\"\n紧接着分析油价暴涨为何戳到美国的\"肺管子\"——油价直接影响物价 → 影响选民情绪和中期选举；通胀上升迫使美联储停降息甚至加息，进一步威胁美国庞大的债务。为此特朗普连出几招：派三艘航母、提供 [10:00 200亿美元再保险](memento://play?platform=bilibili&video_id=BV1QGXABxEbq&t=600)、紧急释放 1.72 亿桶石油储备等。\n\n### ③ 全球能源消耗总览\n视频由此转向宏观视角：全球能源 [12:33 石油、天然气、煤炭三分天下](memento://play?pl"
+    },
+    {
+      "id": "q_summary_BV1Zk9FBwELs_01",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "lookup_documents",
+        "lookup_documents",
+        "summarize_document",
+        "summarize_document",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "lookup_documents",
+        "summarize_document",
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 52872.7,
+      "reply": "这期视频的展开脉络非常清晰，分为**四大板块**，层层递进：\n\n---\n\n## 一、开篇：真实案例引入（[01:00](memento://play?platform=bilibili&video_id=BV1Zk9FBwELs&t=60)）\n\n用自己帮朋友优化 Agent 系统的亲身经历切入——同样的模型、同样的 Prompt，只改了**任务拆分、状态管理、关键步骤校验、失败恢复**这几个\"外围\"环节，任务成功率就从不到 70% 拉到 95% 以上。引出核心问题：这些改动本质上就是 Harness。\n\n---\n\n## 二、三阶段演进脉络（[01:30](memento://play?platform=bilibili&video_id=BV1Zk9FBwELs&t=90) → [08:39](memento://play?platform=bilibili&video_id=BV1Zk9FBwELs&t=519)）\n\n用\"派新人去拜访客户\"的通俗例子串起三代工程范式的**包含关系**：\n\n| 阶段 | 核心关注 | 比喻 |\n|---|---|---|\n| **Prompt Engineering** | 把任务讲清楚 | 告诉他见面寒暄→介绍方案→问需求→确认下一步 |\n| **Context Engineering** | 把信息给对 | 给他客户背景、报价、竞品情况、会议目"
+    },
+    {
+      "id": "q_summary_BV1dMGm6xET9_01",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "lookup_documents",
+        "lookup_documents",
+        "summarize_document",
+        "summarize_document",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "lookup_documents",
+        "summarize_document",
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 60078.2,
+      "reply": "这期视频将 75 年中国家装变迁划分为了**六个时代节点**，脉络非常清晰：\n\n---\n\n### 1️⃣ 建国初期（1949–1950s）—— 危房棚户 & 物资匮乏\n全国百废待兴，大多数人住的是危房棚户区。所有商品国家统一生产、统一分配，家家户户\"克隆\"式居住，墙面只有白灰墙，地面是水泥地，挂饰就是奖状和地图。[02:59 白灰墙与水泥地的年代](memento://play?platform=bilibili&video_id=BV1dMGm6xET9&t=179)\n\n### 2️⃣ 六七十年代 —— 筒子楼 & 福利分房\n国民经济初步建立，福利分房制度推行，借鉴苏联建筑形式的**筒子楼**成为城镇住房主流。家家户户刷上了标志性的**绿色半墙漆（卫生墙）**，木头门窗、统一布局。[01:36 筒子楼的诞生](memento://play?platform=bilibili&video_id=BV1dMGm6xET9&t=96)\n\n### 3️⃣ 八九十年代 —— 单元楼 & 第一次住房升级\n改革开放带来经济增长，人均 GDP 翻了八倍多。**单元楼**取代筒子楼，每户拥有独立厨卫、60–80㎡面积。装修开始升级：腻子粉取代白灰、立邦和多乐士进入中国（1992/1994年），**乳胶漆 + 木质墙裙**成为标配；地面流行**水磨石**和**马赛克瓷砖**；家具从木匠手打升级为展销"
+    },
+    {
+      "id": "q_summary_BV1ev411w7bs_01",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge",
+        "lookup_documents"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 62354.2,
+      "reply": "这期视频（凯神王的保姆式增肌饮食分享）整体分 **五个环节** 展开，逻辑非常清晰：\n\n---\n\n### ① 体脂区间——先搞清楚\"在什么体脂下增肌\"\n\n视频开头先强调增肌前要锁定合理的体脂范围，而不是\"越胖越好\"：\n\n- 体脂过低（< 8%）会影响睾酮水平和免疫力；体脂过高（> 18%）同样压制雄激素环境 [04:00 增肌体脂下限与免疫/睾酮关系](memento://play?platform=bilibili&video_id=BV1ev411w7bs&t=240)\n- 内胚型建议控制在 16-17% 附近增肌，外胚型可以更宽松；核心指标是**体脂不要失控 + BMI/体重有增长** [05:00 体脂与BMI同时增长才说明增肌成功](memento://play?platform=bilibili&video_id=BV1ev411w7bs&t=300)\n\n---\n\n### ② 总热量公式——确定\"一天到底吃多少\"\n\n给了一精一简两种算法：\n\n- **精确算法**：目标体重(kg) × 35 kcal = 全天总热量（比书上的 ×50 更保守、更实战） [08:48 目标体重×35大卡的实战公式](memento://play?platform=bilibili&video_id=BV1ev411w7bs&t=528)\n- **体质调整**：内胚型从 ×25 开始试、以 "
+    },
+    {
+      "id": "q_summary_BV1hA7K6jER9_01",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "lookup_documents",
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "summarize_document",
+        "summarize_document"
+      ],
+      "tools_unique": [
+        "lookup_documents",
+        "search_knowledge",
+        "summarize_document"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 32847.8,
+      "reply": "这期视频（\"夏炒电\"还没结束？一口气看懂电力4大赛道）整体从以下几个维度对电力板块进行了系统分析：\n\n---\n\n### 一、赛道分类与基础数据\n\n视频首先用 **装机占比** 和 **发电量占比** 两组数据帮观众建立四个赛道的整体印象，并指出两者不同步的根源在于 **利用小时数差距巨大**。比如核电年均利用 7800 小时，而光伏仅 1088 小时，本质上由物理特性决定。\n\n[03:57 四大赛道基础数据对比](memento://play?platform=bilibili&video_id=BV1hA7K6jER9&t=237)\n\n---\n\n### 二、每个赛道的商业逻辑与核心变量\n\n- **水电**：综合最稳，核心变量是 **来水量**（\"躺赚\"型）\n- **火电**：周期性最强，核心看 **煤价波动**（\"看煤价吃饭\"型），并向兜底保供及容量电价转型\n- **核电**：政策性最强，核心逻辑在于 **新机组核准投产节奏**（\"闷声发财\"型）\n- **风光**：稳定性最弱，但从装机增速转向 **算电协同、储能配套、提质增效**（\"我命由天不由我\"型）\n\n[12:56 四大赛道总结](memento://play?platform=bilibili&video_id=BV1hA7K6jER9&t=776)\n\n---\n\n### 三、企业筛选四维度\n\n视频提出快速识别发电企业实力的"
+    },
+    {
+      "id": "q_summary_BV1hN596zEas_01",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "lookup_documents",
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "summarize_document",
+        "search_knowledge",
+        "summarize_document",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "lookup_documents",
+        "search_knowledge",
+        "summarize_document"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 69782.9,
+      "reply": "好，基于视频内容，我来为你梳理这期「金融危机串串烧」的几条核心主线。\n\n---\n\n## 视频的整体分析框架\n\n这期视频（[00:29-00:35 开篇点题](memento://play?platform=bilibili&video_id=BV1hN596zEas&t=29)）开宗明义地说：这些危机之所以放在一起讲，是因为**背后有一条统一的脉络主线，逻辑惊人地相似**。具体来看，视频围绕以下 **四条主线** 展开：\n\n---\n\n### 主线一：华盛顿共识 → 金融自由化打开大门\n\n视频首先把时间线拉回 80 年代末。拉美深陷债务危机，美国于 1989 年提出**华盛顿共识**，核心思想就是 [01:08-01:15 金融自由化](memento://play?platform=bilibili&video_id=BV1hN596zEas&t=68)——货币、贸易、资本流动、产业全面自由化，\"让资本跑到收益最高、潜力最大的地方去\"。墨西哥、东南亚、苏联解体后的俄罗斯都采纳了这套方案，放开了金融市场，**为危机埋下了伏笔**。\n\n---\n\n### 主线二：套息交易 + 固定汇率 → 热钱疯狂涌入\n\n这是视频着墨最多的一条主线，也是将所有危机串起来的\"统一逻辑\"：\n\n1. **利差驱动套息交易**：90 年代初美联储降息至 3%，而新兴市场收益率 5% 甚至更高。投资者在美国以 3"
+    },
+    {
+      "id": "q_summary_BV1mMHyz3Erk_01",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "lookup_documents",
+        "lookup_documents",
+        "summarize_document",
+        "summarize_document",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "lookup_documents",
+        "summarize_document",
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 57688.9,
+      "reply": "这期视频（George @ CORE Dumped）的讲解思路非常清晰，大致可以归纳为 **四条主线**，层层递进地把概念串起来：\n\n---\n\n## 主线一：程序 → 进程的\"生死线\"\n\n视频开门见山区分 [00:33 程序与进程的本质区别](memento://play?platform=bilibili&video_id=BV1mMHyz3Erk&t=33)：程序是磁盘上的**被动静态文件**（可执行文件），运行后被加载到内存、分配**地址空间**，才变成一个**动态的进程**。这是整条视频的起点——先把\"活的东西\"和\"死的东西\"分清。\n\n---\n\n## 主线二：并发共享 CPU 引出的两个核心矛盾\n\n进程要并发，就必须交替使用 CPU。视频用一个 [02:23 直接切换的反例](memento://play?platform=bilibili&video_id=BV1mMHyz3Erk&t=143) 说明如果\"裸切换\"会带来两个问题：\n\n1. **安全性**——当前进程能读到上一个进程遗留在寄存器里的敏感数据（比如密码哈希）；  \n2. **正确性**——当前进程改了寄存器，上一个进程恢复执行时状态已被破坏。\n\n这两条矛盾贯穿后半段，所有机制（上下文切换、PCB）都是为了解决它们。\n\n---\n\n## 主线三：上下文切换——\"保存/恢复\"的解法\n\n视频用两进程各执行两条汇编指令"
+    },
+    {
+      "id": "q_summary_BV1ub421J7jv_01",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "lookup_documents",
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "lookup_documents",
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 75366.8,
+      "reply": "这期视频（B站「美元、日元、人民币…为什么涨/跌？ | 美元跌宕50年」）一共梳理了 **五条主线** 来解释货币为何涨跌，然后用过去 50 年美元的走势逐一印证。下面按视频的讲解顺序展开：\n\n---\n\n### ① 物价水平 / 通货膨胀（购买力平价视角）\n\n视频先从 **购买力平价理论（PPP）** 切入：理想世界里，两国同等一篮子商品经汇率转换后应等价，因此各国物价之比「应该」决定汇率。[02:17 购买力平价理论介绍](memento://play?platform=bilibili&video_id=BV1ub421J7jv&t=137)\n\n但现实中商品流通成本极高（奶茶、房子都没法跨国套利），加上关税和管制，PPP 很难精确预测短期汇率。[03:00 理想假设的局限](memento://play?platform=bilibili&video_id=BV1ub421J7jv&t=180)\n\n不过从**长期、底层**看，物价对外汇影响极其重大——通胀越高的国家，货币越倾向贬值（印度卢比、印尼盾、南非兰特等过去 50 年兑美元一路下滑）。[04:14 第一个主要因素：物价/通胀](memento://play?platform=bilibili&video_id=BV1ub421J7jv&t=254)\n\n> 关键细节：对于主流货币（美元、欧元、日元），日常通胀在 10% 以"
+    },
+    {
+      "id": "q_summary_BV1vtT46WEoW_01",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "lookup_documents",
+        "summarize_document",
+        "summarize_document"
+      ],
+      "tools_unique": [
+        "search_knowledge",
+        "lookup_documents",
+        "summarize_document"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 34320.2,
+      "reply": "这期 Vlog 博主通过以下几组**行程 + 对比**来层层呈现曼谷的贫富差距和物价反差：\n\n---\n\n### 1. 豪华商圈 vs 破旧民居\n博主总结时点明：**\"城市风貌和物价水平相差都非常大，豪华商圈的附近往往是破破烂烂的民居\"**。他打卡了暹罗百丽宫等高端商圈，商圈光鲜亮丽，但一转身就是破旧的居民区，形成最直观的视觉冲击。\n> [33:15 城市风貌与贫富差距总结](memento://play?platform=bilibili&video_id=BV1vtT46WEoW&t=1995)\n\n### 2. 多档市场的物价阶梯\n博主刻意逛了**不同档次的市场**来让物价反差浮出水面：\n\n- **安帕瓦水上市场** — 他逛下来觉得物价最便宜的一站；\n- **美功铁道市场** — 路边衣服 100 铢（≈20 元人民币），水果和纪念品也都很便宜，\"有点我印象里的感觉了\"；\n> [11:05 美功铁道市场物价](memento://play?platform=bilibili&video_id=BV1vtT46WEoW&t=665)\n- **乍都乍周末市场** — 号称全球最大的周末市场，但逛完后博主发现物价明显更贵，评价\"非常一般\"；\n> [25:57 乍都乍周末市场](memento://play?platform=bilibili&video_id=BV1vtT46WEoW"
+    },
+    {
+      "id": "q_summary_BV1z8zPYjE4j_01",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "lookup_documents"
+      ],
+      "tools_unique": [
+        "search_knowledge",
+        "lookup_documents"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 33264.7,
+      "reply": "找到了这期视频，是 **「三分化-饮食详解」**（BV1z8zPYjE4j）。UP主（凯哥）围绕三分化训练的配套饮食，从以下几个方面给出了系统建议：\n\n---\n\n### 1️⃣ 热量——一切饮食的大前提\n视频开篇就强调，不论增肌还是减脂，**热量盈余/亏空是身体变化的根本前提**，不要只盯着\"吃什么食物\"，而要先算清一天摄入多少热量、消耗多少热量。[00:48 食物不等于热量](memento://play?platform=bilibili&video_id=BV1z8zPYjE4j&t=48)\n\n---\n\n### 2️⃣ 训练日 vs 休息日的热量差（核心技巧一）\n这是视频反复强调的一个**核心技巧**：\n- **训练日**：在基础代谢+运动消耗之上，再有 **200～300 大卡盈余**\n- **休息日**：在基础代谢之上，做 **500～700 大卡亏空**\n\n这样以周为单位整体是亏空状态（利于减脂），但训练日有盈余保证增肌效果不被破坏。UP 特别提到，研究证明训练日亏空超过 500 大卡会严重影响增肌。[03:28 训练日与休息日区分](memento://play?platform=bilibili&video_id=BV1z8zPYjE4j&t=208) / [17:51 核心技巧回顾](memento://play?platform=bilibili&video_i"
+    },
+    {
+      "id": "q_summary_Cl0QYkez-BE_01",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": false,
+      "error": null,
+      "latency_ms": 106298.1,
+      "reply": "以下是基于该视频中诺贝尔颁奖典礼介绍词及两位获奖者本人演讲内容的综合梳理：\n\n---\n\n## 背景：2011年诺贝尔经济学奖的核心问题\n\n瑞典皇家科学院主持人在开场中明确点题：宏观经济学面临的最大挑战之一，就是**从历史经济数据中区分因果关系**——即\"什么导致了什么\"（[10:38 What explains what](memento://play?platform=youtube&video_id=Cl0QYkez-BE&t=638)）。而 Sargent 和 Sims 正是因为在这一方向上提供了系统性的方法论突破而获奖。两人的侧重点有明确分工：\n\n> **Sargent 更关注长期/永久性政策变化（即\"regime shifts\"）的效应；Sims 则关注短期的、预期到的和未预期到的经济政策变动。** ——[14:43 briefest comparison](memento://play?platform=youtube&video_id=Cl0QYkez-BE&t=883)\n\n---\n\n## Thomas Sargent 的演讲：用经济理论解读历史制度变迁\n\n### 主线主题\nSargent 的演讲以**美国建国初期（1780–1840）的财政与货币制度选择**为案例，回答四个核心问题——政府是否应该违约、是否应该联邦兜底州债、货币联盟是否需要财政联盟先行等。他明确表示"
+    },
+    {
+      "id": "q_summary_D3aHciiVdvQ_01",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "lookup_documents",
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "lookup_documents",
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 73883.6,
+      "reply": "以下是 Shiller 在 **Yale Economics 252: Financial Markets** 第一堂课中所介绍的课程安排、阅读要求和学期主线，全部信息均来自该讲座：\n\n---\n\n## 一、课程定位与设计\n\nShiller 明确表示这不是一门纯粹的职业培训课，而是一门**\"关于金融如何运作的知识性课程\"**——他认为金融是一项影响几乎所有人生活的核心技术，即使是一个诗人也会在与出版商打交道时遇到财务问题。\n\n课程与 John Geanakoplos 的 **Econ 251（Financial Theory）** 互为补充：251 偏数学和理论，而 **252 不使用高深数学**，对数学不太自信的同学更友好。两门课各自独立，选一门或两门都可以。\n\n- 上课时间：**周一和周三** 讲座，**周三/四/五** 有 TA 辅导小节\n- 六次 Problem Sets，周一交\n- 五位助教来自世界各地，体现 Shiller **\"金融是全球性的\"** 这一教学理念\n\n---\n\n## 二、成绩构成\n\n| 占比 | 项目 |\n|------|------|\n| ~10% | Problem Sets |\n| ~20% | 第一次 Midterm |\n| ~30% | 第二次 Midterm |\n| ~40% | Final Exam |\n\n此外还参考 TA 的判断（[20:1"
+    },
+    {
+      "id": "q_summary_EpIgvowZr00_01",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "lookup_documents",
+        "lookup_documents",
+        "summarize_document",
+        "summarize_document",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "lookup_documents",
+        "summarize_document",
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 107339.8,
+      "reply": "好的，这堂 MIT 6.824 Lecture 3 内容非常完整。下面按设计目标 → 架构 → 读/写流程 → 一致性模型 → 实际局限的顺序帮你梳理。\n\n---\n\n## 一、设计背景与目标\n\n讲座首先从分布式存储的根本张力出发：复制带来一致性问题，而解决一致性通常需要额外的服务器间通信，会[降低性能](memento://play?platform=youtube&video_id=EpIgvowZr00&t=274)。GFS 的设计就是在这个张力上做出取舍：\n\n- **面向大文件、顺序读写**：不是银行系统那种 100 字节随机读写，而是 GB 级大文件的批量顺序访问，重点是**吞吐量（throughput）而非低延迟** [20:07](memento://play?platform=youtube&video_id=EpIgvowZr00&t=1207)\n- **运行在廉价硬件（commodity hardware）上**：机器随时可能坏，靠软件层面的容错和复制来保障可靠性\n- **单数据中心、内部使用**：GFS 只在一个数据中心内运行，供 Google 工程师的内部应用使用，不对外提供服务 [19:02](memento://play?platform=youtube&video_id=EpIgvowZr00&t=1142)\n\n---\n\n## 二、整体架构\n\n[23:4"
+    },
+    {
+      "id": "q_summary_NS_GeXoboo4_01",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "lookup_documents",
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "search_knowledge",
+        "summarize_document",
+        "search_knowledge",
+        "summarize_document",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "lookup_documents",
+        "search_knowledge",
+        "summarize_document"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 83048.9,
+      "reply": "好的，Jeff Nippard 在这个视频里做了一个很直观的对比实验。他的核心结论是：**增肌的基本盘（fundamentals）大部分都便宜甚至免费，花大钱买到的主要是便利、舒适和体验感，而不是更多的肌肉增长。** 下面按类别拆解：\n\n---\n\n## 🟢 便宜/免费就完全够用的部分\n\n**1. 训练本身**\n- 低月费健身房（如 Planet Fitness）每月仅 $10，折合每天约 $0.33；在家用弹力带（$40）+ 引体向上杆（$30）也完全可行，第一年每天不到 2 美分 [03:45 训练成本](memento://play?platform=youtube&video_id=NS_GeXoboo4&t=225)。\n\n**2. 蛋白质来源**\n- 鸡胸肉、鸡蛋、糙米、豆类、乳清蛋白都是最便宜的高质量蛋白来源。他 $10 那天用燕麦+乳清+牛奶做早餐，蛋白质 48g 才花 $1.50 [00:57 便宜早餐](memento://play?platform=youtube&video_id=NS_GeXoboo4&t=57)。\n\n**3. 补剂**\n- 肌酸是最有效也最便宜的补剂，5g 只要 $0.15 [02:23 肌酸成本](memento://play?platform=youtube&video_id=NS_GeXoboo4&t=143)。\n- 咖啡因单独使用与复"
+    },
+    {
+      "id": "q_summary_P-NmMX9rlYQ_01",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "lookup_documents",
+        "lookup_documents",
+        "summarize_document",
+        "summarize_document",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "lookup_documents",
+        "summarize_document",
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 74881.0,
+      "reply": "好，这期视频的叙事线索非常清晰，可以归纳为 **四大主线**，层层递进地把\"GDP 是什么、怎么比、为何骗人\"讲透了：\n\n---\n\n## 一、伊朗六张图的钩子：同一个国家，六种截然不同的 GDP 曲线\n\n视频开场就用伊朗的人均 GDP 切换不同版本——从 [00:00 名义本币 GDP](memento://play?platform=youtube&video_id=P-NmMX9rlYQ&t=0) 起伏不定，到革命前才是最高峰，再到 [00:28 某版本](memento://play?platform=youtube&video_id=P-NmMX9rlYQ&t=28) 看起来\"人人都是马斯克\"——直接抛出核心悬念：**同一个数据源（世界银行），选不同调整口径，走势可以完全相反**。这些图对应的是后面逐步展开的六条调整线：\n\n| 图 | 指标 | 做了什么调整 |\n|---|---|---|\n| ① | 现价本币人均 GDP | 无调整 |\n| ② | 不变价本币人均 GDP | 剔除通胀（GDP 平减指数） |\n| ③ | 现价美元人均 GDP | 本币→美元汇率换算 |\n| ④ | 不变价美元人均 GDP | 汇率 + 剔除美元通胀 |\n| ⑤ | 购买力平价人均 GDP（PPP） | 汇率 + 购买力平价 |\n| ⑥ | 购买力平价·不变价人均 GDP | 汇率 + P"
+    },
+    {
+      "id": "q_summary_PHe0bXAIuk0_01",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": false,
+      "error": null,
+      "latency_ms": 23215.5,
+      "reply": "根据 Ray Dalio 的这段视频，以下是两大核心问题的回答：\n\n---\n\n## 三大驱动力\n\nDalio 在 [00:51](memento://play?platform=youtube&video_id=PHe0bXAIuk0&t=51) 明确指出，经济由**三大核心力量**驱动：\n\n1. **生产率增长（Productivity Growth）** — 长期来看，生产力提升是经济增长的根本动力。在没有信贷的经济体中，收入增长只能靠提高生产率来实现（[07:50](memento://play?platform=youtube&video_id=PHe0bXAIuk0&t=470)）。\n2. **短期债务周期（Short-term Debt Cycle）** — 大约持续 5–8 年，表现为信贷扩张→繁荣→衰退的反复循环。\n3. **长期债务周期（Long-term Debt Cycle）** — 大约持续 75–100 年，当债务负担累积到极致时就会触发去杠杆化（deleveraging）。\n\nDalio 强调，经济围绕趋势线的上下波动，**主要不是由创新或勤劳程度决定的，而是由信贷的多少决定的**（[07:37](memento://play?platform=youtube&video_id=PHe0bXAIuk0&t=457)）。\n\n---\n\n## 什么是\"Beau"
+    },
+    {
+      "id": "q_summary_RmVL30sS2yU_01",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": false,
+      "error": null,
+      "latency_ms": 87575.2,
+      "reply": "好的，以下是 Daron Acemoglu 2024 年诺贝尔经济学奖演讲的核心论点梳理，全部基于他讲座的原始内容：\n\n---\n\n## 一、核心框架：效用-技术可能性前沿（UTF）\n\nAcemoglu 演讲的理论核心是他所谓的 **\"Utility-Technology Possibilities Frontier\"（UTF）**——在一个只有\"穷\"和\"富\"两个群体的简化世界里，这条前沿描述了不同社会选择如何决定不同群体之间的效用/收入分配。正如他在 [17:59](memento://play?platform=youtube&video_id=RmVL30sS2yU&t=1079) 所说：\n\n> 这个框架的核心是……用来重新诠释我们的研究，包括殖民时期的语境，也有助于我们思考制度变迁与制度持续性，同时为今天某些重要问题提供启示——例如我们将如何适应或受益（或不受益于）AI 这一系列新技术。\n\n框架区分两类力量：\n- **沿前沿移动**（moves along the frontier）：例如工会变弱 → 工人议价能力下降 → 工资降、利润涨，这不改变前沿本身，只是在同一条前沿上从 B 点滑到 A 点（[19:57](memento://play?platform=youtube&video_id=RmVL30sS2yU&t=1197)）。\n- **前沿本身的移动**（shift"
+    },
+    {
+      "id": "q_summary_W-Q9AOp2FW8_01",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge",
+        "lookup_documents"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 101624.2,
+      "reply": "这是一个非常好的问题。根据知识库中这部纪录片的完整内容，第一集的叙事弧线可以这样梳理：\n\n## 总体叙事弧线：从\"风险解药\"到\"金融怪兽\"\n\n### 一、开篇：愤怒的广场（2011年）\n\n影片以2011年\"占领华尔街\"运动开篇，示威者高喊 [02:56 \"This is what democracy looks like!\"](memento://play?platform=youtube&video_id=W-Q9AOp2FW8&t=176) 和 [03:15 \"We are the 99 percent!\"](memento://play?platform=youtube&video_id=W-Q9AOp2FW8&t=195)，直接抛出核心问题：[00:20 \"Wall Street got bailed out and Main Street didn't.\"](memento://play?platform=youtube&video_id=W-Q9AOp2FW8&t=20) ——华尔街被救了，主街却没有。\n\n### 二、回到起点：1994年博卡拉顿度假村\n\n影片随即闪回到[06:34 1994年佛罗里达博卡拉顿的一次周末度假](memento://play?platform=youtube&video_id=W-Q9AOp2FW8&t=394)，一群20多岁的摩根大通年轻"
+    },
+    {
+      "id": "q_summary_XvyMO7CmFlk_01",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "lookup_documents",
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "propose_memory",
+        "search_knowledge",
+        "search_knowledge",
+        "propose_memory",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "lookup_documents",
+        "search_knowledge",
+        "propose_memory"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 124014.6,
+      "reply": "在这场讲座中，Banerjee 构建了一个层次分明的论点，核心主张是：**RCT 从两个维度深刻改变了经济学——既改变了经济学的日常实践方式，也改变了经济学家提出的问题本身**。而后者才是更深远的影响。\n\n他的论证可以归纳为三层递进：\n\n---\n\n### 1. 理论先行的局限：以\"gossip\"实验为例\n\nBanerjee 用信息传播实验作为贯穿全篇的案例。传统经济理论在回答\"应该把信息告诉谁以最大化传播效果\"时，给出的答案是：找网络中度中心性最高（连接最多）的人。但这个思路需要你先完整描绘社会网络结构，成本极高且很难实操。\n\n他和同事换了一个更朴素的方法——直接问村民\"谁是村里的 gossip（爱传话的人）\"。村民几乎能给出一致的答案。实验结果表明，gossip 的传播效果是随机人选和\"重要人物\"的 **三倍**；在疫苗接种实验中，gossip 作为种子节点让接种儿童数量翻了一番。\n\n[12:58  gossip 使接种儿童数翻倍](memento://play?platform=youtube&video_id=XvyMO7CmFlk&t=778)\n\n关键在于，Banerjee 指出 gossip 之所以效果好，**不仅仅因为他们处于网络中心位置**，还因为他们\"更快乐、更爱社交、享受分享\"——这种人格特质纯粹出于分享的愉悦而非利益回报，在经济理论的理性人框架中根本没有容身之地"
+    },
+    {
+      "id": "q_summary_ZlVBSZYaVF0_01",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge",
+        "lookup_documents"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 158118.8,
+      "reply": "以下是 Dr. Mike 在 RP 这期视频 [Determining YOUR Hypertrophy Volume](memento://play?platform=youtube&video_id=ZlVBSZYaVF0&t=0) 中逐步铺开的完整流程，按出场顺序整理：\n\n---\n\n### 第一步：确保每一组的质量（Set Quality）\n\n在讨论\"做多少组\"之前，先把每组做成**有效组**。Dr. Mike 提出三个前提：\n\n- **动作技术过关**——[01:28](memento://play?platform=youtube&video_id=ZlVBSZYaVF0&t=88)\n- **每组做 5–30 rep**（低于 5 的太像力量训练，高于 30 的几乎只是心肺）——[01:29](memento://play?platform=youtube&video_id=ZlVBSZYaVF0&t=89)\n- **足够接近力竭**——离 failure 太远的一组基本等于\"垃圾容量\"\n\n> 只有在每一组都是\"高质量\"的前提下，讨论组数才有意义。\n\n---\n\n### 第二步：确定训练频率（Frequency）\n\n> \"先定频率，再谈容量。\" ——[01:06](memento://play?platform=youtube&video_id=ZlVBSZYaVF0&t="
+    },
+    {
+      "id": "q_summary_b5H8D_wD2AY_01",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "lookup_documents",
+        "lookup_documents",
+        "summarize_document",
+        "summarize_document",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "lookup_documents",
+        "summarize_document",
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 74436.2,
+      "reply": "这堂 MIT **Lecture 4: The Financial Market** 的逻辑主线非常清晰，可以概括为以下几个层层递进的环节：\n\n---\n\n### 1. 开场：抛出核心问题\n讲座以央行主席的小知识（如 [01:46 Jerome Powell](memento://play?platform=youtube&video_id=b5H8D_wD2AY&t=106)、Kazuo Ueda 等）引入，然后明确提出今天要回答的问题：**利率是怎么被决定的？中央银行加息的时候，它到底是怎么做到的？** [00:46](memento://play?platform=youtube&video_id=b5H8D_wD2AY&t=46)\n\n---\n\n### 2. 建立基础：货币 vs. 债券的资产组合选择\n讲座首先对比了 **货币**（方便交易但没有利息）和 **债券**（有利息但不能直接交易）两种资产，说明公众面临一个**资产组合选择（portfolio decision）**：\n\n- 利率高 → 持有货币的机会成本高 → 倾向持有债券\n- 利率低 → 持有货币用于交易更划算\n\n由此推导出一条**向右下方倾斜的货币需求曲线**（利率 i vs. 货币量 M）[14:05](memento://play?platform=youtube&video_id=b5H8D_wD2AY&t"
+    },
+    {
+      "id": "q_summary_cQP8WApzIQQ_01",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": false,
+      "error": null,
+      "latency_ms": 154321.0,
+      "reply": "好的，根据 Robert Morris 在 MIT 6.824 第一节课中的讲解，以下是核心内容的梳理：\n\n---\n\n## 🎯 构建分布式系统的四大核心动机\n\nMorris 一开课就强调：**能在单机上解决的问题，永远应该用单机解决**——分布式系统从来不简单。但他列举了四个人们「被迫」走向分布式的理由：\n\n### 1. 高性能（并行）\n[01:35 需要高性能](memento://play?platform=youtube&video_id=cQP8WApzIQQ&t=101) —— 通过大量 CPU、内存、磁盘臂并行工作来获得单机无法企及的吞吐量。\n\n### 2. 容错\n[01:55 容忍故障](memento://play?platform=youtube&video_id=cQP8WApzIQQ&t=115) —— 让两台机器做同样的事情，一台挂了可以切换到另一台。\n\n### 3. 天然的物理分布\n[02:11 物理上分散的问题](memento://play?platform=youtube&video_id=cQP8WApzIQQ&t=131) —— 比如纽约的银行和伦敦的银行之间转账，物理上就必须通过网络协作。\n\n### 4. 安全 / 隔离\n[02:38 安全隔离](memento://play?platform=youtube&video_id=cQP8WApz"
+    },
+    {
+      "id": "q_summary_cfXTQmFRjWU_01",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge",
+        "lookup_documents"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 221881.7,
+      "reply": "这个视频是 Dr. Mike Israetel 的 **\"Stop Overdoing It! How Many Sets Should You Really Be Doing?\"**，我来根据视频内容给你梳理一下。\n\n---\n\n## ⚠️ 训练量过高的警告信号 Checklist\n\nDr. Mike 在视频中列出了一个\"勾选清单\"——你勾的越多，说明你越可能训练量过大：\n\n1. **客观上训练量处于研究高端** — 如果你每节课每个肌群持续做超过 **8 组正式组**（每周还练该肌群 2-3 次），你已经处于高训练量区间了 [03:59](memento://play?platform=youtube&video_id=cfXTQmFRjWU&t=239)\n\n2. **无法持续创造 PR** — 如果你在重量或次数上不能随着时间推移不断进步，说明量可能过了 [01:47](memento://play?platform=youtube&video_id=cfXTQmFRjWU&t=107)\n\n3. **反复\"崩盘\"循环** — 训练到无法匹配上次的次数 → 减载恢复 → 变好 → 2-3 周内再次崩盘，周而复始 [05:45](memento://play?platform=youtube&video_id=cfXTQmFRjWU&t=345)\n\n4. **肌肉扁平、疲倦、空洞*"
+    },
+    {
+      "id": "q_summary_ej6cygeB2X0_01",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "lookup_documents",
+        "summarize_document",
+        "search_knowledge",
+        "summarize_document",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge",
+        "lookup_documents",
+        "summarize_document"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 122800.7,
+      "reply": "Thaler自己在演讲开头就说了，他要讲的是\"行为经济学走过的路\"——从故事和思想实验出发，最后抵达真实的公共政策。整条弧线可以概括为**四个递进的章节**：\n\n---\n\n## 一、开场：三则\"反常识\"小故事——揭示 Econs 与 Humans 的裂痕\n\nThaler 用三则研究生时期的亲身经历，各自对应一个传统经济学认为**\"无关紧要的因素\"（Supposedly Irrelevant Factors, SIFs）**：\n\n1. **腰果故事** ([01:22 腰果](memento://play?platform=youtube&video_id=ej6cygeB2X0&t=82))：晚宴上把腰果端走，客人都感谢他。经济学的基本公理是\"选择越多越好\"，但拿走选项反而让人更满意——暴露了**即时自我控制**的困难。\n\n2. **红酒故事** ([02:47 自我控制](memento://play?platform=youtube&video_id=ej6cygeB2X0&t=167) → [03:04 红酒收藏](memento://play?platform=youtube&video_id=ej6cygeB2X0&t=184))：系主任花 $5 买入的酒值 $100，他不会花 $30 买同样的酒，也舍不得 $100 卖掉，却会自己开瓶喝了。\"不买、不卖、但喝\"——这个矛"
+    },
+    {
+      "id": "q_summary_h1RkSuAs03Q_01",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "lookup_documents",
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "summarize_document",
+        "summarize_document"
+      ],
+      "tools_unique": [
+        "lookup_documents",
+        "search_knowledge",
+        "summarize_document"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 36235.1,
+      "reply": "## Nordhaus 2018 诺贝尔演讲：气候变化经济学的整体论证脉络\n\nNordhaus 在这场演讲中构建了一条层层递进的论证链——**气候变化本质上是一个市场失灵问题，而解决它的关键在于将外部性\"内部化\"，并通过制度设计克服全球合作中的博弈困境。** 下面分四个层次梳理：\n\n---\n\n### 1. 定性：全球变暖是一个巨大的外部性问题\n\nNordhaus 开宗明义指出，经济增长伴随的\"外部性\"（externalities/spillovers）是贯穿他与共同获奖者 Paul Romer 研究的主线，而全球变暖正是其中 [06:25 最严重的环境外部性](memento://play?platform=youtube&video_id=h1RkSuAs03Q&t=385)——它的影响遍及全球、持续数个世纪，没有任何个体能独自减缓它。\n\n### 2. 建模：DICE 综合评估模型如何量化问题\n\n由于气候变化涉及大气化学、地球物理、冰川学、生态学、经济学、博弈论和国际法等多个学科 [07:47](memento://play?platform=youtube&video_id=h1RkSuAs03Q&t=467)，Nordhaus 强调需要**综合评估模型（Integrated Assessment Models）** 来将这些学科整合到统一的计算机框架中 [08:28](mem"
+    },
+    {
+      "id": "q_summary_heBErnN3ZPk_01",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "lookup_documents",
+        "summarize_document",
+        "summarize_document",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge",
+        "lookup_documents",
+        "summarize_document"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 154622.6,
+      "reply": "Based on the lecture transcript, here are the main threads the professor uses to introduce 14.02 and its goals:\n\n---\n\n## 1. \"What a Difference a Single Letter Makes\" — Micro vs. Macro\n\nThe professor opens by contrasting 14.01 (micro) with 14.02 (macro): micro looks at a household, a firm, an industry; macro looks at the **whole economy** — the US, China, inflation (the rate of change of *all* prices), the unemployment *rate*, exchange rates between currencies ([01:01](memento://play?platform=youtube&video_id=heBErnN3ZPk&t=61)). He uses a physics analogy: just as studying big bodies is differen"
+    },
+    {
+      "id": "q_summary_iQyg-KypKAA_01",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "lookup_documents"
+      ],
+      "tools_unique": [
+        "search_knowledge",
+        "lookup_documents"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 43272.2,
+      "reply": "这个视频是 **Kun**（前 Meta / Microsoft / Atlassian 的 L8 Principal Engineer）的《L8 Principal's Agentic Engineering Workflow》。他在视频开头就用\"船长-船员\"（captain-crewmates）的比喻为整个流程画了一张路线图，一共分 **五个阶段**：\n\n---\n\n### 1️⃣ Gather Gear & Build the Ship — \"打造你的船\"\n> [01:42 introduce the core setup](memento://play?platform=youtube&video_id=iQyg-KypKAA&t=102) → [02:10 gather our gears and build our ship](memento://play?platform=youtube&video_id=iQyg-KypKAA&t=130)\n\n作为\"船长\"（captain），第一步是搭建基础设施。Kun 几乎所有操作都在终端里完成，先把开发环境、工具链、仓库等核心配置就绪。他说\"我们的船准备好了，但还没有船员\"。\n\n### 2️⃣ Recruit & Ramp Up Crewmates — \"招募船员\"\n> [02:46 how we recruit and ramp"
+    },
+    {
+      "id": "q_summary_lu_BObG6dj8_01",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "lookup_documents",
+        "summarize_document",
+        "search_knowledge",
+        "summarize_document",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge",
+        "lookup_documents",
+        "summarize_document"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 85518.8,
+      "reply": "现在我有了足够的信息来为你梳理 Jeff Nippard 这个视频里的五个层级。以下是每一层在上一层基础上新增的内容：\n\n---\n\n## Level 1 — 最基本的常识\n\n**\"练就行，吃就行\"**\n\n核心逻辑非常朴素：举铁 → 肌肉产生适应性反应（就像弹吉他手指长茧一样）；吃蛋白质 → 提供氨基酸作为\"建筑材料\"。两者结合，肌肉就能长大。\n\n> [00:35 lift weights and eat protein](memento://play?platform=youtube&video_id=lu_BObG6dj8&t=35)\n\n---\n\n## Level 2 — 训练变量与渐进超负荷\n\n在\"练+吃\"的基础上，这一层回答了**怎么练才更有效**：\n\n- **渐进超负荷**：不能一直举同样的重量、做同样的次数，否则肌肉不再受到足够的刺激。\n- **精确营养**：不再笼统说\"吃蛋白质\"，而是给出具体数字——**每公斤体重 1.6–2.2g 蛋白质/天**，以及热量盈余的重要性。\n- **急性训练变量**（effort / volume / intensity / exercise selection / frequency）：告诉你该推多狠、做几组几次、选什么动作、练多频繁。\n\n> [01:35 progressive overload](memento://play?pla"
+    },
+    {
+      "id": "q_summary_oKM-L_WiOhg_01",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "lookup_documents",
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "lookup_documents",
+        "search_knowledge"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 77451.8,
+      "reply": "好的，Terry 这期影片围绕特斯拉 Q2 财报拆了 **四大财务主线**，并延伸到 AI 产业链的结论。下面逐条整理：\n\n---\n\n## 一、EPS 下滑的主因：不是\"越卖越亏\"，而是激进扩张\n\nTerry 开头就强调\"不聊画饼，只看当期数字\"。Q2 最让市场失望的是 EPS 明显变差，但他把原因拆得很清楚——不是车卖不动，而是特斯拉 **刻意、大幅地拉高了运营支出和资本开支**：\n\n- Semi 卡车准备下半年大规模量产、RoboTaxi 大范围扩张、Cybercab 产能爬坡、Optimus 准备量产、Terafab 半导体工厂建设——每一项都在烧 R&D 人力和前期 OpEx，这才是 EPS 下滑的最主要原因。\n- 网上说\"越卖越穷\"并不准确，核心在于公司正从 **保守转向激进**。\n\n> [05:35 整体公司正在大幅扩张](memento://play?platform=youtube&video_id=oKM-L_WiOhg&t=335)\n\n---\n\n## 二、汽车毛利率：从 19.2% 跌到 16.3%——回归正常值\n\n毛利率跌得好看，但 Terry 拆了三层一次性/结构性原因：\n\n1. **Q1 的保固回冲 + 关税减免**是一次性的，Q2 没有了，所以只是\"回正常值\"；\n2. **单车均价下滑**——去年同期 $45,345 → 本季 $42,730；\n3. *"
+    },
+    {
+      "id": "q_summary_vkpS7WztTMc_01",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "lookup_documents",
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "summarize_document",
+        "search_knowledge",
+        "summarize_document",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "lookup_documents",
+        "search_knowledge",
+        "summarize_document"
+      ],
+      "correct": true,
+      "error": null,
+      "latency_ms": 79390.1,
+      "reply": "Lisa Su 的 MIT 毕业典礼演讲围绕 **五条相互交织的主线** 构建，每一条都反复扣回 *Mens et Manus*（手脑并用）的校训精神：\n\n---\n\n### 1. 🧠 \"工程师直觉\"（Engineer's Instinct）— 贯穿全篇的母题\n\n她将 MIT 教给她的核心能力定义为 **engineer's instinct**：面对看似无解的问题，拆解它，一步一步攻克。她从本科第一次做 6.01/6.02 problem set 被\"碾压\"讲起 [01:37](memento://play?platform=youtube&video_id=vkpS7WztTMc&t=107)，到 UROP 实验室里第一次做出真实的东西 [02:39](memento://play?platform=youtube&video_id=vkpS7WztTMc&t=159)，再到 PhD 期间在 cleanroom 反反复复失败、重来 [04:37](memento://play?platform=youtube&video_id=vkpS7WztTMc&t=277)。她总结说，MIT 教的不只是半导体物理，而是 **\"Mind and Hand — 深度思考，同时亲手建造、测试、在第五次实验失败后继续坚持\"** [05:41](memento://play?platform=you"
+    },
+    {
+      "id": "q_summary_wD48p6m8U-8_01",
+      "type": "summary",
+      "expected_route": "lookup+summarize",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": false,
+      "error": null,
+      "latency_ms": 92060.9,
+      "reply": "Based on the lecture transcript, Card's overall arc is a carefully constructed **three-act narrative**: from credibility crisis, through concrete demonstration, to the long arc of paradigm change.\n\n---\n\n### Act 1 — The Credibility Crisis (Why design matters)\n\nCard opens by establishing that pre-1990s empirical economics had a serious problem. He points to Robert LaLonde's [famous 1986 paper](memento://play?platform=youtube&video_id=wD48p6m8U-8&t=287), which showed that when state-of-the-art econometric methods were applied to the treatment group of the National Supported Work Demonstration — *"
+    },
+    {
+      "id": "q_unanswerable_global_01",
+      "type": "unanswerable",
+      "expected_route": "refuse",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "lookup_documents",
+        "lookup_documents"
+      ],
+      "tools_unique": [
+        "search_knowledge",
+        "lookup_documents"
+      ],
+      "correct": false,
+      "error": null,
+      "latency_ms": 44180.3,
+      "reply": "搜索了你的知识库之后，**目前没有专门讲解 CPU 调度算法的视频**。不过我找到了一些相关的线索：\n\n### 现有视频的覆盖情况\n\n你知识库里有一期 Bilibili 视频 **《16分钟讲明白：程序、进程、内存和CPU到底啥关系？》**（[BV1mMHyz3Erk](memento://play?platform=bilibili&video_id=BV1mMHyz3Erk)），它讲到了 CPU 调度的**前置概念**：\n\n- 多进程如何通过**队列交替**获得 CPU 访问权 — [01:33 进程队列交替](memento://play?platform=bilibili&video_id=BV1mMHyz3Erk&t=93)\n- 不做上下文切换会导致的**安全和正确性问题** — [06:55 寄存器数据冲突](memento://play?platform=bilibili&video_id=BV1mMHyz3Erk&t=415)\n- **进程控制块（PCB）** 被放入调度队列的机制 — [15:59 PCB与队列](memento://play?platform=bilibili&video_id=BV1mMHyz3Erk&t=959)\n\n但作者在结尾明确说了：**\"CPU 调度是未来一集的主题\"** — [16:03 调度留到下期](memento://play?"
+    },
+    {
+      "id": "q_unanswerable_global_02",
+      "type": "unanswerable",
+      "expected_route": "refuse",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": false,
+      "error": null,
+      "latency_ms": 39018.8,
+      "reply": "你的前提其实**反了**。GFS 论文中恰恰**没有**设计自动故障切换的多副本 Master 集群——它用的是一个**单点 Master**，故障后需要**人工介入**才能恢复。\n\nRobert Morris 在这节课里明确指出了这一点：\n\n> **[01:21:47](memento://play?platform=youtube&video_id=EpIgvowZr00&t=1247)** — 原始 GFS 论文中的 Master **没有自动故障切换机制**（\"was not an automatic story for master failover\"），Master 永久崩溃后需要**人工干预**来替换，恢复时间可能长达**几十分钟**甚至更久，这对某些应用来说太慢了。\n\n他还进一步强调了 GFS 的\"单 Master\"设计思路：\n\n> **[22:09](memento://play?platform=youtube&video_id=EpIgvowZr00&t=1329)** — 在学术论文里，你通常会看到一个容错的、带自动故障恢复的、复制的 Master（甚至多个 Master 分担工作），但 GFS 论文说\"我们用单个 Master 就够了\"，而且它确实跑得好好的。Google 的应用对数据一致性错误有很高的容忍度（比如搜索引擎少一个搜索结果，用户根本不会注意到"
+    },
+    {
+      "id": "q_unanswerable_global_03",
+      "type": "unanswerable",
+      "expected_route": "refuse",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge",
+        "lookup_documents"
+      ],
+      "correct": false,
+      "error": null,
+      "latency_ms": 107235.0,
+      "reply": "知识库里目前关于 Raft 的内容主要来自 Lecture 6，而讲师在 [39:19 处](memento://play?platform=youtube&video_id=64Zp3tzNbpE&t=2359) 明确提到：\n\n> \"executing from scratch is not very attractive...we'll see tomorrow that the sort of version of this is more efficient to use as **checkpoints** and we'll talk about tomorrow\"\n\n也就是说，日志压缩/快照机制会在下一节课（Lecture 7）详细讲，而你的知识库目前还没有收录那节课。不过这恰好是你面试高频考点，我结合 Raft 论文（Section 7）帮你系统梳理一下：\n\n---\n\n## Raft 日志压缩（Snapshotting）核心机制\n\n### 1. 为什么需要日志压缩？\n\nRaft 的日志会无限增长——如果节点崩溃重启，它要从头回放整个日志来恢复状态。在长期运行的系统中这完全不可行：日志会越来越大，回放也越来越慢。\n\n### 2. 基本思路：快照替代前缀日志\n\n每个节点 **独立地** 对自己的状态做快照（snapshot），快照包含：\n\n| 字段 | 含义 |\n|--"
+    },
+    {
+      "id": "q_unanswerable_global_04",
+      "type": "unanswerable",
+      "expected_route": "refuse",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": false,
+      "error": null,
+      "latency_ms": 62116.6,
+      "reply": "知识库里关于 B 树 / B+ 树的**底层结构原理**没有专门的深度讲解视频，不过有几处相关的提及。下面我结合库里的线索和核心原理给你系统讲一下。\n\n---\n\n## 数据库索引的树形结构：B 树 vs B+ 树\n\n### 1. 为什么是\"树\"？\n\n没有索引时，数据库只能做**全表扫描**（逐行比对），时间复杂度 O(n)。树形结构能把查找降到 **O(log n)**——就像查字典一样，先翻到大致位置，再逐步缩小范围。\n\n### 2. B 树（B-Tree）\n\nB 树是一种**自平衡的多路搜索树**，核心特点：\n\n- **每个节点可以有多个 key 和多个子指针**（不像二叉树只有 2 个子节点），一个节点通常对应磁盘上的一个 **page**（如 16KB）。\n- 所有 key **有序排列**，节点内的 key 将子树范围分割开。\n- **查找过程**：从根节点开始，在当前节点做二分/顺序查找找到 key 所在区间 → 沿对应子指针跳到下一层 → 重复直到找到目标 key 或到达叶子节点。\n- **所有节点都存储数据**（key + 对应的行记录或行指针）。\n\n在 GFS 论文的 MIT 6.824 讲座中，教授对比了日志结构和 B 树结构时提到：\n\n> B 树结构需要\"**seek to a random place in the disk**\"——也就是说 B 树在更新时"
+    },
+    {
+      "id": "q_unanswerable_global_05",
+      "type": "unanswerable",
+      "expected_route": "refuse",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "lookup_documents",
+        "lookup_documents"
+      ],
+      "tools_unique": [
+        "search_knowledge",
+        "lookup_documents"
+      ],
+      "correct": false,
+      "error": null,
+      "latency_ms": 83277.6,
+      "reply": "你的知识库里目前**没有**专门讲解大模型预训练底层机制（损失函数、反向传播、梯度下降等）的视频。现有的视频主要侧重于 LLM 的高层概念——token、context、prompt、tool、agent 等工程视角的拆解，没有深入到训练过程的数学细节。\n\n不过既然你在备考分布式系统面试，对这类底层机制的理解也会加分。我直接基于通用知识给你梳理一下 **大模型预训练的核心训练流程**：\n\n---\n\n## 一、训练目标：Next Token Prediction\n\n预训练的本质就是一个**自监督分类任务**：\n\n> 给定前面所有的 token，预测下一个 token 是词表中的哪一个。\n\n例如语料 `\"今天天气真好\"` 会被拆成多个训练样本：\n- 输入 `[今天]` → 预测 `天气`\n- 输入 `[今天 天气]` → 预测 `真`\n- 输入 `[今天 天气 真]` → 预测 `好`\n\n模型在每个位置输出一个**长度 = 词表大小（如 50,257）的概率分布**。\n\n---\n\n## 二、前向传播（Forward Pass）\n\n输入 token ID 经过以下流水线：\n\n1. **Embedding 层**：token ID → 查表得到稠密向量（如 4096 维）\n2. **+ 位置编码**：注入位置信息\n3. **N 层 Transformer Block**（如 96 层）：\n"
+    },
+    {
+      "id": "q_unanswerable_global_06",
+      "type": "unanswerable",
+      "expected_route": "refuse",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": false,
+      "error": null,
+      "latency_ms": 94790.1,
+      "reply": "好问题。你库里的视频主要是偏增肌和基础训练方向的，关于纯力量举/冲击PR的专项编程内容不多，但我从现有资料里能提取到几个关键原则，再结合运动科学常识帮你梳理一下。\n\n---\n\n## 练力量 vs 练维度：核心区别\n\n从你库里蛋白质那期视频里提到了一个关键点：**刚开始训练时，力量的增长主要来自神经募集率的提升**，而不是肌肉变大（[20:47 神经募集率](memento://play?platform=bilibili&video_id=BV1LAVh6UEQz&t=1247)）。这就是为什么力量训练和增肌训练的逻辑本质不同：\n\n| | **增肌（Hypertrophy）** | **冲力量（Strength/PR）** |\n|---|---|---|\n| **次数范围** | 6-12次/组（有时到15） | **1-5次/组**（核心区间） |\n| **强度（%1RM）** | 60%-75% | **80%-100%** |\n| **组间休息** | 60-120秒 | **3-5分钟甚至更长** |\n| **每肌群周组数** | 10-20组 | **偏少，6-12组** |\n| **离力竭距离** | 接近力竭（RIR 0-2） | **不力竭（RIR 2-3+）** |\n| **训练重点** | 代谢压力 + 机械张力 | **神经效率 + 动作模式** |\n\n---"
+    },
+    {
+      "id": "q_unanswerable_global_07",
+      "type": "unanswerable",
+      "expected_route": "refuse",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "lookup_documents"
+      ],
+      "tools_unique": [
+        "search_knowledge",
+        "lookup_documents"
+      ],
+      "correct": false,
+      "error": null,
+      "latency_ms": 27870.3,
+      "reply": "**不对，这期视频说的恰恰相反。** 视频明确指出 MCP **并不是要取代 API**，而是架在 API 之上的一个抽象层。具体来看：\n\n---\n\n### 1. API 不会消失，它是基础\n\n视频原话非常直接：\n\n> [07:03](memento://play?platform=youtube&video_id=185XGEMefgc&t=423) — \"This doesn't mean APIs are going away; **they are still the foundation**. MCP changes how models access those APIs.\"\n\n也就是说，底层的 API 调用（端点、认证、限流等）依然存在，MCP 只是改变了**模型与 API 之间的交互方式**。\n\n### 2. MCP 是 API 之上的\"翻译层\"\n\n> [07:19](memento://play?platform=youtube&video_id=185XGEMefgc&t=439) — \"MCP replaces the **middleware** between the model and the API, acting like a **translator** that converts APIs into a format models underst"
+    },
+    {
+      "id": "q_unanswerable_global_08",
+      "type": "unanswerable",
+      "expected_route": "refuse",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "lookup_documents"
+      ],
+      "tools_unique": [
+        "search_knowledge",
+        "lookup_documents"
+      ],
+      "correct": false,
+      "error": null,
+      "latency_ms": 29261.4,
+      "reply": "你记反了，视频的观点恰恰是**反过来的**。\n\n那期视频的核心论点是：**模型能力决定上限，但真正决定系统能不能稳定交付的是外围的 Harness 工程**。视频里原话说得很明确：\n\n> \"真正决定我们的系统能不能稳定跑起来的，往往**不是模型本身**，而是模型外面那套运行的系统。\"——[00:00 开场](memento://play?platform=bilibili&video_id=BV1Zk9FBwELs&t=0)\n\nUP 主还举了一个真实案例：帮朋友调一个 Agent，模型没换、提示词没换，只改了**任务拆解方式、状态管理、关键步骤校验和失败恢复机制**，任务成功率就从不到 70% 拉到了 95% 以上——[01:00 案例](memento://play?platform=bilibili&video_id=BV1Zk9FBwELs&t=60)。\n\n最后总结部分也再次强调了这个分工：\n\n> \"真正决定上限的可能是模型，但是真正决定**能不能落地、能不能稳定交付**的就是 Harness。\"——[17:09 总结](memento://play?platform=bilibili&video_id=BV1Zk9FBwELs&t=1029)\n\n所以视频的逻辑是：\n- **模型能力** → 决定系统的理论上限（能想多好）\n- **Harness Engineering** "
+    },
+    {
+      "id": "q_unanswerable_global_09",
+      "type": "unanswerable",
+      "expected_route": "refuse",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": false,
+      "error": null,
+      "latency_ms": 29735.0,
+      "reply": "**不对，视频里的说法恰恰相反。** Dalio 明确指出印钱是有风险的，关键在于\"平衡\"，而不是一味印钱。\n\n具体来说：\n\n### 1. 去杠杆需要四种手段的**正确平衡**\n\nDalio 说，去杠杆有四种方式：削减支出、债务违约/重组、财富再分配、央行印钱。而\"漂亮的去杠杆\"（Beautiful Deleveraging）需要的是这四者的**恰当配比**：\n\n> [26:56 The right balance](memento://play?platform=youtube&video_id=PHe0bXAIuk0&t=1616) — \"The right balance requires a certain mix of cutting spending, reducing debt, transferring wealth and printing money so that economic and social stability can be maintained.\"\n\n### 2. 印钱**非常容易被滥用**，而且有明确副作用\n\nDalio 原话就警告了这一点：\n\n> [28:25 printing money can easily be abused](memento://play?platform=youtube&video_id=PHe0bXAIuk0&t="
+    },
+    {
+      "id": "q_memory_global_01",
+      "type": "memory",
+      "expected_route": "memory",
+      "predicted_route": "lookup+summarize",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "lookup_documents",
+        "search_knowledge",
+        "search_knowledge",
+        "lookup_documents",
+        "summarize_document",
+        "summarize_document"
+      ],
+      "tools_unique": [
+        "search_knowledge",
+        "lookup_documents",
+        "summarize_document"
+      ],
+      "correct": false,
+      "error": null,
+      "latency_ms": 43783.6,
+      "reply": "好，根据你的复习进度和知识库内容，我帮你梳理一下接下来几天的优先级：\n\n---\n\n## 🎯 最高优先级：GFS 一致性模型与生产问题\n\n你自己也说了，**Raft 选主已经过了，但 GFS 的一致性弱保证和实际生产暴露的问题还比较陌生**。这恰恰是分布式系统面试中最容易被追问深挖的地方。建议你集中精力攻克以下几个层次：\n\n### 1️⃣ GFS 为什么选择弱一致性？（设计动机）\n知识库里 MIT 6.824 这节课讲得很清楚：GFS 的核心 trade-off 是**牺牲一致性换取高吞吐和设计简洁**。在 [05:24 consistency vs performance](memento://play?platform=youtube&video_id=EpIgvowZr00&t=324) 这段，教授明确说了\"if you want good consistency you're gonna pay for it\"。面试时能讲清这个 trade-off 的出发点，是加分项。\n\n### 2️⃣ 弱一致性到底\"弱\"在哪？（具体异常行为）\n重点理解：\n- **Record Append 可能产生重复记录**（duplicate records）\n- **不同副本的数据顺序可能不一致**\n- **Primary 切换时可能出现数据丢失或不一致**\n\n在 [01:14:21 paralle"
+    },
+    {
+      "id": "q_memory_global_02",
+      "type": "memory",
+      "expected_route": "memory",
+      "predicted_route": "memory",
+      "tools": [],
+      "tools_unique": [],
+      "correct": true,
+      "error": null,
+      "latency_ms": 24365.4,
+      "reply": "根据我对你训练背景的了解，你平时每周练 4 次、采取渐进超负荷，目标是 lean bulk。现在时间被进一步压缩，核心思路就是：**用更少的训练频次维持足够的训练容量和机械张力**。以下是具体建议：\n\n---\n\n### 🔑 核心原则：练得少 ≠ 练得差，关键是保留足够的刺激量\n\n#### 1. 转为全身训练（Full Body），每次覆盖所有大肌群\n- 如果本周只能练 **2 次**，就做 2 次全身；如果能挤出 **3 次**，效果会好很多\n- 每次训练选 **复合动作为主**（深蹲、硬拉、卧推/哑铃卧推、划船、过头推举），效率最高\n\n#### 2. 调整容量分配\n- 平时 4 练可以每个部位 12-16 组/周，现在 2 练的话，建议每个大肌群保证 **8-10 组/周**（分两次完成）\n- 小肌群（二头、三头、侧平举）可以穿插在复合动作之后，每组 2-3 个动作收尾即可\n\n#### 3. 提高单组质量，控制 RIR\n- 时间紧就更要**保证每组接近力竭**（RIR 1-2），不必做太多热身组浪费时间\n- 复合动作 3-4 组 × 6-10 次，孤立动作 2-3 组 × 10-15 次\n\n#### 4. 优先保高价值动作\n- **不能省的**：深蹲/腿举、硬拉（或 RDL）、水平推（卧推）、水平拉（划船）\n- **可以暂时放低优先级的**：孤立动作（飞鸟、弯举等）——短期少练不"
+    },
+    {
+      "id": "q_memory_global_03",
+      "type": "memory",
+      "expected_route": "memory",
+      "predicted_route": "memory",
+      "tools": [],
+      "tools_unique": [],
+      "correct": true,
+      "error": null,
+      "latency_ms": 21438.1,
+      "reply": "根据你的饮食习惯（乳糖不耐受、主要靠鸡蛋/鸡胸肉/豆制品摄入蛋白质）和备考期间的时间紧张，给你一套实操性强的两周快手高蛋白方案：\n\n---\n\n## 🍳 快手高蛋白餐安排\n\n### 早餐（5分钟搞定）\n| 选项 | 做法 | 蛋白质 |\n|------|------|--------|\n| **鸡蛋组合** | 2个水煮蛋 + 1片全麦吐司 | ~14g |\n| **豆腐脑/豆浆** | 买现成的，配个茶叶蛋 | ~15g |\n| **隔夜燕麦杯** | 前一晚燕麦+豆浆+花生酱冷藏，早上直接吃 | ~12g |\n\n> **💡 小技巧**：提前煮好一锅水煮蛋放冰箱，早上拿了就走。\n\n### 午餐（10分钟 or 预制）\n| 选项 | 做法 | 蛋白质 |\n|------|------|--------|\n| **鸡胸肉盖饭** | 预制鸡胸肉切片 + 速食米饭 + 西兰花微波 | ~35g |\n| **豆腐炒蛋** | 嫩豆腐+2个蛋一起炒，配米饭 | ~22g |\n| **鸡丝凉面** | 鸡胸肉提前煮好撕丝，面条煮好过凉水拌酱 | ~30g |\n| **即食选项** | 便利店鸡胸肉 + 茶叶蛋×2 + 饭团 | ~35g |\n\n### 晚餐（10分钟 or 预制）\n| 选项 | 做法 | 蛋白质 |\n|------|------|--------|\n| **番茄豆腐鸡蛋汤** "
+    },
+    {
+      "id": "q_memory_global_04",
+      "type": "memory",
+      "expected_route": "memory",
+      "predicted_route": "refuse",
+      "tools": [],
+      "tools_unique": [],
+      "correct": false,
+      "error": null,
+      "latency_ms": 16848.2,
+      "reply": "根据你之前给自己定的复习计划——**最后三天不再输入新内容，只做模拟白板讲解和查漏补缺的复盘**——我的建议是：**不要看新视频了**。理由很简单：\n\n---\n\n### 🧠 最后 72 小时的黄金用法\n\n1. **模拟白板讲解（最重要）**\n   - 把分布式系统的核心主题一个个\"假装面前有面试官\"讲出来：Raft 选主流程、日志复制、GFS 架构与一致性模型、Quorum 机制、CAP/Brewer 定理……\n   - 能流畅讲出来 = 真正理解了。卡壳的地方就是你的薄弱点。\n\n2. **查漏补缺，但只针对已有笔记**\n   - 翻你之前看视频做的笔记/截图，遇到模糊的概念快速回顾，但**不要展开看新视频**。\n   - 如果发现 GFS 部分还有盲区（你之前提到对它的弱一致性和生产问题比较陌生），可以用之前的视频片段快速回看，而不是从零开始看新内容。\n\n3. **整理一份\"一页纸速查表\"**\n   - 把关键协议的核心步骤、trade-off、常见追问写在一张纸上，面试前一晚和当天早上扫一遍，激活记忆。\n\n4. **保证睡眠和状态**\n   - 你最近健身已经压缩到 2 次/周了，说明时间很紧。最后几天比起多学一个知识点，睡好觉、保持清醒的头脑对面试表现影响更大。\n\n---\n\n### 总结一句话\n\n> 新视频 = 输入，面试考的是**输出**。最后三天，练输出，不加输入。\n\n如"
+    },
+    {
+      "id": "q_memory_global_05",
+      "type": "memory",
+      "expected_route": "memory",
+      "predicted_route": "search",
+      "tools": [
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge",
+        "search_knowledge"
+      ],
+      "tools_unique": [
+        "search_knowledge"
+      ],
+      "correct": false,
+      "error": null,
+      "latency_ms": 34928.9,
+      "reply": "搜索结果里主要是 MIT 6.824 的英文长课程——**这正好是你晚上不该碰的类型**😅。\n\n---\n\n## 今晚的建议\n\n你现在已经过了 Raft 选主部分，GFS 还比较薄弱，又很累。我的建议是：\n\n### ✅ 适合今晚做的事（低精力消耗）\n1. **用中文短视频快速回顾 Raft 核心概念**（选主、日志复制、安全性）—— 巩固记忆，为面试白板讲解做准备\n2. **提前预热 GFS 的大图**（不求深入，只求\"知道有哪些坑\"）—— 你记忆力里说 GFS 一致性弱保证和生产问题还比较陌生，今晚可以先建立一个粗框架\n\n### ❌ 不建议今晚做的\n- 啃 MIT 6.824 原版英文 lecture（GFS 那节 1 小时 20 分钟，疲劳状态下看了也白看）\n- 学全新的 Raft 细节（比如 log compaction、membership change）\n\n---\n\n不过我搜到的库里目前都是英文的 MIT 6.824 讲座，没有找到中文短视频。你是不是有收藏过一些中文的 Raft/GFS 讲解视频？如果有的话告诉我关键词或标题，我帮你找找看。或者你也可以考虑：\n\n- **B 站搜\"Raft 动画讲解\"**——有不少 10-15 分钟的可视化讲解，非常适合晚上扫一眼巩固\n- **今晚干脆做白板模拟**：不看视频，自己在纸上画 Raft 选主流程，讲给自己听。你复习计划里最后三"
+    }
+  ],
+  "notes": [
+    "Memory route: 8 seed_memories from memory-type rows ensured in DB (idempotent insert); DB now has n=12.",
+    "Route mapping: lookup_documents|summarize_document → lookup+summarize; else search_knowledge → search; else inspect reply text — refusal signal → refuse, otherwise memory. propose_memory ignored.",
+    "Accuracy denominator = n_total (counts read live from eval_set.jsonl); agent errors count as incorrect (predicted=error).",
+    "Corpus is 50-video; eval questions span all videos (per EVAL_SPEC §2).",
+    "Bounded concurrency=5 via asyncio.Semaphore; no store lock — concurrent Qdrant/SQLite reads may race and reduce effective concurrency if the store is not concurrent-safe.",
+    "Transient API retry: max_retries=3, backoff_s=[30, 60, 120], retryable_status=[429, 500, 502, 503, 504, 524]; inter-question sleep=1.5s.",
+    "wall_time_s=1579.68, concurrency=5"
+  ],
+  "qdrant_point_count": 2040,
+  "smoke_embed_dim": 1024,
+  "route_labels": [
+    "search",
+    "lookup+summarize",
+    "memory",
+    "refuse"
+  ],
+  "seeded_memories": [
+    "用户乳糖不耐受，不喝牛奶和乳清蛋白粉，日常靠鸡蛋、鸡胸肉和豆制品摄入蛋白质",
+    "用户看技术视频的习惯是：精力好的白天才啃英文长课程视频，晚上疲惫时只看中文短视频复习巩固",
+    "用户的复习计划是：面试前两周主要用来查漏补缺（尤其GFS部分），最后三天不再输入新内容，只做模拟白板讲解和查漏补缺的复盘",
+    "备考这两周为了省时间，用户三餐尽量简化，倾向选预制或简单快手的高蛋白餐",
+    "用户目前已经过了Raft选主（leader election）机制部分，但对GFS的一致性弱保证以及它在实际生产环境中暴露的问题还比较陌生",
+    "用户因为两周后的技术面试要备考，最近临时把健身时间从每周4次压缩到每周2次",
+    "用户的健身目标是持续增肌（lean bulk），平时每周训练4次，采取渐进超负荷",
+    "用户正在为一场两周后的高级软件工程师技术面试做准备，重点考察分布式系统的一致性与容错设计",
+    "我的主要学习兴趣：系统架构、数据库、AI 工程、健身训练理论",
+    "我最近在学习 AI/大模型工程，关注 MCP 协议、Agent 与 Harness Engineering",
+    "数据库方面我学过 PostgreSQL 高级特性（索引、查询优化等）",
+    "除了 AI 和软件开发，我也关注生活与经济话题（如 GDP 核算、瑞士经济）"
+  ],
+  "wall_time_s": 1579.685,
+  "concurrency": 5
+}

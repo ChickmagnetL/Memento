@@ -486,19 +486,33 @@ async def main_async(
         system_prompt = build_system_prompt(memories=memories)
         agent = build_agent(build_chat_model(settings), system_prompt=system_prompt)
 
-        # Smoke: one simple agent.run before full suite (with transient retry)
+        # Smoke: one simple agent.run before full suite (with transient retry).
+        # Non-blocking: if smoke still fails after retries, WARN and CONTINUE.
         print("smoke agent.run ...")
         t0 = time.perf_counter()
-        smoke_result = await agent_run_with_retry(
-            agent, "一句话介绍你自己", deps, qid="smoke"
-        )
+        smoke_failed = False
+        try:
+            smoke_result = await agent_run_with_retry(
+                agent, "一句话介绍你自己", deps, qid="smoke"
+            )
+        except Exception as exc:
+            print(
+                f"WARNING: smoke failed all retries ({type(exc).__name__}: {exc}); "
+                "suite CONTINUES (per-question errors will surface)."
+            )
+            notes.append(f"Smoke agent.run failed: {type(exc).__name__}: {exc}")
+            smoke_result = None
+            smoke_failed = True
         smoke_ms = (time.perf_counter() - t0) * 1000.0
-        smoke_tools = extract_tool_names(smoke_result)
-        print(
-            f"smoke ok latency={smoke_ms:.0f}ms tools={smoke_tools} "
-            f"output_len={len(str(getattr(smoke_result, 'output', '') or ''))}"
-        )
-        if smoke_ms > 60000:
+        if smoke_result is not None:
+            smoke_tools = extract_tool_names(smoke_result)
+            print(
+                f"smoke ok latency={smoke_ms:.0f}ms tools={smoke_tools} "
+                f"output_len={len(str(getattr(smoke_result, 'output', '') or ''))}"
+            )
+        else:
+            smoke_tools = []
+        if not smoke_failed and smoke_ms > 60000:
             notes.append(
                 f"Smoke agent.run took {smoke_ms:.0f}ms (>60s); suite still proceeds."
             )
@@ -550,6 +564,7 @@ async def main_async(
             predicted: str | None = None
             err: str | None = None
             latency_ms: float | None = None
+            reply: str = ""  # persisted for refusal audit (04_routing.json)
 
             async with sem:
                 try:
@@ -584,6 +599,7 @@ async def main_async(
                 "correct": correct,
                 "error": err,
                 "latency_ms": round(latency_ms, 1) if latency_ms is not None else None,
+                "reply": reply[:600] if reply else "",
             }
 
             async with progress_lock:
@@ -642,6 +658,7 @@ async def main_async(
                         "correct": False,
                         "error": err,
                         "latency_ms": None,
+                        "reply": "",
                     }
                 )
             else:
@@ -695,6 +712,7 @@ async def main_async(
                     "correct": correct,
                     "error": err,
                     "latency_ms": row.get("latency_ms"),
+                    "reply": (row.get("reply") or "")[:600],
                 }
             )
 
